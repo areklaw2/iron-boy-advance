@@ -1,5 +1,4 @@
-use bit::BitIndex;
-
 mod arm;
-mod operating_modes;
+mod mode;
+mod psr;
 mod thumb;
