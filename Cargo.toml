@@ -1,4 +1,4 @@
 [workspace] 
-members = ["cpu"]
+members = [ "core","cpu", "debugger", "platform"]
 
 resolver = "2"
