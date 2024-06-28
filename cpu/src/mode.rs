@@ -73,8 +73,8 @@ impl From<CpuState> for bool {
 impl From<bool> for CpuState {
     fn from(value: bool) -> Self {
         match value {
-            true => CpuState::ARM,
-            false => CpuState::Thumb,
+            false => CpuState::ARM,
+            true => CpuState::Thumb,
         }
     }
 }

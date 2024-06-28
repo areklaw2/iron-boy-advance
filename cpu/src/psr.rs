@@ -75,7 +75,10 @@ impl ProgramStatusRegister {
     }
 
     pub fn get_state(&self) -> CpuState {
-        self.value.bit(5).into()
+        let x = self.value.bit(5);
+        println!("{}", x);
+        println!("{:#8X}", self.value);
+        x.into()
     }
 
     pub fn set_state(&mut self, state: CpuState) {
@@ -88,5 +91,154 @@ impl ProgramStatusRegister {
 
     pub fn set_mode(&mut self, mode: CpuMode) {
         self.value.set_bit_range(0..5, mode.into());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::mode::{CpuMode, CpuState};
+
+    use super::ProgramStatusRegister;
+
+    #[test]
+    fn get_psr() {
+        let psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        assert_eq!(psr.get(), 0xF00000FF)
+    }
+
+    #[test]
+    fn set_psr() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        psr.set(0xEFFFFFEE);
+        assert_eq!(psr.get(), 0xE00000EE);
+    }
+
+    #[test]
+    fn set_psr_flags() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFF11);
+        psr.set_flags(0xEFFF4FEE);
+        assert_eq!(psr.get(), 0xE0000011);
+
+        psr.set_flags(0x01FF); // has leading zeroes, equivalent to setting flags to zero
+        assert_eq!(psr.get(), 0x00000011);
+    }
+
+    #[test]
+    fn get_psr_n_flag() {
+        let psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        assert_eq!(psr.get_n_flag(), true)
+    }
+
+    #[test]
+    fn set_psr_n_flag() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        psr.set_n_flag(false);
+        assert_eq!(psr.get_n_flag(), false)
+    }
+
+    #[test]
+    fn get_psr_z_flag() {
+        let psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        assert_eq!(psr.get_z_flag(), true)
+    }
+
+    #[test]
+    fn set_psr_z_flag() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        psr.set_z_flag(false);
+        assert_eq!(psr.get_z_flag(), false)
+    }
+
+    #[test]
+    fn get_psr_c_flag() {
+        let psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        assert_eq!(psr.get_c_flag(), true)
+    }
+
+    #[test]
+    fn set_psr_c_flag() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        psr.set_c_flag(false);
+        assert_eq!(psr.get_c_flag(), false)
+    }
+
+    #[test]
+    fn get_psr_v_flag() {
+        let psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        assert_eq!(psr.get_v_flag(), true)
+    }
+
+    #[test]
+    fn set_psr_v_flag() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        psr.set_v_flag(false);
+        assert_eq!(psr.get_v_flag(), false)
+    }
+
+    #[test]
+    fn get_psr_irq_disable() {
+        let psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        assert_eq!(psr.get_irq_disable(), true)
+    }
+
+    #[test]
+    fn set_psr_irq_disable() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        psr.set_irq_disable(false);
+        assert_eq!(psr.get_irq_disable(), false)
+    }
+
+    #[test]
+    fn get_psr_fiq_disable() {
+        let psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        assert_eq!(psr.get_fiq_disable(), true)
+    }
+
+    #[test]
+    fn set_psr_fiq_disable() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        psr.set_fiq_disable(false);
+        assert_eq!(psr.get_fiq_disable(), false)
+    }
+
+    #[test]
+    fn get_psr_state() {
+        let psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        assert_eq!(psr.get_state(), CpuState::Thumb)
+    }
+
+    #[test]
+    fn set_psr_state() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        psr.set_state(CpuState::ARM);
+        assert_eq!(psr.get_state(), CpuState::ARM)
+    }
+
+    #[test]
+    fn get_psr_mode() {
+        let psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        assert_eq!(psr.get_mode(), CpuMode::System)
+    }
+
+    #[test]
+    fn set_psr_mode() {
+        let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
+        psr.set_mode(CpuMode::User);
+        assert_eq!(psr.get_mode(), CpuMode::User);
+
+        psr.set_mode(CpuMode::FIQ);
+        assert_eq!(psr.get_mode(), CpuMode::FIQ);
+
+        psr.set_mode(CpuMode::IRQ);
+        assert_eq!(psr.get_mode(), CpuMode::IRQ);
+
+        psr.set_mode(CpuMode::Supervisor);
+        assert_eq!(psr.get_mode(), CpuMode::Supervisor);
+
+        psr.set_mode(CpuMode::Abort);
+        assert_eq!(psr.get_mode(), CpuMode::Abort);
+
+        psr.set_mode(CpuMode::Undefined);
+        assert_eq!(psr.get_mode(), CpuMode::Undefined);
     }
 }
