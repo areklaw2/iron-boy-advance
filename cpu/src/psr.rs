@@ -75,10 +75,7 @@ impl ProgramStatusRegister {
     }
 
     pub fn get_state(&self) -> CpuState {
-        let x = self.value.bit(5);
-        println!("{}", x);
-        println!("{:#8X}", self.value);
-        x.into()
+        self.value.bit(5).into()
     }
 
     pub fn set_state(&mut self, state: CpuState) {
@@ -240,5 +237,12 @@ mod tests {
 
         psr.set_mode(CpuMode::Undefined);
         assert_eq!(psr.get_mode(), CpuMode::Undefined);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_psr_mode_panics() {
+        let psr = ProgramStatusRegister::new(0xFFFFFF15);
+        psr.get_mode();
     }
 }
