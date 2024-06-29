@@ -36,6 +36,7 @@ pub struct Cpu {
     pc: u32,
     cpsr: ProgramStatusRegister,
     spsrs: Vec<ProgramStatusRegister>,
+    instruction_pipeline: [u32; 2], //Technically a queue
     bus: Bus,
 }
 
@@ -56,6 +57,7 @@ impl Cpu {
             pc: 0,
             cpsr: ProgramStatusRegister::new(0),
             spsrs: vec![ProgramStatusRegister::new(0); 5],
+            instruction_pipeline: [0; 2],
             bus,
         }
     }
@@ -68,14 +70,23 @@ impl Cpu {
     }
 
     pub fn cycle(&mut self) {
-        self.fetch();
-        self.decode();
-        self.execute();
-    }
+        let state = self.cpsr.state();
+        match state {
+            CpuState::ARM => {
+                let pc = self.pc & !0b11;
+                let fetched_instruction = self.bus.read_word(pc);
+                let executed_instruction = self.instruction_pipeline[0];
 
-    pub fn fetch(&mut self) {}
-    pub fn decode(&mut self) {}
-    pub fn execute(&mut self) {}
+                self.instruction_pipeline[0] = self.instruction_pipeline[1];
+                self.instruction_pipeline[1] = fetched_instruction;
+
+                //decode and execute instruction
+            }
+            CpuState::Thumb => {
+                let pc = self.pc & !0b01;
+            }
+        }
+    }
 }
 
 fn build_general_registers() -> Vec<Vec<u32>> {
