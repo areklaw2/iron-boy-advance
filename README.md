@@ -20,7 +20,7 @@ Iron Boy Advance a Game Boy Advance emulator and debugger, written in rust.
 - [ ] Bus
   - [ ] Memory Map
   - [ ] I/O Map
-- [ ] Debbuger
+- [ ] Debugger
   - [ ] Read about GDB
   - [ ] Set up hex reader with Ratatui
   - [ ] Breakpoints
