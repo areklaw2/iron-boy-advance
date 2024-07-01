@@ -1,42 +1,23 @@
 use core::bus::{Bus, MemoryAccess};
 
-use mode_and_state::{CpuMode, CpuState};
+use dissassembler::{CpuMode, CpuState};
 use psr::ProgramStatusRegister;
 
 mod arm;
-mod mode_and_state;
+mod dissassembler;
 mod psr;
 mod thumb;
 
 const SP: usize = 13;
 const LR: usize = 14;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Register {
-    R0,
-    R1,
-    R2,
-    R3,
-    R4,
-    R5,
-    R6,
-    R7,
-    R8,
-    R9,
-    R10,
-    R11,
-    R12,
-    R13,
-    R14,
-    R15,
-}
-
 pub struct Cpu {
     general_registers: Vec<Vec<u32>>,
     pc: u32,
     cpsr: ProgramStatusRegister,
     spsrs: Vec<ProgramStatusRegister>,
-    instruction_pipeline: [u32; 2], //Technically a queue
+    fetched_instruction: u32,
+    decoded_instruction: u32,
     bus: Bus,
 }
 
@@ -57,7 +38,8 @@ impl Cpu {
             pc: 0,
             cpsr: ProgramStatusRegister::new(0),
             spsrs: vec![ProgramStatusRegister::new(0); 5],
-            instruction_pipeline: [0; 2],
+            fetched_instruction: 0,
+            decoded_instruction: 0,
             bus,
         }
     }
@@ -74,11 +56,9 @@ impl Cpu {
         match state {
             CpuState::ARM => {
                 let pc = self.pc & !0b11;
-                let fetched_instruction = self.bus.read_word(pc);
-                let executed_instruction = self.instruction_pipeline[0];
-
-                self.instruction_pipeline[0] = self.instruction_pipeline[1];
-                self.instruction_pipeline[1] = fetched_instruction;
+                let executed_instruction = self.decoded_instruction;
+                self.decoded_instruction = self.fetched_instruction;
+                self.fetched_instruction = self.bus.read_word(pc);
 
                 //decode and execute instruction
             }
