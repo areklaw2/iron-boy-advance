@@ -6,7 +6,7 @@ Iron Boy Advance a Game Boy Advance emulator and debugger, written in rust.
 
 - [ ] CPU
   - [x] Registers
-  - [ ] Instruction pipeline
+  - [x] Instruction pipeline
   - [ ] ARM dissassembler
   - [ ] ARM executor
   - [ ] Thumb dissassembler
@@ -19,6 +19,7 @@ Iron Boy Advance a Game Boy Advance emulator and debugger, written in rust.
   - [ ] Learn GBA assembly
   - [ ] Build an assembler :D
 - [ ] Bus and Memory
+  - [ ] Cycles and Timing
   - [ ] Sequential and Non-Sequential access.
   - [ ] Memory Map
   - [ ] I/O Map
