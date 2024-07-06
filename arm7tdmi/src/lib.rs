@@ -44,13 +44,6 @@ impl Cpu {
         }
     }
 
-    fn increment_program_counter(&mut self) {
-        match self.cpsr.state() {
-            CpuState::ARM => self.pc.wrapping_add(4),
-            CpuState::Thumb => self.pc.wrapping_add(2),
-        };
-    }
-
     pub fn cycle(&mut self) {
         let state = self.cpsr.state();
         match state {
@@ -59,11 +52,13 @@ impl Cpu {
                 let executed_instruction = self.decoded_instruction;
                 self.decoded_instruction = self.fetched_instruction;
                 self.fetched_instruction = self.bus.read_word(pc);
+                self.pc = self.pc.wrapping_add(4);
 
                 //decode and execute instruction
             }
             CpuState::Thumb => {
                 let pc = self.pc & !0b01;
+                self.pc = self.pc.wrapping_add(2);
             }
         }
     }

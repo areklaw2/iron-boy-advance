@@ -1,5 +1,24 @@
 use std::fmt;
 
+#[derive(Debug)]
+pub enum DissassemblerError {
+    CpuModeError,
+    ConditionError,
+}
+
+impl DissassemblerError {}
+
+impl fmt::Display for DissassemblerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DissassemblerError::CpuModeError => write!(f, "Invalid value passed to for CpuMode"),
+            DissassemblerError::ConditionError => {
+                write!(f, "Invalid value passed to for Condition")
+            }
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum CpuMode {
     User = 0b10000,
@@ -21,21 +40,6 @@ impl From<CpuMode> for u32 {
             CpuMode::Abort => 0b10111,
             CpuMode::Undefined => 0b11011,
             CpuMode::System => 0b11111,
-        }
-    }
-}
-
-impl From<u32> for CpuMode {
-    fn from(value: u32) -> Self {
-        match value {
-            0b10000 => CpuMode::User,
-            0b10001 => CpuMode::FIQ,
-            0b10010 => CpuMode::IRQ,
-            0b10011 => CpuMode::Supervisor,
-            0b10111 => CpuMode::Abort,
-            0b11011 => CpuMode::Undefined,
-            0b11111 => CpuMode::System,
-            _ => unimplemented!(),
         }
     }
 }
@@ -107,4 +111,24 @@ pub enum Register {
     R13,
     R14,
     R15,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Condition {
+    EQ = 0b0000,
+    NE = 0b0001,
+    HS = 0b0010,
+    LO = 0b0011,
+    MI = 0b0100,
+    PL = 0b0101,
+    VS = 0b0110,
+    VC = 0b0111,
+    HI = 0b1000,
+    LS = 0b1001,
+    GE = 0b1010,
+    LT = 0b1011,
+    GT = 0b1100,
+    LE = 0b1101,
+    AL = 0b1110,
+    Invalid = 0b1111,
 }

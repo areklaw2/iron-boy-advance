@@ -1,5 +1,5 @@
 [package]
-name = "cpu"
+name = "arm7tdmi"
 version = "0.1.0"
 edition = "2021"
 
