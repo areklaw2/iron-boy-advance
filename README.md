@@ -15,7 +15,6 @@ Iron Boy Advance a Game Boy Advance emulator and debugger, written in rust.
   - [ ] Exceptions
   - [ ] Instruction timing
   - [ ] Memory access
-  - [ ] Instruction
   - [ ] Learn GBA assembly
   - [ ] Build an assembler :D
 - [ ] Bus and Memory
