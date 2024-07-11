@@ -4,15 +4,16 @@ pub enum ArmInstructionFormat {
     BranchAndBranchWithLink,
     Undefined,
     DataProcessing,
+    Multiply,
+    MultiplyLong,
+    TransferPsrToRegister,
+    RegisterTransferToPsr, // Transfer Register or Imm to PSR bits included
     BlockDataTransfer,
     SoftwareInterrupt,
     SingleDataTransfer,
     SingleDataSwap,
-    Multiply,
-    MultiplyLong,
     HalfDataTransferRegisterOffset,
     HalfDataTransferImmediateOffset,
-    PsrTransfer,
 }
 
 impl From<u32> for ArmInstructionFormat {
@@ -36,8 +37,8 @@ impl From<u32> for ArmInstructionFormat {
         if instruction & 0x0F80_00F0 == 0x0080_0090 {
             return MultiplyLong;
         }
-        if instruction & 0b0000_1111_1011_0000_0000_0000_0000_0000 == {
-            return PsrTransfer;
+        if instruction & 0x0F8F_0FFF == 0x010F_0000 {
+            return TransferPsrToRegister;
         }
 
         return Undefined;
