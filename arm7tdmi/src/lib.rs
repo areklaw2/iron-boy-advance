@@ -26,8 +26,24 @@ impl MemoryAccess for Cpu {
         self.bus.read_byte(address)
     }
 
+    fn read_half_word(&self, address: u32) -> u16 {
+        self.bus.read_half_word(address)
+    }
+
+    fn read_word(&self, address: u32) -> u32 {
+        self.bus.read_word(address)
+    }
+
     fn write_byte(&mut self, address: u32, value: u8) {
-        self.bus.write_byte(address, value)
+        self.bus.write_byte(address, value);
+    }
+
+    fn write_half_word(&mut self, address: u32, value: u16) {
+        self.bus.write_half_word(address, value);
+    }
+
+    fn write_word(&mut self, address: u32, value: u32) {
+        self.bus.write_word(address, value);
     }
 }
 
