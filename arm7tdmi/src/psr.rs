@@ -208,8 +208,8 @@ mod tests {
     #[test]
     fn set_psr_state() {
         let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
-        psr.set_state(CpuState::ARM);
-        assert_eq!(psr.state(), CpuState::ARM)
+        psr.set_state(CpuState::Arm);
+        assert_eq!(psr.state(), CpuState::Arm)
     }
 
     #[test]
@@ -224,11 +224,11 @@ mod tests {
         psr.set_mode(CpuMode::User);
         assert_eq!(psr.mode(), CpuMode::User);
 
-        psr.set_mode(CpuMode::FIQ);
-        assert_eq!(psr.mode(), CpuMode::FIQ);
+        psr.set_mode(CpuMode::Fiq);
+        assert_eq!(psr.mode(), CpuMode::Fiq);
 
-        psr.set_mode(CpuMode::IRQ);
-        assert_eq!(psr.mode(), CpuMode::IRQ);
+        psr.set_mode(CpuMode::Irq);
+        assert_eq!(psr.mode(), CpuMode::Irq);
 
         psr.set_mode(CpuMode::Supervisor);
         assert_eq!(psr.mode(), CpuMode::Supervisor);

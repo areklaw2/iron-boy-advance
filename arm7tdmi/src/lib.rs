@@ -63,7 +63,7 @@ impl Cpu {
     pub fn cycle(&mut self) {
         let state = self.cpsr.state();
         match state {
-            CpuState::ARM => {
+            CpuState::Arm => {
                 let pc = self.pc & !0b11;
                 let executed_instruction = self.decoded_instruction;
                 self.decoded_instruction = self.fetched_instruction;
@@ -71,6 +71,8 @@ impl Cpu {
                 self.pc = self.pc.wrapping_add(4);
 
                 //decode and execute instruction
+                let instruction_format = self.arm_decode(executed_instruction);
+                self.arm_execute(instruction_format, executed_instruction)
             }
             CpuState::Thumb => {
                 let pc = self.pc & !0b01;
