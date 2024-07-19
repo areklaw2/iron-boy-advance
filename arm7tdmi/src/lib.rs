@@ -1,5 +1,6 @@
 use core::bus::{Bus, MemoryAccess};
 
+use arm::ArmInstruction;
 use dissassembler::{CpuMode, CpuState};
 use psr::ProgramStatusRegister;
 
@@ -10,6 +11,12 @@ mod thumb;
 
 const SP: usize = 13;
 const LR: usize = 14;
+
+pub trait Instruction {
+    type Size;
+    fn decode(value: Self::Size, address: u32) -> Self;
+    fn value(&self) -> Self::Size;
+}
 
 pub struct Cpu {
     general_registers: Vec<Vec<u32>>,
@@ -68,11 +75,11 @@ impl Cpu {
                 let executed_instruction = self.decoded_instruction;
                 self.decoded_instruction = self.fetched_instruction;
                 self.fetched_instruction = self.bus.read_word(pc);
-                self.pc = self.pc.wrapping_add(4);
 
                 //decode and execute instruction
-                let instruction_format = self.arm_decode(executed_instruction);
-                self.arm_execute(instruction_format, executed_instruction)
+                let instruction = ArmInstruction::decode(executed_instruction, pc);
+                self.arm_execute(instruction);
+                self.pc = self.pc.wrapping_add(4);
             }
             CpuState::Thumb => {
                 let pc = self.pc & !0b01;

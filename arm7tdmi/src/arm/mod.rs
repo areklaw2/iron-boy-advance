@@ -1,20 +1,45 @@
 use dissassembler::ArmInstructionFormat;
 
-use crate::Cpu;
+use crate::{Cpu, Instruction};
 
 pub mod dissassembler;
 pub mod execute;
 
-impl Cpu {
-    pub fn arm_decode(&self, instruction: u32) -> ArmInstructionFormat {
-        // this will probably turn into its on struct or something i'm thinking
-        // maybe i could get convoluted and make decoding functions for each instruction format
-        // maybe some type of trait to with functions
-        // struct just need to start decoding first
-        todo!("{}", instruction)
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ArmInstruction {
+    format: ArmInstructionFormat,
+    instruction: u32,
+    address: u32,
+}
+
+impl ArmInstruction {
+    pub fn new(format: ArmInstructionFormat, instruction: u32, address: u32) -> ArmInstruction {
+        ArmInstruction {
+            format,
+            instruction,
+            address,
+        }
+    }
+}
+
+impl Instruction for ArmInstruction {
+    type Size = u32;
+
+    fn decode(instruction: u32, address: u32) -> ArmInstruction {
+        ArmInstruction {
+            format: instruction.into(),
+            instruction,
+            address,
+        }
     }
 
-    pub fn arm_execute(&self, instruction_format: ArmInstructionFormat, instruction: u32) {
-        todo!("{:?} {}", instruction_format, instruction)
+    fn value(&self) -> u32 {
+        self.instruction
+    }
+}
+
+impl Cpu {
+    pub fn arm_execute(&self, instruction: ArmInstruction) {
+        todo!("{:?}", instruction)
     }
 }
