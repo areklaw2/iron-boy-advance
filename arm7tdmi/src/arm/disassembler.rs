@@ -1,4 +1,4 @@
-use crate::dissassembler::Condition;
+use crate::disassembler::Condition;
 
 use super::ArmInstruction;
 

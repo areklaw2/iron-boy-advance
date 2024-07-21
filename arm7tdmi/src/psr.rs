@@ -1,6 +1,6 @@
 use bit::BitIndex;
 
-use crate::dissassembler::{CpuMode, CpuState};
+use crate::disassembler::{CpuMode, CpuState};
 
 #[derive(Debug, Copy, Clone)]
 pub struct ProgramStatusRegister {
@@ -94,7 +94,7 @@ impl ProgramStatusRegister {
 
 #[cfg(test)]
 mod tests {
-    use crate::dissassembler::{CpuMode, CpuState};
+    use crate::disassembler::{CpuMode, CpuState};
 
     use super::ProgramStatusRegister;
 

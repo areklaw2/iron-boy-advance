@@ -1,11 +1,11 @@
 use core::bus::{Bus, MemoryAccess};
 
 use arm::ArmInstruction;
-use dissassembler::{CpuMode, CpuState};
+use disassembler::{CpuMode, CpuState};
 use psr::ProgramStatusRegister;
 
 mod arm;
-mod dissassembler;
+mod disassembler;
 mod psr;
 mod thumb;
 

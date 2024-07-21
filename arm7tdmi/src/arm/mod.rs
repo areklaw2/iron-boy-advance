@@ -1,12 +1,12 @@
 use bit::BitIndex;
-use dissassembler::ArmInstructionFormat;
+use disassembler::ArmInstructionFormat;
 
 use crate::{
-    dissassembler::{Condition, Register},
+    disassembler::{Condition, Register},
     Cpu, Instruction,
 };
 
-pub mod dissassembler;
+pub mod disassembler;
 pub mod execute;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,9 +72,9 @@ impl Cpu {
 
 #[cfg(test)]
 mod tests {
-    use crate::dissassembler::{Condition, Register};
+    use crate::disassembler::{Condition, Register};
 
-    use super::{dissassembler::ArmInstructionFormat, ArmInstruction};
+    use super::{disassembler::ArmInstructionFormat, ArmInstruction};
     use ArmInstructionFormat::*;
 
     #[test]
