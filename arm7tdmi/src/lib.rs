@@ -15,6 +15,7 @@ const LR: usize = 14;
 pub trait Instruction {
     type Size;
     fn decode(value: Self::Size, address: u32) -> Self;
+    fn disassable(&self) -> String;
     fn value(&self) -> Self::Size;
 }
 

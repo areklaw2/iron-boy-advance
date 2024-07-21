@@ -60,20 +60,14 @@ impl From<u32> for ArmInstructionFormat {
     }
 }
 
-pub fn arm_disassemble(instruction: &ArmInstruction) -> String {
-    use ArmInstructionFormat::*;
-    match instruction.format {
-        BranchAndExchange => disassemble_branch_and_exchange(&instruction),
-        _ => todo!(),
-    }
-}
-
-fn disassemble_branch_and_exchange(instruction: &ArmInstruction) -> String {
-    let cond = instruction.cond();
-    let rn = instruction.rn();
-    if cond == Condition::AL {
-        format!("BX {rn}")
-    } else {
-        format!("BX{cond} {rn}")
+impl ArmInstruction {
+    pub fn disassemble_branch_and_exchange(&self) -> String {
+        let cond = self.cond();
+        let rn = self.rn();
+        if cond == Condition::AL {
+            format!("BX {rn}")
+        } else {
+            format!("BX{cond} {rn}")
+        }
     }
 }
