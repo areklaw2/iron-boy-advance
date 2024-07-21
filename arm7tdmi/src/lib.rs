@@ -77,8 +77,7 @@ impl Cpu {
                 self.fetched_instruction = self.bus.read_word(pc);
 
                 //decode and execute instruction
-                let instruction = ArmInstruction::decode(executed_instruction, pc);
-                self.arm_execute(instruction);
+                self.arm_decode_and_execute(executed_instruction, pc);
                 self.pc = self.pc.wrapping_add(4);
             }
             CpuState::Thumb => {

@@ -9,10 +9,10 @@ use crate::{
 pub mod dissassembler;
 pub mod execute;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArmInstruction {
     format: ArmInstructionFormat,
-    instruction: u32,
+    value: u32,
     address: u32,
 }
 
@@ -22,13 +22,13 @@ impl Instruction for ArmInstruction {
     fn decode(instruction: u32, address: u32) -> ArmInstruction {
         ArmInstruction {
             format: instruction.into(),
-            instruction,
+            value: instruction,
             address,
         }
     }
 
     fn value(&self) -> u32 {
-        self.instruction
+        self.value
     }
 }
 
@@ -36,29 +36,35 @@ impl ArmInstruction {
     pub fn new(format: ArmInstructionFormat, instruction: u32, address: u32) -> ArmInstruction {
         ArmInstruction {
             format,
-            instruction,
+            value: instruction,
             address,
         }
     }
 
     pub fn cond(&self) -> Condition {
-        self.instruction.bit_range(28..32).into()
+        self.value.bit_range(28..32).into()
     }
 
     pub fn rn(&self) -> Register {
-        todo!()
+        use ArmInstructionFormat::*;
+        match self.format {
+            BranchAndExchange => self.value.bit_range(0..4).into(),
+            _ => todo!(),
+        }
     }
 }
 
 impl Cpu {
-    pub fn arm_execute(&self, instruction: ArmInstruction) {
+    pub fn arm_decode_and_execute(&mut self, instruction: u32, pc: u32) {
+        let instruction = ArmInstruction::decode(instruction, pc);
+
         todo!("{:?}", instruction)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::dissassembler::Condition;
+    use crate::dissassembler::{Condition, Register};
 
     use super::{dissassembler::ArmInstructionFormat, ArmInstruction};
     use ArmInstructionFormat::*;
@@ -67,5 +73,11 @@ mod tests {
     fn get_condition() {
         let instruction = ArmInstruction::new(BranchAndExchange, 0x8FFF_FFFF, 0);
         assert_eq!(instruction.cond(), Condition::HI)
+    }
+
+    #[test]
+    fn get_rn() {
+        let instruction = ArmInstruction::new(BranchAndExchange, 0x8FFF_FFFC, 0);
+        assert_eq!(instruction.rn(), Register::R12)
     }
 }

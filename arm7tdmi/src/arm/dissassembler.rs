@@ -1,3 +1,7 @@
+use crate::dissassembler::Condition;
+
+use super::ArmInstruction;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ArmInstructionFormat {
     BranchAndExchange,
@@ -53,5 +57,23 @@ impl From<u32> for ArmInstructionFormat {
         } else {
             Undefined
         }
+    }
+}
+
+pub fn arm_disassemble(instruction: &ArmInstruction) -> String {
+    use ArmInstructionFormat::*;
+    match instruction.format {
+        BranchAndExchange => disassemble_branch_and_exchange(&instruction),
+        _ => todo!(),
+    }
+}
+
+fn disassemble_branch_and_exchange(instruction: &ArmInstruction) -> String {
+    let cond = instruction.cond();
+    let rn = instruction.rn();
+    if cond == Condition::AL {
+        format!("BX {rn}")
+    } else {
+        format!("BX{cond} {rn}")
     }
 }
