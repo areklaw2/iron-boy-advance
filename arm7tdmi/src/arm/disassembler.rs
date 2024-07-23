@@ -23,39 +23,38 @@ pub enum ArmInstructionFormat {
 
 impl From<u32> for ArmInstructionFormat {
     fn from(instruction: u32) -> ArmInstructionFormat {
-        use ArmInstructionFormat::*;
         if instruction & 0x0E00_0000 == 0x0A00_0000 {
-            BranchAndBranchWithLink
+            ArmInstructionFormat::BranchAndBranchWithLink
         } else if instruction & 0x0FFF_FFF0 == 0x012F_FF10 {
-            BranchAndExchange
+            ArmInstructionFormat::BranchAndExchange
         } else if instruction & 0x0F00_0000 == 0x0F00_0000 {
-            SoftwareInterrupt
+            ArmInstructionFormat::SoftwareInterrupt
         } else if instruction & 0x0E00_0010 == 0x0600_0010 {
-            Undefined
+            ArmInstructionFormat::Undefined
         } else if instruction & 0x0C00_0000 == 0x0000_0000 {
-            DataProcessing
+            ArmInstructionFormat::DataProcessing
         } else if instruction & 0x0FC0_00F0 == 0x0000_0090 {
-            Multiply
+            ArmInstructionFormat::Multiply
         } else if instruction & 0x0F80_00F0 == 0x0080_0090 {
-            MultiplyLong
+            ArmInstructionFormat::MultiplyLong
         } else if instruction & 0x0FBF_0FFF == 0x010F_0000 {
-            TransferPsrToRegister
+            ArmInstructionFormat::TransferPsrToRegister
         } else if instruction & 0x0FBF_FFF0 == 0x0129_F000 {
-            TransferRegisterToPsr
+            ArmInstructionFormat::TransferRegisterToPsr
         } else if instruction & 0x0DBF_F000 == 0x0128_F000 {
-            TransferRegisterOrImmediateValueToPsrFlags
+            ArmInstructionFormat::TransferRegisterOrImmediateValueToPsrFlags
         } else if instruction & 0x0C00_0000 == 0x0400_0000 {
-            SingleDataTransfer
+            ArmInstructionFormat::SingleDataTransfer
         } else if instruction & 0x0E40_0F90 == 0x0000_0090 {
-            HalfwordDataTransferRegisterOffset
+            ArmInstructionFormat::HalfwordDataTransferRegisterOffset
         } else if instruction & 0x0E40_0090 == 0x0040_0090 {
-            HalfwordDataTransferImmediateOffset
+            ArmInstructionFormat::HalfwordDataTransferImmediateOffset
         } else if instruction & 0x0E00_0000 == 0x0800_0000 {
-            BlockDataTransfer
+            ArmInstructionFormat::BlockDataTransfer
         } else if instruction & 0x0FB0_0FF0 == 0x0100_0090 {
-            SingleDataSwap
+            ArmInstructionFormat::SingleDataSwap
         } else {
-            Undefined
+            ArmInstructionFormat::Undefined
         }
     }
 }

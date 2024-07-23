@@ -28,9 +28,8 @@ impl Instruction for ArmInstruction {
     }
 
     fn disassable(&self) -> String {
-        use ArmInstructionFormat::*;
         match self.format {
-            BranchAndExchange => self.disassemble_branch_and_exchange(),
+            ArmInstructionFormat::BranchAndExchange => self.disassemble_branch_and_exchange(),
             _ => todo!(),
         }
     }
