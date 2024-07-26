@@ -2,8 +2,8 @@ use bit::BitIndex;
 use disassembler::ArmInstructionFormat;
 
 use crate::{
+    cpu::{Cpu, Instruction},
     disassembler::{Condition, Register},
-    Cpu, Instruction,
 };
 
 pub mod disassembler;
@@ -28,8 +28,9 @@ impl Instruction for ArmInstruction {
     }
 
     fn disassable(&self) -> String {
+        use ArmInstructionFormat::*;
         match self.format {
-            ArmInstructionFormat::BranchAndExchange => self.disassemble_branch_and_exchange(),
+            BranchAndExchange => self.disassemble_branch_and_exchange(),
             _ => todo!(),
         }
     }

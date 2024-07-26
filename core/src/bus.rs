@@ -1,4 +1,9 @@
-pub trait MemoryAccess {
+pub enum MemoryAccess {
+    Sequential,
+    NonSequential,
+}
+
+pub trait MemoryInterface {
     fn read_byte(&self, address: u32) -> u8;
 
     fn read_half_word(&self, address: u32) -> u16 {
@@ -34,7 +39,7 @@ pub struct Bus {
     data: Vec<u8>,
 }
 
-impl MemoryAccess for Bus {
+impl MemoryInterface for Bus {
     fn read_byte(&self, address: u32) -> u8 {
         self.data[address as usize]
     }
@@ -62,7 +67,7 @@ impl Default for Bus {
 
 #[cfg(test)]
 mod tests {
-    use crate::bus::MemoryAccess;
+    use crate::bus::MemoryInterface;
 
     use super::Bus;
 
