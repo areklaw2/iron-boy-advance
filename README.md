@@ -2,6 +2,9 @@
 
 Iron Boy Advance a Game Boy Advance emulator and debugger, written in rust.
 
+## Features:
+- JIT Compiler
+
 ## TODO
 
 - [ ] CPU
