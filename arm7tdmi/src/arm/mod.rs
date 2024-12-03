@@ -1,4 +1,3 @@
-use bit::BitIndex;
 use disassembler::ArmInstructionFormat;
 
 use crate::{
@@ -12,7 +11,7 @@ pub mod execute;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArmInstruction {
     format: ArmInstructionFormat,
-    value: u32,
+    instruction: u32,
     address: u32,
 }
 
@@ -22,7 +21,7 @@ impl Instruction for ArmInstruction {
     fn decode(instruction: u32, address: u32) -> ArmInstruction {
         ArmInstruction {
             format: instruction.into(),
-            value: instruction,
+            instruction,
             address,
         }
     }
@@ -36,7 +35,7 @@ impl Instruction for ArmInstruction {
     }
 
     fn value(&self) -> u32 {
-        self.value
+        self.instruction
     }
 }
 
@@ -44,19 +43,19 @@ impl ArmInstruction {
     pub fn new(format: ArmInstructionFormat, instruction: u32, address: u32) -> ArmInstruction {
         ArmInstruction {
             format,
-            value: instruction,
+            instruction,
             address,
         }
     }
 
     pub fn cond(&self) -> Condition {
-        self.value.bit_range(28..32).into()
+        (self.instruction >> 28 & 0xF).into()
     }
 
     pub fn rn(&self) -> Register {
         use ArmInstructionFormat::*;
         match self.format {
-            BranchAndExchange => self.value.bit_range(0..4).into(),
+            BranchAndExchange => (self.instruction & 0xF).into(),
             _ => todo!(),
         }
     }

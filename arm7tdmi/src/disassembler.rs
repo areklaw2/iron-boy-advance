@@ -4,7 +4,7 @@ use std::{
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CpuMode {
+pub enum Mode {
     User = 0b10000,
     Fiq = 0b10001,
     Irq = 0b10010,
@@ -14,9 +14,9 @@ pub enum CpuMode {
     System = 0b11111,
 }
 
-impl From<CpuMode> for u32 {
-    fn from(mode: CpuMode) -> u32 {
-        use CpuMode::*;
+impl From<Mode> for u32 {
+    fn from(mode: Mode) -> u32 {
+        use Mode::*;
         match mode {
             User => 0b10000,
             Fiq => 0b10001,
@@ -29,9 +29,9 @@ impl From<CpuMode> for u32 {
     }
 }
 
-impl From<u32> for CpuMode {
+impl From<u32> for Mode {
     fn from(value: u32) -> Self {
-        use CpuMode::*;
+        use Mode::*;
         match value {
             0b10000 => User,
             0b10001 => Fiq,
@@ -40,14 +40,14 @@ impl From<u32> for CpuMode {
             0b10111 => Abort,
             0b11011 => Undefined,
             0b11111 => System,
-            _ => panic!("Invalid Cpu State"),
+            _ => panic!("Invalid Mode"),
         }
     }
 }
 
-impl fmt::Display for CpuMode {
+impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use CpuMode::*;
+        use Mode::*;
         match self {
             User => write!(f, "usr"),
             Fiq => write!(f, "fiq"),
@@ -61,14 +61,14 @@ impl fmt::Display for CpuMode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CpuState {
+pub enum State {
     Arm = 0,
     Thumb = 1,
 }
 
-impl From<CpuState> for bool {
-    fn from(state: CpuState) -> bool {
-        use CpuState::*;
+impl From<State> for bool {
+    fn from(state: State) -> bool {
+        use State::*;
         match state {
             Arm => false,
             Thumb => true,
@@ -76,9 +76,9 @@ impl From<CpuState> for bool {
     }
 }
 
-impl From<bool> for CpuState {
+impl From<bool> for State {
     fn from(value: bool) -> Self {
-        use CpuState::*;
+        use State::*;
         match value {
             false => Arm,
             true => Thumb,
@@ -86,9 +86,9 @@ impl From<bool> for CpuState {
     }
 }
 
-impl fmt::Display for CpuState {
+impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use CpuState::*;
+        use State::*;
         match self {
             Arm => write!(f, "ARM"),
             Thumb => write!(f, "Thumb"),
