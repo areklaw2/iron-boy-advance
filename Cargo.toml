@@ -1,4 +1,4 @@
 [workspace] 
-members = [ "core", "arm7tdmi", "debugger", "platform"]
+members = [ "core", "arm7tdmi", "platform"]
 
 resolver = "2"
