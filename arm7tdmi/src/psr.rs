@@ -3,6 +3,7 @@ use getset::{CopyGetters, Setters};
 
 #[derive(Debug, Copy, Clone, CopyGetters, Setters)]
 #[getset(get_copy = "pub", set = "pub")]
+// remove get set write proc macro
 pub struct ProgramStatusRegister {
     negative: bool,
     zero: bool,
