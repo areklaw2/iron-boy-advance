@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 core = {path = "../core"}
-getset = "0.1.3"
+utils ={ path = "../utils"}

@@ -1,67 +1,101 @@
-use crate::disassembler::{Mode, State};
-use getset::{CopyGetters, Setters};
+use utils::bit::BitIndex;
 
-#[derive(Debug, Copy, Clone, CopyGetters, Setters)]
-#[getset(get_copy = "pub", set = "pub")]
+use crate::disassembler::{CpuMode, CpuState};
+
+#[derive(Debug, Copy, Clone)]
 // remove get set write proc macro
 pub struct ProgramStatusRegister {
-    negative: bool,
-    zero: bool,
-    carry: bool,
-    overflow: bool,
-    irq_disable: bool,
-    fiq_disable: bool,
-    state: State,
-    mode: Mode,
+    value: u32,
 }
 
 impl ProgramStatusRegister {
     pub fn new(value: u32) -> Self {
         ProgramStatusRegister {
-            negative: value & (1 << 31) != 0,
-            zero: value & (1 << 30) != 0,
-            carry: value & (1 << 29) != 0,
-            overflow: value & (1 << 28) != 0,
-            irq_disable: value & (1 << 7) != 0,
-            fiq_disable: value & (1 << 6) != 0,
-            state: (value & (1 << 5) != 0).into(),
-            mode: (value & 0x1F).into(),
+            value: value & !0x0FFFFF00,
         }
     }
 
     pub fn value(&self) -> u32 {
-        (self.negative as u32) << 31
-            | (self.zero as u32) << 30
-            | (self.carry as u32) << 29
-            | (self.overflow as u32) << 28
-            | (self.irq_disable as u32) << 7
-            | (self.fiq_disable as u32) << 6
-            | (self.state as u32) << 5
-            | self.mode as u32
+        self.value
     }
 
     pub fn set_value(&mut self, value: u32) {
-        self.negative = value & (1 << 31) != 0;
-        self.zero = value & (1 << 30) != 0;
-        self.carry = value & (1 << 29) != 0;
-        self.overflow = value & (1 << 28) != 0;
-        self.irq_disable = value & (1 << 7) != 0;
-        self.fiq_disable = value & (1 << 6) != 0;
-        self.state = (value & (1 << 5) != 0).into();
-        self.mode = (value & 0x1F).into();
+        self.value = value & !0x0FFFFF00;
     }
 
     pub fn set_flags(&mut self, value: u32) {
-        self.negative = value & (1 << 31) != 0;
-        self.zero = value & (1 << 30) != 0;
-        self.carry = value & (1 << 29) != 0;
-        self.overflow = value & (1 << 28) != 0;
+        self.value &= !0xF0000000;
+        self.value |= 0xF0000000 & value;
+    }
+
+    pub fn negative(&self) -> bool {
+        self.value.bit(31)
+    }
+
+    pub fn set_negative(&mut self, status: bool) {
+        self.value.set_bit(31, status);
+    }
+
+    pub fn zero(&self) -> bool {
+        self.value.bit(30)
+    }
+
+    pub fn set_zero(&mut self, status: bool) {
+        self.value.set_bit(30, status);
+    }
+
+    pub fn carry(&self) -> bool {
+        self.value.bit(29)
+    }
+
+    pub fn set_carry(&mut self, status: bool) {
+        self.value.set_bit(29, status);
+    }
+
+    pub fn overflow(&self) -> bool {
+        self.value.bit(28)
+    }
+
+    pub fn set_overflow(&mut self, status: bool) {
+        self.value.set_bit(28, status);
+    }
+
+    pub fn irq_disable(&self) -> bool {
+        self.value.bit(7)
+    }
+
+    pub fn set_irq_disable(&mut self, status: bool) {
+        self.value.set_bit(7, status);
+    }
+
+    pub fn fiq_disable(&self) -> bool {
+        self.value.bit(6)
+    }
+
+    pub fn set_fiq_disable(&mut self, status: bool) {
+        self.value.set_bit(6, status);
+    }
+
+    pub fn state(&self) -> CpuState {
+        self.value.bit(5).into()
+    }
+
+    pub fn set_state(&mut self, state: CpuState) {
+        self.value.set_bit(5, state.into());
+    }
+
+    pub fn mode(&self) -> CpuMode {
+        self.value.bit_range(0..5).into()
+    }
+
+    pub fn set_mode(&mut self, mode: CpuMode) {
+        self.value.set_bit_range(0..5, mode.into());
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::disassembler::{Mode, State};
+    use crate::disassembler::{CpuMode, CpuState};
 
     use super::ProgramStatusRegister;
 
@@ -169,42 +203,42 @@ mod tests {
     #[test]
     fn get_psr_state() {
         let psr = ProgramStatusRegister::new(0xFFFFFFFF);
-        assert_eq!(psr.state(), State::Thumb)
+        assert_eq!(psr.state(), CpuState::Thumb)
     }
 
     #[test]
     fn set_psr_state() {
         let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
-        psr.set_state(State::Arm);
-        assert_eq!(psr.state(), State::Arm)
+        psr.set_state(CpuState::Arm);
+        assert_eq!(psr.state(), CpuState::Arm)
     }
 
     #[test]
     fn get_psr_mode() {
         let psr = ProgramStatusRegister::new(0xFFFFFFFF);
-        assert_eq!(psr.mode(), Mode::System)
+        assert_eq!(psr.mode(), CpuMode::System)
     }
 
     #[test]
     fn set_psr_mode() {
         let mut psr = ProgramStatusRegister::new(0xFFFFFFFF);
-        psr.set_mode(Mode::User);
-        assert_eq!(psr.mode(), Mode::User);
+        psr.set_mode(CpuMode::User);
+        assert_eq!(psr.mode(), CpuMode::User);
 
-        psr.set_mode(Mode::Fiq);
-        assert_eq!(psr.mode(), Mode::Fiq);
+        psr.set_mode(CpuMode::Fiq);
+        assert_eq!(psr.mode(), CpuMode::Fiq);
 
-        psr.set_mode(Mode::Irq);
-        assert_eq!(psr.mode(), Mode::Irq);
+        psr.set_mode(CpuMode::Irq);
+        assert_eq!(psr.mode(), CpuMode::Irq);
 
-        psr.set_mode(Mode::Supervisor);
-        assert_eq!(psr.mode(), Mode::Supervisor);
+        psr.set_mode(CpuMode::Supervisor);
+        assert_eq!(psr.mode(), CpuMode::Supervisor);
 
-        psr.set_mode(Mode::Abort);
-        assert_eq!(psr.mode(), Mode::Abort);
+        psr.set_mode(CpuMode::Abort);
+        assert_eq!(psr.mode(), CpuMode::Abort);
 
-        psr.set_mode(Mode::Undefined);
-        assert_eq!(psr.mode(), Mode::Undefined);
+        psr.set_mode(CpuMode::Undefined);
+        assert_eq!(psr.mode(), CpuMode::Undefined);
     }
 
     #[test]

@@ -4,7 +4,7 @@ use std::{
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Mode {
+pub enum CpuMode {
     User = 0b10000,
     Fiq = 0b10001,
     Irq = 0b10010,
@@ -14,9 +14,9 @@ pub enum Mode {
     System = 0b11111,
 }
 
-impl From<Mode> for u32 {
-    fn from(mode: Mode) -> u32 {
-        use Mode::*;
+impl From<CpuMode> for u32 {
+    fn from(mode: CpuMode) -> u32 {
+        use CpuMode::*;
         match mode {
             User => 0b10000,
             Fiq => 0b10001,
@@ -29,9 +29,9 @@ impl From<Mode> for u32 {
     }
 }
 
-impl From<u32> for Mode {
+impl From<u32> for CpuMode {
     fn from(value: u32) -> Self {
-        use Mode::*;
+        use CpuMode::*;
         match value {
             0b10000 => User,
             0b10001 => Fiq,
@@ -45,9 +45,9 @@ impl From<u32> for Mode {
     }
 }
 
-impl fmt::Display for Mode {
+impl fmt::Display for CpuMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Mode::*;
+        use CpuMode::*;
         match self {
             User => write!(f, "usr"),
             Fiq => write!(f, "fiq"),
@@ -61,14 +61,14 @@ impl fmt::Display for Mode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum State {
+pub enum CpuState {
     Arm = 0,
     Thumb = 1,
 }
 
-impl From<State> for bool {
-    fn from(state: State) -> bool {
-        use State::*;
+impl From<CpuState> for bool {
+    fn from(state: CpuState) -> bool {
+        use CpuState::*;
         match state {
             Arm => false,
             Thumb => true,
@@ -76,9 +76,9 @@ impl From<State> for bool {
     }
 }
 
-impl From<bool> for State {
+impl From<bool> for CpuState {
     fn from(value: bool) -> Self {
-        use State::*;
+        use CpuState::*;
         match value {
             false => Arm,
             true => Thumb,
@@ -86,9 +86,9 @@ impl From<bool> for State {
     }
 }
 
-impl fmt::Display for State {
+impl fmt::Display for CpuState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use State::*;
+        use CpuState::*;
         match self {
             Arm => write!(f, "ARM"),
             Thumb => write!(f, "Thumb"),

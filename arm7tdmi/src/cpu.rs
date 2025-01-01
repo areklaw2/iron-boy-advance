@@ -1,6 +1,6 @@
 use core::bus::{Bus, MemoryInterface};
 
-use crate::{disassembler::State, psr::ProgramStatusRegister};
+use crate::{disassembler::CpuState, psr::ProgramStatusRegister};
 
 pub trait Instruction {
     type Size;
@@ -66,7 +66,7 @@ impl Cpu {
     pub fn cycle(&mut self) {
         let state = self.cpsr.state();
         match state {
-            State::Arm => {
+            CpuState::Arm => {
                 let pc = self.pc & !0b11;
                 let executed_instruction = self.decoded_instruction;
                 self.decoded_instruction = self.fetched_instruction;
@@ -76,7 +76,7 @@ impl Cpu {
                 self.arm_decode_and_execute(executed_instruction, pc);
                 self.pc = self.pc.wrapping_add(4);
             }
-            State::Thumb => {
+            CpuState::Thumb => {
                 let pc = self.pc & !0b01;
                 self.pc = self.pc.wrapping_add(2);
             }
