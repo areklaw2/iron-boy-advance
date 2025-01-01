@@ -1,8 +1,10 @@
+use core::memory::MemoryInterface;
+
 use crate::cpu::Cpu;
 
 use super::{disassembler::ArmInstructionFormat, ArmInstruction};
 
-impl Cpu {
+impl<I: MemoryInterface> Cpu<I> {
     pub fn arm_execute(&mut self, instruction: ArmInstruction) {
         use ArmInstructionFormat::*;
         match instruction.format {

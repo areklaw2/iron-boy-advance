@@ -1,3 +1,5 @@
+use core::memory::MemoryInterface;
+
 use disassembler::ArmInstructionFormat;
 
 use crate::{
@@ -61,7 +63,7 @@ impl ArmInstruction {
     }
 }
 
-impl Cpu {
+impl<I: MemoryInterface> Cpu<I> {
     pub fn arm_decode_and_execute(&mut self, instruction: u32, pc: u32) {
         let instruction = ArmInstruction::decode(instruction, pc);
 
