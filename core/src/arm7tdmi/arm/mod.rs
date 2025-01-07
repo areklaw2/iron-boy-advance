@@ -3,7 +3,7 @@ use disassembler::ArmInstructionFormat;
 use crate::memory::MemoryInterface;
 
 use super::{
-    cpu::{Cpu, Instruction},
+    cpu::{Arm7tdmiCpu, Instruction},
     disassembler::{Condition, Register},
 };
 
@@ -63,7 +63,7 @@ impl ArmInstruction {
     }
 }
 
-impl<I: MemoryInterface> Cpu<I> {
+impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn arm_decode_and_execute(&mut self, instruction: u32, pc: u32) {
         let instruction = ArmInstruction::decode(instruction, pc);
 

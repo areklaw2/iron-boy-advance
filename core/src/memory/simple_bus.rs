@@ -58,8 +58,6 @@ impl IoMemoryAccess for SimpleBus {
 
 impl SimpleBus {
     pub fn new() -> Self {
-        SimpleBus {
-            data: vec![0; 0xFFFFFFFF],
-        }
+        SimpleBus { data: vec![0; 0xFFFFFFFF] }
     }
 }

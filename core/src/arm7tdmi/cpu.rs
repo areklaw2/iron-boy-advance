@@ -9,12 +9,7 @@ pub trait Instruction {
     fn value(&self) -> Self::Size;
 }
 
-pub enum CpuAction {
-    AdvancePipeline,
-    FlushPipeline,
-}
-
-pub struct Cpu<I: MemoryInterface> {
+pub struct Arm7tdmiCpu<I: MemoryInterface> {
     general_registers: Vec<Vec<u32>>,
     pc: u32,
     cpsr: ProgramStatusRegister,
@@ -24,7 +19,7 @@ pub struct Cpu<I: MemoryInterface> {
     bus: I, // May need to make this shared
 }
 
-impl<I: MemoryInterface> MemoryInterface for Cpu<I> {
+impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     fn load_8(&self, address: u32) -> u8 {
         self.bus.load_8(address)
     }
@@ -50,9 +45,9 @@ impl<I: MemoryInterface> MemoryInterface for Cpu<I> {
     }
 }
 
-impl<I: MemoryInterface> Cpu<I> {
+impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn new(bus: I) -> Self {
-        Cpu {
+        Arm7tdmiCpu {
             general_registers: build_general_registers(),
             pc: 0,
             cpsr: ProgramStatusRegister::new(0),

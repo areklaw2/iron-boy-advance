@@ -1,10 +1,15 @@
+use std::{cell::RefCell, rc::Rc};
+
+use crate::scheduler::{self, Scheduler};
+
 use super::{IoMemoryAccess, MemoryInterface};
 
-pub struct SimpleBus {
+pub struct SystemBus {
+    scheduler: Rc<RefCell<Scheduler>>,
     data: Vec<u8>,
 }
 
-impl MemoryInterface for SimpleBus {
+impl MemoryInterface for SystemBus {
     fn load_8(&self, address: u32) -> u8 {
         self.read_8(address)
     }
@@ -30,7 +35,7 @@ impl MemoryInterface for SimpleBus {
     }
 }
 
-impl IoMemoryAccess for SimpleBus {
+impl IoMemoryAccess for SystemBus {
     fn read_8(&self, address: u32) -> u8 {
         todo!()
     }
@@ -56,10 +61,11 @@ impl IoMemoryAccess for SimpleBus {
     }
 }
 
-impl SimpleBus {
-    pub fn new() -> Self {
-        SimpleBus {
+impl SystemBus {
+    pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
+        SystemBus {
             data: vec![0; 0xFFFFFFFF],
+            scheduler,
         }
     }
 }
