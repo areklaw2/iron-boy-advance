@@ -1,7 +1,8 @@
-pub mod arm7tdmi;
+mod arm7tdmi;
 mod bios;
+mod cartridge;
 pub mod gba;
-pub mod memory;
+mod memory;
 pub mod ppu;
 mod scheduler;
 pub mod sharp_sm83;
