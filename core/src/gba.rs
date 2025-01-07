@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{arm7tdmi::cpu::Arm7tdmiCpu, memory::system_bus::SystemBus, scheduler::Scheduler, sharp_sm83::cpu::SharpSm83Cpu};
+use crate::{arm7tdmi::cpu::Arm7tdmiCpu, bios::Bios, memory::system_bus::SystemBus, scheduler::Scheduler, sharp_sm83::cpu::SharpSm83Cpu};
 
 pub struct GameBoyAdvance {
     arm7tdmi: Arm7tdmiCpu<SystemBus>,
@@ -10,10 +10,10 @@ pub struct GameBoyAdvance {
 }
 
 impl GameBoyAdvance {
-    pub fn new(rom_buffer: Vec<u8>, bios_buffer: Option<Vec<u8>>, show_logs: bool) -> GameBoyAdvance {
+    pub fn new(rom_buffer: Vec<u8>, bios_buffer: Vec<u8>, show_logs: bool) -> GameBoyAdvance {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         GameBoyAdvance {
-            arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(scheduler.clone())),
+            arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(Bios::load(bios_buffer), scheduler.clone())),
             scheduler,
         }
     }

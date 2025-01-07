@@ -1,12 +1,13 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::scheduler::{self, Scheduler};
+use crate::{bios::Bios, scheduler::Scheduler};
 
 use super::{IoMemoryAccess, MemoryInterface};
 
 pub struct SystemBus {
-    scheduler: Rc<RefCell<Scheduler>>,
     data: Vec<u8>,
+    bios: Bios,
+    scheduler: Rc<RefCell<Scheduler>>,
 }
 
 impl MemoryInterface for SystemBus {
@@ -62,9 +63,10 @@ impl IoMemoryAccess for SystemBus {
 }
 
 impl SystemBus {
-    pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
+    pub fn new(bios: Bios, scheduler: Rc<RefCell<Scheduler>>) -> Self {
         SystemBus {
             data: vec![0; 0xFFFFFFFF],
+            bios,
             scheduler,
         }
     }
