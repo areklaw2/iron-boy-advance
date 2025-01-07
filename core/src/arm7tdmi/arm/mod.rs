@@ -1,8 +1,8 @@
-use core::memory::MemoryInterface;
-
 use disassembler::ArmInstructionFormat;
 
-use crate::{
+use crate::memory::MemoryInterface;
+
+use super::{
     cpu::{Cpu, Instruction},
     disassembler::{Condition, Register},
 };
@@ -73,7 +73,8 @@ impl<I: MemoryInterface> Cpu<I> {
 
 #[cfg(test)]
 mod tests {
-    use crate::disassembler::{Condition, Register};
+
+    use crate::arm7tdmi::disassembler::{Condition, Register};
 
     use super::{disassembler::ArmInstructionFormat, ArmInstruction};
     use ArmInstructionFormat::*;

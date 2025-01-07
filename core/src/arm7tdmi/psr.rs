@@ -1,6 +1,6 @@
 use utils::bit::BitIndex;
 
-use crate::disassembler::{CpuMode, CpuState};
+use super::disassembler::{CpuMode, CpuState};
 
 #[derive(Debug, Copy, Clone)]
 // remove get set write proc macro
@@ -10,9 +10,7 @@ pub struct ProgramStatusRegister {
 
 impl ProgramStatusRegister {
     pub fn new(value: u32) -> Self {
-        ProgramStatusRegister {
-            value: value & !0x0FFFFF00,
-        }
+        ProgramStatusRegister { value: value & !0x0FFFFF00 }
     }
 
     pub fn value(&self) -> u32 {
@@ -75,7 +73,6 @@ impl ProgramStatusRegister {
     pub fn set_fiq_disable(&mut self, status: bool) {
         self.value.set_bit(6, status);
     }
-
     pub fn state(&self) -> CpuState {
         self.value.bit(5).into()
     }
@@ -95,7 +92,8 @@ impl ProgramStatusRegister {
 
 #[cfg(test)]
 mod tests {
-    use crate::disassembler::{CpuMode, CpuState};
+
+    use crate::arm7tdmi::disassembler::{CpuMode, CpuState};
 
     use super::ProgramStatusRegister;
 

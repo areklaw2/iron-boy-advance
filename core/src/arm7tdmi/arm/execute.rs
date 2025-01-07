@@ -1,6 +1,4 @@
-use core::memory::MemoryInterface;
-
-use crate::cpu::Cpu;
+use crate::{arm7tdmi::cpu::Cpu, memory::MemoryInterface};
 
 use super::{disassembler::ArmInstructionFormat, ArmInstruction};
 

@@ -1,6 +1,6 @@
-use core::memory::MemoryInterface;
+use crate::memory::MemoryInterface;
 
-use crate::{disassembler::CpuState, psr::ProgramStatusRegister};
+use super::{disassembler::CpuState, psr::ProgramStatusRegister};
 
 pub trait Instruction {
     type Size;
