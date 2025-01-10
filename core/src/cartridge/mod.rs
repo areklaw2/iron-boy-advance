@@ -8,7 +8,9 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn load(buffer: Vec<u8>) -> Cartridge {
-        let header = Header::load(&buffer[0..192]);
+        let header = Header::load(&buffer[0..228]);
+        println!("{}", header.game_title());
+        println!("{}", header.game_code());
         Cartridge { header }
     }
 }
