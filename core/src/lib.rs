@@ -6,3 +6,8 @@ mod memory;
 pub mod ppu;
 mod scheduler;
 pub mod sharp_sm83;
+
+#[derive(Debug)]
+pub enum GbaError {
+    CartridgeLoadError(String),
+}

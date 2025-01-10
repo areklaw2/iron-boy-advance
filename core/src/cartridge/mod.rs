@@ -1,5 +1,7 @@
 use header::Header;
 
+use crate::GbaError;
+
 pub mod header;
 
 pub struct Cartridge {
@@ -7,10 +9,10 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn load(buffer: Vec<u8>) -> Cartridge {
-        let header = Header::load(&buffer[0..228]);
+    pub fn load(buffer: Vec<u8>) -> Result<Cartridge, GbaError> {
+        let header = Header::load(&buffer[0..228])?;
         println!("{}", header.game_title());
         println!("{}", header.game_code());
-        Cartridge { header }
+        Ok(Cartridge { header })
     }
 }
