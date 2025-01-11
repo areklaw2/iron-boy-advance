@@ -25,26 +25,19 @@ pub struct Header {
 impl Header {
     pub fn load(bytes: &[u8]) -> Result<Header, GbaError> {
         if bytes.len() < 0xE4 {
-            return Err(GbaError::CartridgeLoadError(
-                "Header size incorrect".to_string(),
-            ));
+            return Err(GbaError::IncorrectHeaderLength);
         }
 
         let complement_check = bytes[0xBD];
         if complement_check != calculate_checksum(&bytes[0xA0..=0xBC]) {
-            return Err(GbaError::CartridgeLoadError(
-                "Invalid checksum incorrect".to_string(),
-            ));
+            return Err(GbaError::CartridgeCheckSumFailure);
         } else {
             println!("Checksum passed!")
         }
 
-        let game_title = from_utf8(&bytes[0xA0..0xAC])
-            .map_err(|_| GbaError::CartridgeLoadError("Invalid game title".to_string()))?;
-        let game_code = from_utf8(&bytes[0xAC..0xB0])
-            .map_err(|_| GbaError::CartridgeLoadError("Invalid game title".to_string()))?;
-        let maker_code = from_utf8(&bytes[0xB0..0xB2])
-            .map_err(|_| GbaError::CartridgeLoadError("Invalid game title".to_string()))?;
+        let game_title = from_utf8(&bytes[0xA0..0xAC]).map_err(|_| GbaError::HeaderParseFailure)?;
+        let game_code = from_utf8(&bytes[0xAC..0xB0]).map_err(|_| GbaError::HeaderParseFailure)?;
+        let maker_code = from_utf8(&bytes[0xB0..0xB2]).map_err(|_| GbaError::HeaderParseFailure)?;
 
         let header = Header {
             rom_entry_point: bytes[0x00..0x04].try_into().unwrap(),

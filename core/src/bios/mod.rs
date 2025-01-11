@@ -1,29 +1,29 @@
-use crate::memory::IoMemoryAccess;
+use std::{fs::File, io::Read, path::PathBuf};
+
+use utils::read_file;
+
+use crate::{memory::IoMemoryAccess, GbaError};
 
 pub struct Bios {
-    data: Vec<u8>,
+    data: Box<[u8]>,
 }
 
 impl Bios {
-    pub fn load(buffer: Vec<u8>) -> Bios {
-        Bios { data: buffer }
+    pub fn load(path: PathBuf) -> Result<Bios, GbaError> {
+        let buffer = match read_file(&path) {
+            Ok(buffer) => buffer.into_boxed_slice(),
+            Err(_) => return Err(GbaError::FileLoadFailure),
+        };
+        Ok(Bios { data: buffer })
     }
 }
 
 impl IoMemoryAccess for Bios {
-    fn read_32(&self, address: u32) -> u32 {
-        todo!()
-    }
-
-    fn read_16(&self, address: u32) -> u16 {
-        todo!()
-    }
-
     fn read_8(&self, address: u32) -> u8 {
-        todo!()
+        self.data[address as usize]
     }
 
-    fn write_8(&mut self, _address: u32, _value: u8) {
-        panic!("Bios is read only")
+    fn write_8(&mut self, address: u32, value: u8) {
+        self.data[address as usize] = value
     }
 }

@@ -32,27 +32,11 @@ impl MemoryInterface for SimpleBus {
 
 impl IoMemoryAccess for SimpleBus {
     fn read_8(&self, address: u32) -> u8 {
-        todo!()
-    }
-
-    fn read_16(&self, address: u32) -> u16 {
-        todo!()
-    }
-
-    fn read_32(&self, address: u32) -> u32 {
-        todo!()
+        self.data[address as usize]
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
-        todo!()
-    }
-
-    fn write_16(&mut self, address: u32, value: u16) {
-        todo!()
-    }
-
-    fn write_32(&mut self, address: u32, value: u32) {
-        todo!()
+        self.data[address as usize] = value
     }
 }
 
