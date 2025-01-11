@@ -23,7 +23,7 @@ impl IoMemoryAccess for Bios {
         todo!()
     }
 
-    fn write_8(&self, _address: u32, _value: u8) {
+    fn write_8(&mut self, _address: u32, _value: u8) {
         panic!("Bios is read only")
     }
 }

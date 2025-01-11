@@ -39,16 +39,16 @@ pub trait IoMemoryAccess {
         half_word2 << 16 | half_word1
     }
 
-    fn write_8(&self, address: u32, value: u8);
+    fn write_8(&mut self, address: u32, value: u8);
 
-    fn write_16(&self, address: u32, value: u16) {
+    fn write_16(&mut self, address: u32, value: u16) {
         let byte1 = (value & 0xFF) as u8;
         let byte2 = (value >> 8) as u8;
         self.write_8(address, byte1);
         self.write_8(address + 1, byte2);
     }
 
-    fn write_32(&self, address: u32, value: u32) {
+    fn write_32(&mut self, address: u32, value: u32) {
         let half_word1 = (value & 0xFFFF) as u16;
         let half_word2 = (value >> 16) as u16;
         self.write_16(address, half_word1);

@@ -43,21 +43,23 @@ impl IoMemoryAccess for SimpleBus {
         todo!()
     }
 
-    fn write_8(&self, address: u32, value: u8) {
+    fn write_8(&mut self, address: u32, value: u8) {
         todo!()
     }
 
-    fn write_16(&self, address: u32, value: u16) {
+    fn write_16(&mut self, address: u32, value: u16) {
         todo!()
     }
 
-    fn write_32(&self, address: u32, value: u32) {
+    fn write_32(&mut self, address: u32, value: u32) {
         todo!()
     }
 }
 
 impl SimpleBus {
     pub fn new() -> Self {
-        SimpleBus { data: vec![0; 0xFFFFFFFF] }
+        SimpleBus {
+            data: vec![0; 0xFFFFFFFF],
+        }
     }
 }

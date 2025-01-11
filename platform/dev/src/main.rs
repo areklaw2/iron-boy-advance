@@ -43,6 +43,7 @@ fn main() {
         )
         .get_matches();
 
+    //turn these into pathbufs
     let rom_path = arg_matches
         .get_one::<String>("rom")
         .expect("Rom is required");
