@@ -5,4 +5,8 @@ edition = "2021"
 
 [dependencies]
 thiserror = "2.0.11"
+bitvec = "1.0.1"
 utils = { path = "../utils" }
+
+[lib]
+doctest = false #doc test for thiserror are acting up 2/23/2024

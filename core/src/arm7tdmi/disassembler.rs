@@ -40,7 +40,7 @@ impl From<u32> for CpuMode {
             0b10111 => Abort,
             0b11011 => Undefined,
             0b11111 => System,
-            _ => panic!("Invalid Mode"),
+            _ => panic!("Invalid Cpu Mode"),
         }
     }
 }

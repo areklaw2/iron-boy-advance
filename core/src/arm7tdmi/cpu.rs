@@ -50,8 +50,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         Arm7tdmiCpu {
             general_registers: build_general_registers(),
             pc: 0,
-            cpsr: ProgramStatusRegister::new(0),
-            spsrs: vec![ProgramStatusRegister::new(0); 5],
+            cpsr: ProgramStatusRegister::new(0x0000_00D3), // TODO: figure out why this is the initial value
+            spsrs: vec![ProgramStatusRegister::new(0x0000_00D3); 5],
             fetched_instruction: 0,
             decoded_instruction: 0,
             bus,
@@ -59,7 +59,11 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     pub fn cycle(&mut self) {
-        let state = self.cpsr.state();
+        let state = self.cpsr.cpu_state();
+        // BX execution switches state
+        // When executing an execution if cpu is in thumb it will switch to
+        // arm execute arm and then switch back to thumb
+
         match state {
             CpuState::Arm => {
                 let pc = self.pc & !0b11;
@@ -81,12 +85,11 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
 
 fn build_general_registers() -> Vec<Vec<u32>> {
     let mut general_registers = Vec::new();
-    for i in 0..16 {
+    for i in 0..15 {
         match i {
             0..=7 => general_registers.push(vec![0; 1]),
             8..=12 => general_registers.push(vec![0; 2]),
-            13 | 14 => general_registers.push(vec![0; 6]),
-            _ => general_registers.push(vec![0; 1]),
+            _ => general_registers.push(vec![0; 6]),
         }
     }
     general_registers
