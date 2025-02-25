@@ -4,7 +4,6 @@ use utils::get_set;
 use super::disassembler::{CpuMode, CpuState};
 
 #[derive(Debug, Copy, Clone)]
-// remove get set write proc macro
 pub struct ProgramStatusRegister {
     negative: bool,
     zero: bool,

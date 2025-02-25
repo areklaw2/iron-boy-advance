@@ -1,8 +1,14 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use crate::{
-    arm7tdmi::cpu::Arm7tdmiCpu, bios::Bios, cartridge::Cartridge, memory::system_bus::SystemBus, scheduler::Scheduler,
-    sharp_sm83::cpu::SharpSm83Cpu, GbaError,
+    arm7tdmi::cpu::Arm7tdmiCpu,
+    bios::Bios,
+    cartridge::Cartridge,
+    memory::system_bus::SystemBus,
+    ppu::CYCLES_PER_FRAME,
+    scheduler::{event::EventType, Scheduler},
+    sharp_sm83::cpu::SharpSm83Cpu,
+    GbaError,
 };
 
 pub struct GameBoyAdvance {
@@ -25,5 +31,45 @@ impl GameBoyAdvance {
             rom_name,
         };
         Ok(gba)
+    }
+
+    pub fn run(&mut self, overshoot: usize) -> usize {
+        let start_time = self.scheduler.borrow().timestamp();
+        let end_time = start_time + CYCLES_PER_FRAME - overshoot;
+
+        self.scheduler
+            .borrow_mut()
+            .schedule_at_timestamp(EventType::FrameComplete, end_time);
+
+        'events: loop {
+            while self.scheduler.borrow().timestamp() <= self.scheduler.borrow().timestamp_of_next_event() {
+                let cycles = self.arm7tdmi.cycle();
+                self.scheduler.borrow_mut().update(cycles);
+            }
+
+            if self.handle_events() {
+                break 'events;
+            }
+        }
+
+        self.scheduler.borrow().timestamp() - start_time
+    }
+
+    fn handle_events(&mut self) -> bool {
+        let mut scheduler = self.scheduler.borrow_mut();
+        while let Some((event, timestamp)) = scheduler.pop() {
+            let future_event: Option<(EventType, usize)> = match event {
+                EventType::FrameComplete => return true,
+                //TODO: write handlers for events
+                EventType::Timer(_timer_event) => None,
+                EventType::Ppu(_ppu_event) => None,
+                EventType::Apu(_apu_event) => None,
+            };
+
+            if let Some((event_type, time)) = future_event {
+                scheduler.schedule_at_timestamp(event_type, timestamp + time);
+            }
+        }
+        false
     }
 }

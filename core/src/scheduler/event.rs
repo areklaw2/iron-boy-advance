@@ -2,12 +2,17 @@ use std::cmp::Ordering;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum PpuEvent {
-    None,
+    None, //TODO: add ppu events
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum ApuEvent {
-    Sample,
+    None, //TODO: add apu events
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum TimerEvent {
+    None, //TODO: add timer events
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -15,6 +20,7 @@ pub enum EventType {
     FrameComplete,
     Ppu(PpuEvent),
     Apu(ApuEvent),
+    Timer(TimerEvent),
 }
 
 pub type FutureEvent = (EventType, usize);

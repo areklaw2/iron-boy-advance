@@ -58,7 +58,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self) -> usize {
         let state = self.cpsr.cpu_state();
         // BX execution switches state
         // When executing an execution if cpu is in thumb it will switch to
@@ -80,6 +80,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pc = self.pc.wrapping_add(2);
             }
         }
+
+        0
     }
 }
 
