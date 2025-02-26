@@ -24,6 +24,7 @@ pub enum ArmInstructionFormat {
 impl From<u32> for ArmInstructionFormat {
     fn from(instruction: u32) -> ArmInstructionFormat {
         use ArmInstructionFormat::*;
+        //TODO: Make constants for masks and formats
         if instruction & 0x0FFF_FFF0 == 0x012F_FF10 {
             BranchAndExchange
         } else if instruction & 0x0E00_0000 == 0x0A00_0000 {
