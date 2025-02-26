@@ -24,10 +24,10 @@ pub enum ArmInstructionFormat {
 impl From<u32> for ArmInstructionFormat {
     fn from(instruction: u32) -> ArmInstructionFormat {
         use ArmInstructionFormat::*;
-        if instruction & 0x0E00_0000 == 0x0A00_0000 {
-            BranchAndBranchWithLink
-        } else if instruction & 0x0FFF_FFF0 == 0x012F_FF10 {
+        if instruction & 0x0FFF_FFF0 == 0x012F_FF10 {
             BranchAndExchange
+        } else if instruction & 0x0E00_0000 == 0x0A00_0000 {
+            BranchAndBranchWithLink
         } else if instruction & 0x0F00_0000 == 0x0F00_0000 {
             SoftwareInterrupt
         } else if instruction & 0x0E00_0010 == 0x0600_0010 {

@@ -14,25 +14,10 @@ pub enum CpuMode {
     System = 0b11111,
 }
 
-impl From<CpuMode> for u32 {
-    fn from(mode: CpuMode) -> u32 {
+impl CpuMode {
+    pub const fn from_bits(bits: u8) -> Self {
         use CpuMode::*;
-        match mode {
-            User => 0b10000,
-            Fiq => 0b10001,
-            Irq => 0b10010,
-            Supervisor => 0b10011,
-            Abort => 0b10111,
-            Undefined => 0b11011,
-            System => 0b11111,
-        }
-    }
-}
-
-impl From<u32> for CpuMode {
-    fn from(value: u32) -> Self {
-        use CpuMode::*;
-        match value {
+        match bits {
             0b10000 => User,
             0b10001 => Fiq,
             0b10010 => Irq,
@@ -40,8 +25,12 @@ impl From<u32> for CpuMode {
             0b10111 => Abort,
             0b11011 => Undefined,
             0b11111 => System,
-            _ => panic!("Invalid Cpu Mode"),
+            _ => unreachable!(),
         }
+    }
+
+    pub const fn into_bits(self) -> u8 {
+        self as u8
     }
 }
 
@@ -66,23 +55,18 @@ pub enum CpuState {
     Thumb = 1,
 }
 
-impl From<CpuState> for bool {
-    fn from(state: CpuState) -> bool {
+impl CpuState {
+    pub const fn from_bits(bits: u8) -> Self {
         use CpuState::*;
-        match state {
-            Arm => false,
-            Thumb => true,
+        match bits {
+            0 => Arm,
+            1 => Thumb,
+            _ => unreachable!(),
         }
     }
-}
 
-impl From<bool> for CpuState {
-    fn from(value: bool) -> Self {
-        use CpuState::*;
-        match value {
-            false => Arm,
-            true => Thumb,
-        }
+    pub const fn into_bits(self) -> u8 {
+        self as u8
     }
 }
 

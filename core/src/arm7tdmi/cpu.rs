@@ -50,8 +50,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         Arm7tdmiCpu {
             general_registers: build_general_registers(),
             pc: 0,
-            cpsr: ProgramStatusRegister::new(0x0000_00D3), // TODO: figure out why this is the initial value
-            spsrs: vec![ProgramStatusRegister::new(0x0000_00D3); 5],
+            cpsr: ProgramStatusRegister::from_bits(0x0000_00D3), // TODO: figure out why this is the initial value
+            spsrs: vec![ProgramStatusRegister::from_bits(0x0000_00D3); 5],
             fetched_instruction: 0,
             decoded_instruction: 0,
             bus,
