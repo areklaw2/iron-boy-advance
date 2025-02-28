@@ -43,19 +43,19 @@ mod tests {
 
     #[test]
     fn from_bits_psr() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFF_FFFF);
-        assert_eq!(psr.into_bits(), 0xF000_00FF)
+        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        assert_eq!(psr.into_bits(), 0xF00000FF)
     }
 
     #[test]
     fn set_psr_flags() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFF_FF11);
+        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFF11);
         psr.set_flags(0xEF);
-        assert_eq!(psr.into_bits(), 0xE000_0011);
+        assert_eq!(psr.into_bits(), 0xE0000011);
         assert_eq!(psr.flags(), 0xE);
 
         psr.set_flags(0x00);
-        assert_eq!(psr.into_bits(), 0x0000_0011);
+        assert_eq!(psr.into_bits(), 0x00000011);
         assert_eq!(psr.flags(), 0x0);
     }
 
