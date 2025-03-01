@@ -13,6 +13,8 @@ struct DeveloperCli {
     rom: String,
     #[arg(short, long, help = "Bios file to be loaded")]
     bios: String,
+    #[arg(short, long, action = ArgAction::SetTrue, required = false, help = "Skips bios")]
+    skip_bios: bool,
     #[arg(short, long, action = ArgAction::SetTrue, required = false, help = "Opens log viewer window")]
     logs: bool,
     #[arg(short, long, action = ArgAction::SetTrue, required = false, help = "Opens memory viewer window")]
@@ -28,7 +30,7 @@ fn main() {
     let _show_vram = cli.vram;
 
     //TODO: build out the windows
-    let mut game_boy_advance = GameBoyAdvance::new(cli.rom.into(), cli.bios.into(), show_logs).unwrap();
+    let mut game_boy_advance = GameBoyAdvance::new(cli.rom.into(), cli.bios.into(), show_logs, cli.skip_bios).unwrap();
     let mut overshoot = 0;
     'game: loop {
         let frame_start_time = std::time::Instant::now();

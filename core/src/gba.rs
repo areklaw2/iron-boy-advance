@@ -20,13 +20,13 @@ pub struct GameBoyAdvance {
 }
 
 impl GameBoyAdvance {
-    pub fn new(rom_path: PathBuf, bios_path: PathBuf, show_logs: bool) -> Result<GameBoyAdvance, GbaError> {
+    pub fn new(rom_path: PathBuf, bios_path: PathBuf, show_logs: bool, skip_bios: bool) -> Result<GameBoyAdvance, GbaError> {
         let rom_name = rom_path.file_name().unwrap().to_str().unwrap().to_string();
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         let cartridge = Cartridge::load(rom_path)?;
         let bios = Bios::load(bios_path)?;
         let gba = GameBoyAdvance {
-            arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone())),
+            arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone()), skip_bios),
             scheduler,
             rom_name,
         };

@@ -11,5 +11,9 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn execute_branch_and_exchange(&mut self) {}
+    pub fn execute_branch_and_exchange(&mut self) {
+        // BX execution switches state
+        // When executing an execution if cpu is in thumb it will switch to
+        // arm execute arm and then switch back to thumb
+    }
 }
