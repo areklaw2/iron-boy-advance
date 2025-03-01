@@ -69,7 +69,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let pc = self.pc & !0b11;
                 let executed_instruction = self.decoded_instruction;
                 self.decoded_instruction = self.fetched_instruction;
-                self.fetched_instruction = self.bus.load_32(pc);
+                self.fetched_instruction = self.load_32(pc);
 
                 //decode and execute instruction
                 self.arm_decode_and_execute(executed_instruction, pc);

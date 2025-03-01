@@ -32,6 +32,7 @@ impl Instruction for ArmInstruction {
         use ArmInstructionFormat::*;
         match self.format {
             BranchAndExchange => self.disassemble_branch_and_exchange(),
+            BranchAndBranchWithLink => self.disassemble_branch_and_branch_with_link(),
             _ => todo!(),
         }
     }
@@ -48,6 +49,10 @@ impl ArmInstruction {
             instruction,
             address,
         }
+    }
+
+    pub fn link(&self) -> bool {
+        self.instruction & (1 << 24) != 0
     }
 
     pub fn cond(&self) -> Condition {

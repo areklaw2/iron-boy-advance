@@ -2,6 +2,11 @@ use crate::arm7tdmi::disassembler::Condition;
 
 use super::ArmInstruction;
 
+const BX_FORMAT: u32 = 0x012FFF10;
+const BX_MASK: u32 = 0x0FFFFFF0;
+const B_BL_FORMAT: u32 = 0x0A000000;
+const B_BL_MASK: u32 = 0x0E000000;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ArmInstructionFormat {
     BranchAndExchange,
@@ -25,9 +30,9 @@ impl From<u32> for ArmInstructionFormat {
     fn from(instruction: u32) -> ArmInstructionFormat {
         use ArmInstructionFormat::*;
         //TODO: Make constants for masks and formats
-        if instruction & 0x0FFF_FFF0 == 0x012F_FF10 {
+        if instruction & BX_MASK == BX_FORMAT {
             BranchAndExchange
-        } else if instruction & 0x0E00_0000 == 0x0A00_0000 {
+        } else if instruction & B_BL_MASK == B_BL_FORMAT {
             BranchAndBranchWithLink
         } else if instruction & 0x0F00_0000 == 0x0F00_0000 {
             SoftwareInterrupt
@@ -65,10 +70,13 @@ impl ArmInstruction {
     pub fn disassemble_branch_and_exchange(&self) -> String {
         let cond = self.cond();
         let rn = self.rn();
-        if cond == Condition::AL {
-            format!("BX {rn}")
-        } else {
-            format!("BX{cond} {rn}")
-        }
+        format!("BX{cond} {rn}")
+    }
+
+    pub fn disassemble_branch_and_branch_with_link(&self) -> String {
+        let cond = self.cond();
+        let link = if self.link() { "L" } else { "" };
+        let expression = "";
+        format!("B{link}{cond} {expression}")
     }
 }

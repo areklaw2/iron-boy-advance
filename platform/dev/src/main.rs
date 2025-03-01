@@ -1,6 +1,6 @@
 use core::{gba::GameBoyAdvance, FPS};
 
-use clap::{ArgAction, Parser};
+use clap::{ArgAction, Command, Parser};
 
 const FRAME_DURATION_NANOS: f32 = 1_000_000_000.0 / FPS;
 const FRAME_DURATION: std::time::Duration = std::time::Duration::from_nanos(FRAME_DURATION_NANOS as u64);
