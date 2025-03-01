@@ -7,7 +7,6 @@ use super::{arm::ArmInstruction, psr::ProgramStatusRegister, CpuMode, CpuState};
 
 const SP_INDEX: usize = 13;
 const LR_INDEX: usize = 14;
-const PC_INDEX: usize = 15;
 
 pub trait Instruction {
     type Size;
@@ -33,28 +32,28 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
-    fn load_8(&self, address: u32) -> u8 {
-        self.bus.load_8(address)
+    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u8 {
+        self.bus.load_8(address, access)
     }
 
-    fn load_16(&self, address: u32) -> u16 {
-        self.bus.load_16(address)
+    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u16 {
+        self.bus.load_16(address, access)
     }
 
-    fn load_32(&self, address: u32) -> u32 {
-        self.bus.load_32(address)
+    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32 {
+        self.bus.load_32(address, access)
     }
 
-    fn store_8(&mut self, address: u32, value: u8) {
-        self.bus.store_8(address, value);
+    fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess) {
+        self.bus.store_8(address, value, access);
     }
 
-    fn store_16(&mut self, address: u32, value: u16) {
-        self.bus.store_16(address, value);
+    fn store_16(&mut self, address: u32, value: u16, access: MemoryAccess) {
+        self.bus.store_16(address, value, access);
     }
 
-    fn store_32(&mut self, address: u32, value: u32) {
-        self.bus.store_32(address, value);
+    fn store_32(&mut self, address: u32, value: u32, access: MemoryAccess) {
+        self.bus.store_32(address, value, access);
     }
 }
 
@@ -102,7 +101,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let pc = self.pc & !0b11;
                 let executed_instruction = self.decoded_instruction;
                 self.decoded_instruction = self.fetched_instruction;
-                self.fetched_instruction = self.load_32(pc);
+                self.fetched_instruction = self.load_32(pc, self.next_memory_access);
 
                 let instruction = ArmInstruction::decode(executed_instruction, pc);
                 //TODO log this

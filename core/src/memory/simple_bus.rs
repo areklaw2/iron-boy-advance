@@ -1,31 +1,31 @@
-use super::{IoMemoryAccess, MemoryInterface};
+use super::{IoMemoryAccess, MemoryAccess, MemoryInterface};
 
 pub struct SimpleBus {
     data: Vec<u8>,
 }
 
 impl MemoryInterface for SimpleBus {
-    fn load_8(&self, address: u32) -> u8 {
+    fn load_8(&mut self, address: u32, _access: MemoryAccess) -> u8 {
         self.read_8(address)
     }
 
-    fn load_16(&self, address: u32) -> u16 {
+    fn load_16(&mut self, address: u32, _access: MemoryAccess) -> u16 {
         self.read_16(address)
     }
 
-    fn load_32(&self, address: u32) -> u32 {
+    fn load_32(&mut self, address: u32, _access: MemoryAccess) -> u32 {
         self.read_32(address)
     }
 
-    fn store_8(&mut self, address: u32, value: u8) {
+    fn store_8(&mut self, address: u32, value: u8, _access: MemoryAccess) {
         self.write_8(address, value);
     }
 
-    fn store_16(&mut self, address: u32, value: u16) {
+    fn store_16(&mut self, address: u32, value: u16, _access: MemoryAccess) {
         self.write_16(address, value);
     }
 
-    fn store_32(&mut self, address: u32, value: u32) {
+    fn store_32(&mut self, address: u32, value: u32, _access: MemoryAccess) {
         self.write_32(address, value);
     }
 }

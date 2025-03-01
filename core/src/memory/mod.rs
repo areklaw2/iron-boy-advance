@@ -7,22 +7,25 @@ pub enum MemoryAccess {
     NonSequential,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum MemoryAccessWidth {
+    Byte,
+    HalfWord,
+    Word,
+}
+
 pub trait MemoryInterface {
-    fn load_8(&self, address: u32) -> u8;
+    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u8;
 
-    fn load_16(&self, address: u32) -> u16;
+    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u16;
 
-    fn load_32(&self, address: u32) -> u32;
+    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32;
 
-    fn store_8(&mut self, address: u32, value: u8);
+    fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess);
 
-    fn store_16(&mut self, address: u32, value: u16);
+    fn store_16(&mut self, address: u32, value: u16, access: MemoryAccess);
 
-    fn store_32(&mut self, address: u32, value: u32);
-
-    fn cycle(&mut self) -> u32 {
-        todo!("cycle counting stuff")
-    }
+    fn store_32(&mut self, address: u32, value: u32, access: MemoryAccess);
 }
 
 pub trait IoMemoryAccess {

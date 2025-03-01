@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{bios::Bios, cartridge::Cartridge, scheduler::Scheduler};
 
-use super::{IoMemoryAccess, MemoryInterface};
+use super::{IoMemoryAccess, MemoryAccess, MemoryAccessWidth, MemoryInterface};
 
 pub const BIOS_START: u32 = 0x0000_0000;
 pub const BIOS_END: u32 = 0x0000_3FFF;
@@ -35,27 +35,33 @@ pub struct SystemBus {
 }
 
 impl MemoryInterface for SystemBus {
-    fn load_8(&self, address: u32) -> u8 {
+    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u8 {
+        self.cycle(address, access, MemoryAccessWidth::Byte);
         self.read_8(address)
     }
 
-    fn load_16(&self, address: u32) -> u16 {
+    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u16 {
+        self.cycle(address, access, MemoryAccessWidth::HalfWord);
         self.read_16(address)
     }
 
-    fn load_32(&self, address: u32) -> u32 {
+    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32 {
+        self.cycle(address, access, MemoryAccessWidth::Word);
         self.read_32(address)
     }
 
-    fn store_8(&mut self, address: u32, value: u8) {
+    fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess) {
+        self.cycle(address, access, MemoryAccessWidth::Byte);
         self.write_8(address, value);
     }
 
-    fn store_16(&mut self, address: u32, value: u16) {
+    fn store_16(&mut self, address: u32, value: u16, access: MemoryAccess) {
+        self.cycle(address, access, MemoryAccessWidth::HalfWord);
         self.write_16(address, value);
     }
 
-    fn store_32(&mut self, address: u32, value: u32) {
+    fn store_32(&mut self, address: u32, value: u32, access: MemoryAccess) {
+        self.cycle(address, access, MemoryAccessWidth::Word);
         self.write_32(address, value);
     }
 }
@@ -104,5 +110,10 @@ impl SystemBus {
             bios,
             scheduler,
         }
+    }
+
+    pub fn cycle(&mut self, address: u32, access: MemoryAccess, width: MemoryAccessWidth) {
+        println!("Do stuff with {}, {:?}, {:?}", address, access, width);
+        self.scheduler.borrow_mut().update(1);
     }
 }
