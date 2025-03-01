@@ -5,8 +5,9 @@ use crate::{
 
 use super::{arm::ArmInstruction, psr::ProgramStatusRegister, CpuMode, CpuState};
 
-const SP_INDEX: usize = 13;
-const LR_INDEX: usize = 14;
+const SP: usize = 13;
+const LR: usize = 14;
+const PC: usize = 15;
 
 pub trait Instruction {
     type Size;
@@ -16,17 +17,15 @@ pub trait Instruction {
 }
 
 pub struct Arm7tdmiCpu<I: MemoryInterface> {
-    general_registers: [u32; 15],
+    general_registers: [u32; 16],
     general_registers_fiq: [u32; 7], //r8 to r12
     general_registers_svc: [u32; 2], //r13 to r14
     general_registers_abt: [u32; 2], //r13 to r14
     general_registers_irq: [u32; 2], //r13 to r14
     general_registers_und: [u32; 2], //r13 to r14
-    pc: u32,
     cpsr: ProgramStatusRegister,
     spsrs: [ProgramStatusRegister; 6],
-    fetched_instruction: u32,
-    decoded_instruction: u32,
+    instruction_pipeline: [u32; 2],
     bus: I, // May need to make this shared
     next_memory_access: MemoryAccess,
 }
@@ -60,35 +59,32 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn new(bus: I, skip_bios: bool) -> Self {
         let mut cpu = Arm7tdmiCpu {
-            general_registers: [0; 15],
+            general_registers: [0; 16],
             general_registers_fiq: [0; 7], //r8 to r12
             general_registers_svc: [0; 2], //r13 to r14
             general_registers_abt: [0; 2], //r13 to r14
             general_registers_irq: [0; 2], //r13 to r14
             general_registers_und: [0; 2], //r13 to r14
-            pc: 0,
             cpsr: ProgramStatusRegister::from_bits(0x13),
             spsrs: [ProgramStatusRegister::from_bits(0x13); 6],
-            fetched_instruction: 0,
-            decoded_instruction: 0,
+            instruction_pipeline: [0; 2],
             bus,
             next_memory_access: MemoryAccess::NonSequential,
         };
 
         match skip_bios {
             true => {
-                cpu.general_registers[LR_INDEX] = 0x08000000;
-                cpu.general_registers[SP_INDEX] = 0x03007F00;
+                cpu.general_registers[SP] = 0x03007F00;
+                cpu.general_registers[LR] = 0x08000000;
+                cpu.general_registers[PC] = 0x08000000;
                 cpu.general_registers_svc[0] = 0x3007FE0;
                 cpu.general_registers_irq[0] = 0x3007FA0;
                 cpu.cpsr.set_cpu_mode(CpuMode::System);
                 cpu.cpsr.set_irq_disable(false);
-                cpu.pc = 0x08000000;
             }
             false => {
                 cpu.cpsr.set_cpu_mode(CpuMode::Supervisor);
                 cpu.cpsr.set_irq_disable(true);
-                cpu.pc = 0;
             }
         }
 
@@ -98,33 +94,32 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn cycle(&mut self) {
         match self.cpsr.cpu_state() {
             CpuState::Arm => {
-                let pc = self.pc & !0b11;
-                let executed_instruction = self.decoded_instruction;
-                self.decoded_instruction = self.fetched_instruction;
-                self.fetched_instruction = self.load_32(pc, self.next_memory_access);
-
-                let instruction = ArmInstruction::decode(executed_instruction, pc);
+                let pc = self.general_registers[PC] & !0x3;
+                let instruction = self.instruction_pipeline[0];
+                self.instruction_pipeline[0] = self.instruction_pipeline[1];
+                self.instruction_pipeline[1] = self.load_32(pc, self.next_memory_access);
+                let instruction = ArmInstruction::decode(instruction, pc);
                 //TODO log this
                 println!("{}", instruction.disassamble());
 
                 let condtion = instruction.cond();
                 if condtion != Condition::AL && !self.is_condition_met(condtion) {
-                    self.pc = self.pc.wrapping_add(4);
+                    self.advance_pc_arm();
                     self.next_memory_access = MemoryAccess::NonSequential;
                     return;
                 }
 
                 match self.arm_execute(instruction) {
                     CpuAction::Advance(memory_access) => {
+                        self.advance_pc_arm();
                         self.next_memory_access = memory_access;
-                        self.pc = self.pc.wrapping_add(4);
                     }
                     CpuAction::PipelineFlush => {}
                 };
             }
             CpuState::Thumb => {
-                let pc = self.pc & !0b01;
-                self.pc = self.pc.wrapping_add(2);
+                let pc = self.general_registers[PC] & !0x1;
+                self.advance_pc_thumb();
             }
         }
     }
@@ -148,5 +143,41 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             LE => self.cpsr.zero() || (self.cpsr.negative() != self.cpsr.overflow()),
             AL => true,
         }
+    }
+
+    pub fn set_cpu_state(&mut self, state: CpuState) {
+        self.cpsr.set_cpu_state(state);
+    }
+
+    pub fn set_pc(&mut self, value: u32) {
+        self.general_registers[PC] = value
+    }
+
+    pub fn advance_pc_thumb(&mut self) {
+        self.general_registers[PC] = self.general_registers[PC].wrapping_add(2);
+    }
+
+    pub fn advance_pc_arm(&mut self) {
+        self.general_registers[PC] = self.general_registers[PC].wrapping_add(4);
+    }
+
+    pub fn refill_pipeline_thumb(&mut self) {
+        self.instruction_pipeline[0] = self.load_16(self.general_registers[PC], MemoryAccess::NonSequential) as u32;
+        self.advance_pc_thumb();
+        self.instruction_pipeline[1] = self.load_16(self.general_registers[PC], MemoryAccess::Sequential) as u32;
+        self.advance_pc_thumb();
+        self.next_memory_access = MemoryAccess::Sequential;
+    }
+
+    pub fn refill_pipeline_arm(&mut self) {
+        self.instruction_pipeline[0] = self.load_32(self.general_registers[PC], MemoryAccess::NonSequential);
+        self.advance_pc_arm();
+        self.instruction_pipeline[1] = self.load_32(self.general_registers[PC], MemoryAccess::Sequential);
+        self.advance_pc_arm();
+        self.next_memory_access = MemoryAccess::Sequential;
+    }
+
+    pub fn get_general_register(&self, index: usize) -> u32 {
+        self.general_registers[index]
     }
 }

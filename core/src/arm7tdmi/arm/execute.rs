@@ -1,5 +1,5 @@
 use crate::{
-    arm7tdmi::{arm::ArmInstructionFormat, cpu::Arm7tdmiCpu, CpuAction},
+    arm7tdmi::{arm::ArmInstructionFormat, cpu::Arm7tdmiCpu, CpuAction, CpuState},
     memory::MemoryInterface,
 };
 
@@ -9,15 +9,24 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn arm_execute(&mut self, instruction: ArmInstruction) -> CpuAction {
         use ArmInstructionFormat::*;
         match instruction.format {
-            BranchAndExchange => self.execute_branch_and_exchange(),
+            BranchAndExchange => self.execute_branch_and_exchange(instruction),
             _ => todo!(),
         }
     }
 
-    pub fn execute_branch_and_exchange(&mut self) -> CpuAction {
-        // BX execution switches state
-        // When executing an execution if cpu is in thumb it will switch to
-        // arm execute arm and then switch back to thumb
-        todo!()
+    pub fn execute_branch_and_exchange(&mut self, instruction: ArmInstruction) -> CpuAction {
+        let mut register = self.get_general_register(instruction.rn() as usize);
+        if register & 0x1 != 0 {
+            register &= !0x1;
+            self.set_cpu_state(CpuState::Thumb);
+            self.set_pc(register);
+            self.refill_pipeline_thumb();
+        } else {
+            register &= !0x3;
+            self.set_cpu_state(CpuState::Arm);
+            self.set_pc(register);
+            self.refill_pipeline_arm();
+        }
+        CpuAction::PipelineFlush
     }
 }
