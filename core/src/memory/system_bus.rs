@@ -113,7 +113,7 @@ impl SystemBus {
     }
 
     pub fn cycle(&mut self, address: u32, access: MemoryAccess, width: MemoryAccessWidth) {
-        println!("Do stuff with {}, {:?}, {:?}", address, access, width);
+        println!("Do stuff with 0x{:08X}, {:?}, {:?}", address, access, width);
         self.scheduler.borrow_mut().update(1);
     }
 }

@@ -20,13 +20,12 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             register &= !0x1;
             self.set_cpu_state(CpuState::Thumb);
             self.set_pc(register);
-            self.refill_pipeline_thumb();
         } else {
             register &= !0x3;
             self.set_cpu_state(CpuState::Arm);
             self.set_pc(register);
-            self.refill_pipeline_arm();
         }
+        self.refill_pipeline();
         CpuAction::PipelineFlush
     }
 }

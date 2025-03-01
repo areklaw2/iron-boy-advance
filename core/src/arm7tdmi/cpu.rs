@@ -88,6 +88,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             }
         }
 
+        cpu.refill_pipeline();
         cpu
     }
 
@@ -100,6 +101,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.instruction_pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let instruction = ArmInstruction::decode(instruction, pc);
                 //TODO log this
+                println!("{:?}", instruction);
                 println!("{}", instruction.disassamble());
 
                 let condtion = instruction.cond();
@@ -161,20 +163,23 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.general_registers[PC] = self.general_registers[PC].wrapping_add(4);
     }
 
-    pub fn refill_pipeline_thumb(&mut self) {
-        self.instruction_pipeline[0] = self.load_16(self.general_registers[PC], MemoryAccess::NonSequential) as u32;
-        self.advance_pc_thumb();
-        self.instruction_pipeline[1] = self.load_16(self.general_registers[PC], MemoryAccess::Sequential) as u32;
-        self.advance_pc_thumb();
-        self.next_memory_access = MemoryAccess::Sequential;
-    }
-
-    pub fn refill_pipeline_arm(&mut self) {
-        self.instruction_pipeline[0] = self.load_32(self.general_registers[PC], MemoryAccess::NonSequential);
-        self.advance_pc_arm();
-        self.instruction_pipeline[1] = self.load_32(self.general_registers[PC], MemoryAccess::Sequential);
-        self.advance_pc_arm();
-        self.next_memory_access = MemoryAccess::Sequential;
+    pub fn refill_pipeline(&mut self) {
+        match self.cpsr.cpu_state() {
+            CpuState::Arm => {
+                self.instruction_pipeline[0] = self.load_32(self.general_registers[PC], MemoryAccess::NonSequential);
+                self.advance_pc_arm();
+                self.instruction_pipeline[1] = self.load_32(self.general_registers[PC], MemoryAccess::Sequential);
+                self.advance_pc_arm();
+                self.next_memory_access = MemoryAccess::Sequential;
+            }
+            CpuState::Thumb => {
+                self.instruction_pipeline[0] = self.load_16(self.general_registers[PC], MemoryAccess::NonSequential) as u32;
+                self.advance_pc_thumb();
+                self.instruction_pipeline[1] = self.load_16(self.general_registers[PC], MemoryAccess::Sequential) as u32;
+                self.advance_pc_thumb();
+                self.next_memory_access = MemoryAccess::Sequential;
+            }
+        }
     }
 
     pub fn get_general_register(&self, index: usize) -> u32 {
