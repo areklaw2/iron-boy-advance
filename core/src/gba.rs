@@ -43,8 +43,7 @@ impl GameBoyAdvance {
 
         'events: loop {
             while self.scheduler.borrow().timestamp() <= self.scheduler.borrow().timestamp_of_next_event() {
-                let cycles = self.arm7tdmi.cycle();
-                self.scheduler.borrow_mut().update(cycles);
+                self.arm7tdmi.cycle();
             }
 
             if self.handle_events() {

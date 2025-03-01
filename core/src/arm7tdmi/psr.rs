@@ -1,6 +1,6 @@
 use bitfields::bitfield;
 
-use super::disassembler::{CpuMode, CpuState};
+use super::{CpuMode, CpuState};
 
 #[bitfield(u32)]
 #[derive(Copy, Clone)]
@@ -37,7 +37,7 @@ impl ProgramStatusRegister {
 #[cfg(test)]
 mod tests {
 
-    use crate::arm7tdmi::disassembler::{CpuMode, CpuState};
+    use crate::arm7tdmi::{CpuMode, CpuState};
 
     use super::ProgramStatusRegister;
 

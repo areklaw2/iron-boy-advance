@@ -1,9 +1,9 @@
-use crate::memory::MemoryInterface;
-
-use super::{
-    disassembler::{CpuMode, CpuState},
-    psr::ProgramStatusRegister,
+use crate::{
+    arm7tdmi::{Condition, CpuAction},
+    memory::{MemoryAccess, MemoryInterface},
 };
+
+use super::{arm::ArmInstruction, psr::ProgramStatusRegister, CpuMode, CpuState};
 
 const SP_INDEX: usize = 13;
 const LR_INDEX: usize = 14;
@@ -12,7 +12,7 @@ const PC_INDEX: usize = 15;
 pub trait Instruction {
     type Size;
     fn decode(value: Self::Size, address: u32) -> Self;
-    fn disassable(&self) -> String;
+    fn disassamble(&self) -> String;
     fn value(&self) -> Self::Size;
 }
 
@@ -29,6 +29,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     fetched_instruction: u32,
     decoded_instruction: u32,
     bus: I, // May need to make this shared
+    next_memory_access: MemoryAccess,
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
@@ -72,17 +73,17 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             fetched_instruction: 0,
             decoded_instruction: 0,
             bus,
+            next_memory_access: MemoryAccess::NonSequential,
         };
 
         match skip_bios {
             true => {
-                cpu.general_registers_irq[0] = 0x3007FA0;
+                cpu.general_registers[LR_INDEX] = 0x08000000;
+                cpu.general_registers[SP_INDEX] = 0x03007F00;
                 cpu.general_registers_svc[0] = 0x3007FE0;
-
+                cpu.general_registers_irq[0] = 0x3007FA0;
                 cpu.cpsr.set_cpu_mode(CpuMode::System);
                 cpu.cpsr.set_irq_disable(false);
-                cpu.general_registers[SP_INDEX] = 0x03007F00;
-                cpu.general_registers[LR_INDEX] = 0x08000000;
                 cpu.pc = 0x08000000;
             }
             false => {
@@ -95,7 +96,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         cpu
     }
 
-    pub fn cycle(&mut self) -> usize {
+    pub fn cycle(&mut self) {
         match self.cpsr.cpu_state() {
             CpuState::Arm => {
                 let pc = self.pc & !0b11;
@@ -103,16 +104,50 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.decoded_instruction = self.fetched_instruction;
                 self.fetched_instruction = self.load_32(pc);
 
-                //decode and execute instruction
-                self.arm_decode_and_execute(executed_instruction, pc);
-                self.pc = self.pc.wrapping_add(4);
+                let instruction = ArmInstruction::decode(executed_instruction, pc);
+                //TODO log this
+                println!("{}", instruction.disassamble());
+
+                let condtion = instruction.cond();
+                if condtion != Condition::AL && !self.is_condition_met(condtion) {
+                    self.pc = self.pc.wrapping_add(4);
+                    self.next_memory_access = MemoryAccess::NonSequential;
+                    return;
+                }
+
+                match self.arm_execute(instruction) {
+                    CpuAction::Advance(memory_access) => {
+                        self.next_memory_access = memory_access;
+                        self.pc = self.pc.wrapping_add(4);
+                    }
+                    CpuAction::PipelineFlush => {}
+                };
             }
             CpuState::Thumb => {
                 let pc = self.pc & !0b01;
                 self.pc = self.pc.wrapping_add(2);
             }
         }
+    }
 
-        0
+    fn is_condition_met(&self, condition: Condition) -> bool {
+        use Condition::*;
+        match condition {
+            EQ => self.cpsr.zero(),
+            NE => !self.cpsr.zero(),
+            CS => self.cpsr.carry(),
+            CC => !self.cpsr.carry(),
+            MI => self.cpsr.negative(),
+            PL => !self.cpsr.negative(),
+            VS => self.cpsr.overflow(),
+            VC => !self.cpsr.overflow(),
+            HI => self.cpsr.carry() && !self.cpsr.zero(),
+            LS => !self.cpsr.carry() || self.cpsr.zero(),
+            GE => self.cpsr.negative() == self.cpsr.overflow(),
+            LT => self.cpsr.negative() != self.cpsr.overflow(),
+            GT => !self.cpsr.zero() && (self.cpsr.negative() == self.cpsr.overflow()),
+            LE => self.cpsr.zero() || (self.cpsr.negative() != self.cpsr.overflow()),
+            AL => true,
+        }
     }
 }
