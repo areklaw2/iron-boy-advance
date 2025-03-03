@@ -1,6 +1,6 @@
 [submodule "external/gba-tests"]
 	path = external/gba-tests
 	url = https://github.com/jsmolka/gba-tests.git
-[submodule "external/step-tests"]
-	path = external/step-tests
+[submodule "external/arm7tdmi"]
+	path = external/arm7tdmi
 	url = https://github.com/SingleStepTests/ARM7TDMI.git
