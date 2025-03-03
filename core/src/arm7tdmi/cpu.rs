@@ -88,6 +88,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             }
         }
 
+        //TODO: not sure if i need this forever
         cpu.refill_pipeline();
         cpu
     }
