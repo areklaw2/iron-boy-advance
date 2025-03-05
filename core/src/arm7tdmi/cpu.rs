@@ -33,16 +33,16 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
-    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u8 {
-        self.bus.load_8(address, access)
+    fn load_8(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u8 {
+        self.bus.load_8(address, access, is_instruction)
     }
 
-    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u16 {
-        self.bus.load_16(address, access)
+    fn load_16(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u16 {
+        self.bus.load_16(address, access, is_instruction)
     }
 
-    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32 {
-        self.bus.load_32(address, access)
+    fn load_32(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u32 {
+        self.bus.load_32(address, access, is_instruction)
     }
 
     fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess) {
@@ -111,14 +111,14 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let pc = self.general_registers[PC] & !0x3;
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
-                self.pipeline[1] = self.load_32(pc, self.next_memory_access);
+                self.pipeline[1] = self.load_32(pc, self.next_memory_access, true);
                 let instruction = ArmInstruction::decode(instruction);
                 //TODO log this
                 println!("{:?}", instruction);
                 println!("{}", instruction.disassamble());
 
-                let condtion = instruction.cond();
-                if condtion != Condition::AL && !self.is_condition_met(condtion) {
+                let condition = instruction.cond();
+                if condition != Condition::AL && !self.is_condition_met(condition) {
                     self.advance_pc_arm();
                     self.next_memory_access = MemoryAccess::NonSequential;
                     return;
@@ -179,16 +179,16 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn refill_pipeline(&mut self) {
         match self.cpsr.cpu_state() {
             CpuState::Arm => {
-                self.pipeline[0] = self.load_32(self.general_registers[PC], MemoryAccess::NonSequential);
+                self.pipeline[0] = self.load_32(self.general_registers[PC], MemoryAccess::NonSequential, true);
                 self.advance_pc_arm();
-                self.pipeline[1] = self.load_32(self.general_registers[PC], MemoryAccess::Sequential);
+                self.pipeline[1] = self.load_32(self.general_registers[PC], MemoryAccess::Sequential, true);
                 self.advance_pc_arm();
                 self.next_memory_access = MemoryAccess::Sequential;
             }
             CpuState::Thumb => {
-                self.pipeline[0] = self.load_16(self.general_registers[PC], MemoryAccess::NonSequential) as u32;
+                self.pipeline[0] = self.load_16(self.general_registers[PC], MemoryAccess::NonSequential, true) as u32;
                 self.advance_pc_thumb();
-                self.pipeline[1] = self.load_16(self.general_registers[PC], MemoryAccess::Sequential) as u32;
+                self.pipeline[1] = self.load_16(self.general_registers[PC], MemoryAccess::Sequential, true) as u32;
                 self.advance_pc_thumb();
                 self.next_memory_access = MemoryAccess::Sequential;
             }

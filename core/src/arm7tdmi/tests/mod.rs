@@ -35,12 +35,12 @@ enum Access {
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct Transaction {
-    kind: TransactionKind,
-    size: Size,
-    addr: u32,
-    data: u32,
-    cycle: u8,
-    access: u8,
+    pub kind: TransactionKind,
+    pub size: Size,
+    pub addr: u32,
+    pub data: u32,
+    pub cycle: u8,
+    pub access: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -84,7 +84,10 @@ fn single_step_tests() {
         let test_json = fs::read_to_string(format!("../external/arm7tdmi/v1/{file}")).expect("unable to read file");
         let tests: Vec<Test> = serde_json::from_str(&test_json).unwrap();
         for test in tests {
-            let mut cpu = Arm7tdmiCpu::new(test_bus::TestBus::new(test.transactions.clone()), true);
+            let mut cpu = Arm7tdmiCpu::new(
+                test_bus::TestBus::new(test.base_addr[0], test.opcode, &test.transactions),
+                true,
+            );
 
             let intial_state = test.initial_state;
             let final_state = test.final_state;
@@ -101,9 +104,15 @@ fn single_step_tests() {
 
             cpu.cycle();
 
-            println!("{:#?}", test.transactions);
-            assert_eq!(cpu.cpsr().into_bits(), final_state.cpsr);
             assert_eq!(cpu.general_registers(), final_state.r);
+            assert_eq!(cpu.general_registers_fiq(), final_state.r_fiq);
+            assert_eq!(cpu.general_registers_svc(), final_state.r_svc);
+            assert_eq!(cpu.general_registers_abt(), final_state.r_abt);
+            assert_eq!(cpu.general_registers_irq(), final_state.r_irq);
+            assert_eq!(cpu.general_registers_und(), final_state.r_und);
+            assert_eq!(cpu.cpsr().into_bits(), final_state.cpsr);
+            assert_eq!(cpu.spsrs().map(|x| x.into_bits()), final_state.spsr);
+            assert_eq!(cpu.pipeline(), final_state.pipeline);
         }
     }
 }

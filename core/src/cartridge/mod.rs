@@ -42,7 +42,7 @@ impl Cartridge {
 }
 
 impl IoMemoryAccess for Cartridge {
-    fn read_8(&self, address: u32) -> u8 {
+    fn read_8(&self, address: u32, _is_instruction: bool) -> u8 {
         match address {
             ROM_WAIT_STATE_0_START..=ROM_WAIT_STATE_0_END => self.data[(address - ROM_WAIT_STATE_0_START) as usize],
             ROM_WAIT_STATE_1_START..=ROM_WAIT_STATE_1_END => self.data[(address - ROM_WAIT_STATE_1_START) as usize],

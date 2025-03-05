@@ -35,19 +35,19 @@ pub struct SystemBus {
 }
 
 impl MemoryInterface for SystemBus {
-    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u8 {
+    fn load_8(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u8 {
         self.cycle(address, access, MemoryAccessWidth::Byte);
-        self.read_8(address)
+        self.read_8(address, is_instruction)
     }
 
-    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u16 {
+    fn load_16(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u16 {
         self.cycle(address, access, MemoryAccessWidth::HalfWord);
-        self.read_16(address)
+        self.read_16(address, is_instruction)
     }
 
-    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32 {
+    fn load_32(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::Word);
-        self.read_32(address)
+        self.read_32(address, is_instruction)
     }
 
     fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess) {
@@ -67,19 +67,19 @@ impl MemoryInterface for SystemBus {
 }
 
 impl IoMemoryAccess for SystemBus {
-    fn read_8(&self, address: u32) -> u8 {
+    fn read_8(&self, address: u32, is_instruction: bool) -> u8 {
         match address {
-            BIOS_START..=BIOS_END => self.bios.read_8(address),
+            BIOS_START..=BIOS_END => self.bios.read_8(address, is_instruction),
             WRAM_BOARD_START..=WRAM_BOARD_END => self.data[address as usize],
             WRAM_CHIP_START..=WRAM_CHIP_END => self.data[address as usize],
             IO_REGISTER_START..=IO_REGISTER_END => self.data[address as usize], // theres mirrors for this see GBATEK
             PALETTE_RAM_START..=PALETTE_RAM_END => self.data[address as usize],
             VRAM_START..=VRAM_END => self.data[address as usize],
             OAM_START..=OAM_END => self.data[address as usize],
-            ROM_WAIT_STATE_0_START..=ROM_WAIT_STATE_0_END => self.cartridge.read_8(address),
-            ROM_WAIT_STATE_1_START..=ROM_WAIT_STATE_1_END => self.cartridge.read_8(address),
-            ROM_WAIT_STATE_2_START..=ROM_WAIT_STATE_2_END => self.cartridge.read_8(address),
-            SRAM_START..=SRAM_END => self.cartridge.read_8(address),
+            ROM_WAIT_STATE_0_START..=ROM_WAIT_STATE_0_END => self.cartridge.read_8(address, is_instruction),
+            ROM_WAIT_STATE_1_START..=ROM_WAIT_STATE_1_END => self.cartridge.read_8(address, is_instruction),
+            ROM_WAIT_STATE_2_START..=ROM_WAIT_STATE_2_END => self.cartridge.read_8(address, is_instruction),
+            SRAM_START..=SRAM_END => self.cartridge.read_8(address, is_instruction),
             _ => self.data[address as usize],
         }
     }

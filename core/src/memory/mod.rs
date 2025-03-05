@@ -14,11 +14,11 @@ pub enum MemoryAccessWidth {
 }
 
 pub trait MemoryInterface {
-    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u8;
+    fn load_8(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u8;
 
-    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u16;
+    fn load_16(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u16;
 
-    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32;
+    fn load_32(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u32;
 
     fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess);
 
@@ -28,17 +28,17 @@ pub trait MemoryInterface {
 }
 
 pub trait IoMemoryAccess {
-    fn read_8(&self, address: u32) -> u8;
+    fn read_8(&self, address: u32, is_instruction: bool) -> u8;
 
-    fn read_16(&self, address: u32) -> u16 {
-        let byte1 = self.read_8(address) as u16;
-        let byte2 = self.read_8(address + 1) as u16;
+    fn read_16(&self, address: u32, is_instruction: bool) -> u16 {
+        let byte1 = self.read_8(address, is_instruction) as u16;
+        let byte2 = self.read_8(address + 1, is_instruction) as u16;
         byte2 << 8 | byte1
     }
 
-    fn read_32(&self, address: u32) -> u32 {
-        let half_word1 = self.read_16(address) as u32;
-        let half_word2 = self.read_16(address + 2) as u32;
+    fn read_32(&self, address: u32, is_instruction: bool) -> u32 {
+        let half_word1 = self.read_16(address, is_instruction) as u32;
+        let half_word2 = self.read_16(address + 2, is_instruction) as u32;
         half_word2 << 16 | half_word1
     }
 
