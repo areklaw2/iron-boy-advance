@@ -1,4 +1,3 @@
-pub mod simple_bus;
 pub mod system_bus;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

@@ -1,10 +1,13 @@
-use super::{IoMemoryAccess, MemoryAccess, MemoryInterface};
+use crate::memory::{IoMemoryAccess, MemoryAccess, MemoryInterface};
 
-pub struct SimpleBus {
+use super::Transaction;
+
+pub struct TestBus {
     data: Vec<u8>,
+    transactions: Vec<Transaction>,
 }
 
-impl MemoryInterface for SimpleBus {
+impl MemoryInterface for TestBus {
     fn load_8(&mut self, address: u32, _access: MemoryAccess) -> u8 {
         self.read_8(address)
     }
@@ -30,7 +33,7 @@ impl MemoryInterface for SimpleBus {
     }
 }
 
-impl IoMemoryAccess for SimpleBus {
+impl IoMemoryAccess for TestBus {
     fn read_8(&self, address: u32) -> u8 {
         self.data[address as usize]
     }
@@ -40,10 +43,11 @@ impl IoMemoryAccess for SimpleBus {
     }
 }
 
-impl SimpleBus {
-    pub fn new() -> Self {
-        SimpleBus {
+impl TestBus {
+    pub fn new(transactions: Vec<Transaction>) -> Self {
+        TestBus {
             data: vec![0; 0xFFFFFFFF],
+            transactions,
         }
     }
 }

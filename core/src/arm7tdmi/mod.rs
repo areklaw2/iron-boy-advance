@@ -9,6 +9,10 @@ mod thumb;
 
 pub const CPU_CLOCK_SPEED: u32 = 16777216;
 
+pub struct Address {
+    value: u32,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum CpuAction {
     Advance(MemoryAccess),

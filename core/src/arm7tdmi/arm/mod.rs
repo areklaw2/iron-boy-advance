@@ -76,17 +76,15 @@ impl From<u32> for ArmInstructionFormat {
 pub struct ArmInstruction {
     format: ArmInstructionFormat,
     instruction: u32,
-    address: u32,
 }
 
 impl Instruction for ArmInstruction {
     type Size = u32;
 
-    fn decode(instruction: u32, address: u32) -> ArmInstruction {
+    fn decode(instruction: u32) -> ArmInstruction {
         ArmInstruction {
             format: instruction.into(),
             instruction,
-            address,
         }
     }
 
@@ -105,12 +103,8 @@ impl Instruction for ArmInstruction {
 }
 
 impl ArmInstruction {
-    pub fn new(format: ArmInstructionFormat, instruction: u32, address: u32) -> ArmInstruction {
-        ArmInstruction {
-            format,
-            instruction,
-            address,
-        }
+    pub fn new(format: ArmInstructionFormat, instruction: u32) -> ArmInstruction {
+        ArmInstruction { format, instruction }
     }
 
     pub fn link(&self) -> bool {
@@ -140,13 +134,13 @@ mod tests {
 
     #[test]
     fn get_condition() {
-        let instruction = ArmInstruction::new(BranchAndExchange, 0x8FFF_FFFF, 0);
+        let instruction = ArmInstruction::new(BranchAndExchange, 0);
         assert_eq!(instruction.cond(), Condition::HI)
     }
 
     #[test]
     fn get_rn() {
-        let instruction = ArmInstruction::new(BranchAndExchange, 0x8FFF_FFFC, 0);
+        let instruction = ArmInstruction::new(BranchAndExchange, 0);
         assert_eq!(instruction.rn(), Register::R12)
     }
 }
