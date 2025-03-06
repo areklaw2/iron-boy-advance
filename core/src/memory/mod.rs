@@ -1,12 +1,9 @@
+use std::ops::BitOr;
+
 pub mod system_bus;
 
-// constants used to determine the memory access kinds
-pub type MemoryAccess = u8;
-pub const INST_NON_SEQUENTIAL: MemoryAccess = 0b10;
-pub const INST_SEQUENTIAL: MemoryAccess = 0b11;
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum MemoryAccessKind {
+pub enum MemoryAccess {
     Nonsequential = 0b0,
     Sequential = 0b1,
     Instruction = 0b10,
@@ -14,23 +11,31 @@ pub enum MemoryAccessKind {
     Lock = 0b1000,
 }
 
-pub fn decompose_memory_access(access: MemoryAccess) -> Vec<MemoryAccessKind> {
+impl BitOr for MemoryAccess {
+    type Output = u8;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self as u8 | rhs as u8
+    }
+}
+
+pub fn decompose_access_pattern(access_pattern: u8) -> Vec<MemoryAccess> {
     let mut decomposition = Vec::new();
-    match access & MemoryAccessKind::Sequential as u8 != 0 {
-        true => decomposition.push(MemoryAccessKind::Sequential),
-        false => decomposition.push(MemoryAccessKind::Nonsequential),
+    match access_pattern & MemoryAccess::Sequential as u8 != 0 {
+        true => decomposition.push(MemoryAccess::Sequential),
+        false => decomposition.push(MemoryAccess::Nonsequential),
     };
 
-    if access & MemoryAccessKind::Instruction as u8 != 0 {
-        decomposition.push(MemoryAccessKind::Instruction);
+    if access_pattern & MemoryAccess::Instruction as u8 != 0 {
+        decomposition.push(MemoryAccess::Instruction);
     }
 
-    if access & MemoryAccessKind::Dma as u8 != 0 {
-        decomposition.push(MemoryAccessKind::Dma);
+    if access_pattern & MemoryAccess::Dma as u8 != 0 {
+        decomposition.push(MemoryAccess::Dma);
     }
 
-    if access & MemoryAccessKind::Lock as u8 != 0 {
-        decomposition.push(MemoryAccessKind::Lock);
+    if access_pattern & MemoryAccess::Lock as u8 != 0 {
+        decomposition.push(MemoryAccess::Lock);
     }
     decomposition
 }
@@ -43,17 +48,17 @@ pub enum MemoryAccessWidth {
 }
 
 pub trait MemoryInterface {
-    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u32;
+    fn load_8(&mut self, address: u32, access_pattern: u8) -> u32;
 
-    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u32;
+    fn load_16(&mut self, address: u32, access_pattern: u8) -> u32;
 
-    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32;
+    fn load_32(&mut self, address: u32, access_pattern: u8) -> u32;
 
-    fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess);
+    fn store_8(&mut self, address: u32, value: u8, access_pattern: u8);
 
-    fn store_16(&mut self, address: u32, value: u16, access: MemoryAccess);
+    fn store_16(&mut self, address: u32, value: u16, access_pattern: u8);
 
-    fn store_32(&mut self, address: u32, value: u32, access: MemoryAccess);
+    fn store_32(&mut self, address: u32, value: u32, access_pattern: u8);
 }
 
 pub trait IoMemoryAccess {

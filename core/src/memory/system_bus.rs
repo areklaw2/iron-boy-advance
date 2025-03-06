@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{bios::Bios, cartridge::Cartridge, memory::decompose_memory_access, scheduler::Scheduler};
+use crate::{bios::Bios, cartridge::Cartridge, memory::decompose_access_pattern, scheduler::Scheduler};
 
-use super::{IoMemoryAccess, MemoryAccess, MemoryAccessWidth, MemoryInterface};
+use super::{IoMemoryAccess, MemoryAccessWidth, MemoryInterface};
 
 pub const BIOS_START: u32 = 0x0000_0000;
 pub const BIOS_END: u32 = 0x0000_3FFF;
@@ -35,32 +35,32 @@ pub struct SystemBus {
 }
 
 impl MemoryInterface for SystemBus {
-    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u32 {
+    fn load_8(&mut self, address: u32, access: u8) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::Byte);
         self.read_8(address) as u32
     }
 
-    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u32 {
+    fn load_16(&mut self, address: u32, access: u8) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::HalfWord);
         self.read_16(address) as u32
     }
 
-    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32 {
+    fn load_32(&mut self, address: u32, access: u8) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::Word);
         self.read_32(address)
     }
 
-    fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess) {
+    fn store_8(&mut self, address: u32, value: u8, access: u8) {
         self.cycle(address, access, MemoryAccessWidth::Byte);
         self.write_8(address, value);
     }
 
-    fn store_16(&mut self, address: u32, value: u16, access: MemoryAccess) {
+    fn store_16(&mut self, address: u32, value: u16, access: u8) {
         self.cycle(address, access, MemoryAccessWidth::HalfWord);
         self.write_16(address, value);
     }
 
-    fn store_32(&mut self, address: u32, value: u32, access: MemoryAccess) {
+    fn store_32(&mut self, address: u32, value: u32, access: u8) {
         self.cycle(address, access, MemoryAccessWidth::Word);
         self.write_32(address, value);
     }
@@ -112,8 +112,8 @@ impl SystemBus {
         }
     }
 
-    pub fn cycle(&mut self, address: u32, access: MemoryAccess, width: MemoryAccessWidth) {
-        let access = decompose_memory_access(access);
+    pub fn cycle(&mut self, address: u32, access_pattern: u8, width: MemoryAccessWidth) {
+        let access = decompose_access_pattern(access_pattern);
         println!("Do stuff with 0x{:08X}, {:?}, {:?}", address, access, width);
         self.scheduler.borrow_mut().update(1);
     }

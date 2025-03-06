@@ -2,7 +2,7 @@ use utils::get_set;
 
 use crate::{
     arm7tdmi::{Condition, CpuAction},
-    memory::{MemoryAccess, MemoryInterface, INST_NON_SEQUENTIAL, INST_SEQUENTIAL},
+    memory::{MemoryAccess, MemoryInterface},
 };
 
 use super::{arm::ArmInstruction, psr::ProgramStatusRegister, CpuMode, CpuState};
@@ -29,31 +29,31 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     spsrs: [ProgramStatusRegister; 5],
     pipeline: [u32; 2],
     bus: I, // May need to make this shared
-    next_memory_access: MemoryAccess,
+    next_memory_access: u8,
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
-    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u32 {
+    fn load_8(&mut self, address: u32, access: u8) -> u32 {
         self.bus.load_8(address, access)
     }
 
-    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u32 {
+    fn load_16(&mut self, address: u32, access: u8) -> u32 {
         self.bus.load_16(address, access)
     }
 
-    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32 {
+    fn load_32(&mut self, address: u32, access: u8) -> u32 {
         self.bus.load_32(address, access)
     }
 
-    fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess) {
+    fn store_8(&mut self, address: u32, value: u8, access: u8) {
         self.bus.store_8(address, value, access);
     }
 
-    fn store_16(&mut self, address: u32, value: u16, access: MemoryAccess) {
+    fn store_16(&mut self, address: u32, value: u16, access: u8) {
         self.bus.store_16(address, value, access);
     }
 
-    fn store_32(&mut self, address: u32, value: u32, access: MemoryAccess) {
+    fn store_32(&mut self, address: u32, value: u32, access: u8) {
         self.bus.store_32(address, value, access);
     }
 }
@@ -71,7 +71,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             spsrs: [ProgramStatusRegister::from_bits(0x13); 5],
             pipeline: [0; 2],
             bus,
-            next_memory_access: INST_NON_SEQUENTIAL,
+            next_memory_access: MemoryAccess::Instruction | MemoryAccess::Nonsequential,
         };
 
         match skip_bios {
@@ -122,10 +122,9 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let condition = instruction.cond();
                 if condition != Condition::AL && !self.is_condition_met(condition) {
                     self.advance_pc_arm();
-                    self.next_memory_access = INST_SEQUENTIAL;
+                    self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Sequential;
                     return;
                 }
-
                 match self.arm_execute(instruction) {
                     CpuAction::Advance(memory_access) => {
                         self.advance_pc_arm();
@@ -185,18 +184,30 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn refill_pipeline(&mut self) {
         match self.cpsr.cpu_state() {
             CpuState::Arm => {
-                self.pipeline[0] = self.load_32(self.general_registers[PC], INST_NON_SEQUENTIAL);
+                self.pipeline[0] = self.load_32(
+                    self.general_registers[PC],
+                    MemoryAccess::Instruction | MemoryAccess::Nonsequential,
+                );
                 self.advance_pc_arm();
-                self.pipeline[1] = self.load_32(self.general_registers[PC], INST_SEQUENTIAL);
+                self.pipeline[1] = self.load_32(
+                    self.general_registers[PC],
+                    MemoryAccess::Instruction | MemoryAccess::Sequential,
+                );
                 self.advance_pc_arm();
-                self.next_memory_access = INST_SEQUENTIAL;
+                self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Sequential;
             }
             CpuState::Thumb => {
-                self.pipeline[0] = self.load_16(self.general_registers[PC], INST_NON_SEQUENTIAL);
+                self.pipeline[0] = self.load_16(
+                    self.general_registers[PC],
+                    MemoryAccess::Instruction | MemoryAccess::Sequential,
+                );
                 self.advance_pc_thumb();
-                self.pipeline[1] = self.load_16(self.general_registers[PC], INST_SEQUENTIAL);
+                self.pipeline[1] = self.load_16(
+                    self.general_registers[PC],
+                    MemoryAccess::Instruction | MemoryAccess::Sequential,
+                );
                 self.advance_pc_thumb();
-                self.next_memory_access = INST_SEQUENTIAL;
+                self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Sequential;
             }
         }
     }

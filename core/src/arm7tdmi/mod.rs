@@ -1,5 +1,3 @@
-use crate::memory::MemoryAccess;
-
 mod arm;
 pub mod cpu;
 mod disassembler;
@@ -11,7 +9,7 @@ pub const CPU_CLOCK_SPEED: u32 = 16777216;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum CpuAction {
-    Advance(MemoryAccess),
+    Advance(u8),
     PipelineFlush,
 }
 

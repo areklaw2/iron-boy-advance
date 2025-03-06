@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use crate::memory::{decompose_memory_access, IoMemoryAccess, MemoryAccess, MemoryAccessKind, MemoryInterface};
+use crate::memory::{decompose_access_pattern, IoMemoryAccess, MemoryAccess, MemoryInterface};
 
 use super::{Transaction, TransactionKind};
 
@@ -12,13 +10,13 @@ pub struct TestBus {
 }
 
 impl MemoryInterface for TestBus {
-    fn load_8(&mut self, address: u32, _access: MemoryAccess) -> u32 {
+    fn load_8(&mut self, address: u32, _access_pattern: u8) -> u32 {
         self.read_8(address) as u32
     }
 
-    fn load_16(&mut self, _address: u32, access: MemoryAccess) -> u32 {
-        let access = decompose_memory_access(access);
-        let is_instruction_read = access.contains(&MemoryAccessKind::Instruction);
+    fn load_16(&mut self, _address: u32, access_pattern: u8) -> u32 {
+        let access = decompose_access_pattern(access_pattern);
+        let is_instruction_read = access.contains(&MemoryAccess::Instruction);
         let mut transaction_index = None;
         for (i, transaction) in self.transactions.iter().enumerate() {
             if is_instruction_read && transaction.kind == TransactionKind::InstructionRead {
@@ -39,9 +37,9 @@ impl MemoryInterface for TestBus {
         }
     }
 
-    fn load_32(&mut self, _address: u32, access: MemoryAccess) -> u32 {
-        let access = decompose_memory_access(access);
-        let is_instruction_read = access.contains(&MemoryAccessKind::Instruction);
+    fn load_32(&mut self, _address: u32, access_pattern: u8) -> u32 {
+        let access = decompose_access_pattern(access_pattern);
+        let is_instruction_read = access.contains(&MemoryAccess::Instruction);
         let mut transaction_index = None;
         for (i, transaction) in self.transactions.iter().enumerate() {
             if is_instruction_read && transaction.kind == TransactionKind::InstructionRead {
@@ -62,11 +60,11 @@ impl MemoryInterface for TestBus {
         }
     }
 
-    fn store_8(&mut self, address: u32, value: u8, _access: MemoryAccess) {
+    fn store_8(&mut self, address: u32, value: u8, _access_pattern: u8) {
         self.write_8(address, value);
     }
 
-    fn store_16(&mut self, _address: u32, value: u16, _access: MemoryAccess) {
+    fn store_16(&mut self, _address: u32, value: u16, _access_pattern: u8) {
         let mut transaction_index = None;
         for (i, transaction) in self.transactions.iter().enumerate() {
             if transaction.kind == TransactionKind::Write {
@@ -84,7 +82,7 @@ impl MemoryInterface for TestBus {
         }
     }
 
-    fn store_32(&mut self, _address: u32, value: u32, _access: MemoryAccess) {
+    fn store_32(&mut self, _address: u32, value: u32, _access_pattern: u8) {
         let mut transaction_index = None;
         for (i, transaction) in self.transactions.iter().enumerate() {
             if transaction.kind == TransactionKind::Write {
