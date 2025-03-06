@@ -15,15 +15,9 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     pub fn execute_branch_and_exchange(&mut self, instruction: ArmInstruction) -> CpuAction {
-        let mut value = self.get_general_register(instruction.rn() as usize);
-        if value & 0x1 != 0 {
-            self.set_cpu_state(CpuState::Thumb);
-            value &= !0x1;
-        } else {
-            self.set_cpu_state(CpuState::Arm);
-            value &= !0x3;
-        }
-        self.set_pc(value);
+        let value = self.get_register(instruction.rn() as usize);
+        self.set_cpu_state(CpuState::from_bits((value & 0x1) as u8));
+        self.set_pc(value & !0x1);
         self.refill_pipeline();
         CpuAction::PipelineFlush
     }

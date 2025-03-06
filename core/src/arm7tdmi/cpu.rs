@@ -2,7 +2,7 @@ use utils::get_set;
 
 use crate::{
     arm7tdmi::{Condition, CpuAction},
-    memory::{MemoryAccess, MemoryInterface},
+    memory::{MemoryAccess, MemoryInterface, INST_NON_SEQUENTIAL, INST_SEQUENTIAL},
 };
 
 use super::{arm::ArmInstruction, psr::ProgramStatusRegister, CpuMode, CpuState};
@@ -33,16 +33,16 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
-    fn load_8(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u8 {
-        self.bus.load_8(address, access, is_instruction)
+    fn load_8(&mut self, address: u32, access: MemoryAccess) -> u32 {
+        self.bus.load_8(address, access)
     }
 
-    fn load_16(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u16 {
-        self.bus.load_16(address, access, is_instruction)
+    fn load_16(&mut self, address: u32, access: MemoryAccess) -> u32 {
+        self.bus.load_16(address, access)
     }
 
-    fn load_32(&mut self, address: u32, access: MemoryAccess, is_instruction: bool) -> u32 {
-        self.bus.load_32(address, access, is_instruction)
+    fn load_32(&mut self, address: u32, access: MemoryAccess) -> u32 {
+        self.bus.load_32(address, access)
     }
 
     fn store_8(&mut self, address: u32, value: u8, access: MemoryAccess) {
@@ -71,7 +71,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             spsrs: [ProgramStatusRegister::from_bits(0x13); 5],
             pipeline: [0; 2],
             bus,
-            next_memory_access: MemoryAccess::NonSequential,
+            next_memory_access: INST_NON_SEQUENTIAL,
         };
 
         match skip_bios {
@@ -91,7 +91,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
 
         //TODO: not sure if i need this forever
-        cpu.refill_pipeline();
+        //cpu.refill_pipeline();
         cpu
     }
 
@@ -106,13 +106,15 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     get_set!(pipeline, set_pipeline, [u32; 2]);
 
     pub fn cycle(&mut self) {
+        let pc = self.general_registers[PC] & !0x1;
+
         match self.cpsr.cpu_state() {
             CpuState::Arm => {
-                let pc = self.general_registers[PC] & !0x3;
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
-                self.pipeline[1] = self.load_32(pc, self.next_memory_access, true);
+                self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let instruction = ArmInstruction::decode(instruction);
+
                 //TODO log this
                 println!("{:?}", instruction);
                 println!("{}", instruction.disassamble());
@@ -120,7 +122,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let condition = instruction.cond();
                 if condition != Condition::AL && !self.is_condition_met(condition) {
                     self.advance_pc_arm();
-                    self.next_memory_access = MemoryAccess::NonSequential;
+                    self.next_memory_access = INST_SEQUENTIAL;
                     return;
                 }
 
@@ -133,8 +135,12 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 };
             }
             CpuState::Thumb => {
-                let pc = self.general_registers[PC] & !0x1;
+                let instruction = self.pipeline[0];
+                self.pipeline[0] = self.pipeline[1];
+                self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 self.advance_pc_thumb();
+
+                // TODO
             }
         }
     }
@@ -179,26 +185,43 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn refill_pipeline(&mut self) {
         match self.cpsr.cpu_state() {
             CpuState::Arm => {
-                self.pipeline[0] = self.load_32(self.general_registers[PC], MemoryAccess::NonSequential, true);
+                self.pipeline[0] = self.load_32(self.general_registers[PC], INST_NON_SEQUENTIAL);
                 self.advance_pc_arm();
-                self.pipeline[1] = self.load_32(self.general_registers[PC], MemoryAccess::Sequential, true);
+                self.pipeline[1] = self.load_32(self.general_registers[PC], INST_SEQUENTIAL);
                 self.advance_pc_arm();
-                self.next_memory_access = MemoryAccess::Sequential;
+                self.next_memory_access = INST_SEQUENTIAL;
             }
             CpuState::Thumb => {
-                self.pipeline[0] = self.load_16(self.general_registers[PC], MemoryAccess::NonSequential, true) as u32;
+                self.pipeline[0] = self.load_16(self.general_registers[PC], INST_NON_SEQUENTIAL);
                 self.advance_pc_thumb();
-                self.pipeline[1] = self.load_16(self.general_registers[PC], MemoryAccess::Sequential, true) as u32;
+                self.pipeline[1] = self.load_16(self.general_registers[PC], INST_SEQUENTIAL);
                 self.advance_pc_thumb();
-                self.next_memory_access = MemoryAccess::Sequential;
+                self.next_memory_access = INST_SEQUENTIAL;
             }
         }
     }
 
-    pub fn get_general_register(&self, index: usize) -> u32 {
-        if index >= self.general_registers.len() {
-            panic!("Index out of range")
+    pub fn get_register(&self, index: usize) -> u32 {
+        match index {
+            0..=7 | 15 => self.general_registers[index],
+            8..=12 => match self.cpsr.cpu_mode() == CpuMode::Fiq {
+                true => self.general_registers_fiq[index - 8],
+                false => self.general_registers[index],
+            },
+            13 | 14 => {
+                println!("{}", index);
+                println!("{}", self.cpsr.cpu_mode());
+
+                match self.cpsr.cpu_mode() {
+                    CpuMode::System | CpuMode::User => self.general_registers[index],
+                    CpuMode::Fiq => self.general_registers_fiq[index - 8],
+                    CpuMode::Irq => self.general_registers_irq[index - 13],
+                    CpuMode::Supervisor => self.general_registers_svc[index - 13],
+                    CpuMode::Abort => self.general_registers_abt[index - 13],
+                    CpuMode::Undefined => self.general_registers_und[index - 13],
+                }
+            }
+            _ => panic!("Index out of range"),
         }
-        self.general_registers[index]
     }
 }

@@ -19,7 +19,7 @@ impl Bios {
 }
 
 impl IoMemoryAccess for Bios {
-    fn read_8(&self, address: u32, _is_instruction: bool) -> u8 {
+    fn read_8(&self, address: u32) -> u8 {
         self.data[address as usize]
     }
 

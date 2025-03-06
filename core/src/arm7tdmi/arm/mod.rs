@@ -75,7 +75,7 @@ impl From<u32> for ArmInstructionFormat {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArmInstruction {
     format: ArmInstructionFormat,
-    instruction: u32,
+    value: u32,
 }
 
 impl Instruction for ArmInstruction {
@@ -84,7 +84,7 @@ impl Instruction for ArmInstruction {
     fn decode(instruction: u32) -> ArmInstruction {
         ArmInstruction {
             format: instruction.into(),
-            instruction,
+            value: instruction,
         }
     }
 
@@ -98,27 +98,30 @@ impl Instruction for ArmInstruction {
     }
 
     fn value(&self) -> u32 {
-        self.instruction
+        self.value
     }
 }
 
 impl ArmInstruction {
     pub fn new(format: ArmInstructionFormat, instruction: u32) -> ArmInstruction {
-        ArmInstruction { format, instruction }
+        ArmInstruction {
+            format,
+            value: instruction,
+        }
     }
 
     pub fn link(&self) -> bool {
-        self.instruction & (1 << 24) != 0
+        self.value & (1 << 24) != 0
     }
 
     pub fn cond(&self) -> Condition {
-        (self.instruction >> 28 & 0xF).into()
+        (self.value >> 28 & 0xF).into()
     }
 
     pub fn rn(&self) -> Register {
         use ArmInstructionFormat::*;
         match self.format {
-            BranchAndExchange => (self.instruction & 0xF).into(),
+            BranchAndExchange => (self.value & 0xF).into(),
             _ => todo!(),
         }
     }

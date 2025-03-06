@@ -8,7 +8,7 @@ use serde_repr::Deserialize_repr;
 
 mod test_bus;
 
-#[derive(Debug, Deserialize_repr, Clone, Copy)]
+#[derive(Debug, Deserialize_repr, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 enum TransactionKind {
     InstructionRead = 0,
@@ -85,7 +85,7 @@ fn single_step_tests() {
         let tests: Vec<Test> = serde_json::from_str(&test_json).unwrap();
         for test in tests {
             let mut cpu = Arm7tdmiCpu::new(
-                test_bus::TestBus::new(test.base_addr[0], test.opcode, &test.transactions),
+                test_bus::TestBus::new(test.base_addr[0], test.opcode, test.transactions.clone()),
                 true,
             );
 
@@ -110,8 +110,8 @@ fn single_step_tests() {
             assert_eq!(cpu.general_registers_abt(), final_state.r_abt);
             assert_eq!(cpu.general_registers_irq(), final_state.r_irq);
             assert_eq!(cpu.general_registers_und(), final_state.r_und);
-            assert_eq!(cpu.cpsr().into_bits(), final_state.cpsr);
             assert_eq!(cpu.spsrs().map(|x| x.into_bits()), final_state.spsr);
+            assert_eq!(cpu.cpsr().into_bits(), final_state.cpsr);
             assert_eq!(cpu.pipeline(), final_state.pipeline);
         }
     }
