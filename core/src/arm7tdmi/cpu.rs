@@ -7,13 +7,13 @@ use crate::{
 
 use super::{arm::ArmInstruction, psr::ProgramStatusRegister, CpuMode, CpuState};
 
-const SP: usize = 13;
-const LR: usize = 14;
-const PC: usize = 15;
+pub const SP: usize = 13;
+pub const LR: usize = 14;
+pub const PC: usize = 15;
 
 pub trait Instruction {
     type Size;
-    fn decode(value: Self::Size) -> Self;
+    fn decode(value: Self::Size, pc: u32) -> Self;
     fn disassamble(&self) -> String;
     fn value(&self) -> Self::Size;
 }
@@ -113,7 +113,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
-                let instruction = ArmInstruction::decode(instruction);
+                let instruction = ArmInstruction::decode(instruction, pc - 8);
 
                 //TODO log this
                 println!("{:?}", instruction);
@@ -169,8 +169,12 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.cpsr.set_cpu_state(state);
     }
 
+    pub fn pc(&self) -> u32 {
+        self.general_registers[PC]
+    }
+
     pub fn set_pc(&mut self, value: u32) {
-        self.general_registers[PC] = value
+        self.general_registers[PC] = value;
     }
 
     pub fn advance_pc_thumb(&mut self) {
@@ -219,19 +223,33 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 true => self.general_registers_fiq[index - 8],
                 false => self.general_registers[index],
             },
-            13 | 14 => {
-                println!("{}", index);
-                println!("{}", self.cpsr.cpu_mode());
+            13 | 14 => match self.cpsr.cpu_mode() {
+                CpuMode::System | CpuMode::User => self.general_registers[index],
+                CpuMode::Fiq => self.general_registers_fiq[index - 8],
+                CpuMode::Irq => self.general_registers_irq[index - 13],
+                CpuMode::Supervisor => self.general_registers_svc[index - 13],
+                CpuMode::Abort => self.general_registers_abt[index - 13],
+                CpuMode::Undefined => self.general_registers_und[index - 13],
+            },
+            _ => panic!("Index out of range"),
+        }
+    }
 
-                match self.cpsr.cpu_mode() {
-                    CpuMode::System | CpuMode::User => self.general_registers[index],
-                    CpuMode::Fiq => self.general_registers_fiq[index - 8],
-                    CpuMode::Irq => self.general_registers_irq[index - 13],
-                    CpuMode::Supervisor => self.general_registers_svc[index - 13],
-                    CpuMode::Abort => self.general_registers_abt[index - 13],
-                    CpuMode::Undefined => self.general_registers_und[index - 13],
-                }
-            }
+    pub fn set_register(&mut self, index: usize, value: u32) {
+        match index {
+            0..=7 | 15 => self.general_registers[index] = value,
+            8..=12 => match self.cpsr.cpu_mode() == CpuMode::Fiq {
+                true => self.general_registers_fiq[index - 8] = value,
+                false => self.general_registers[index] = value,
+            },
+            13 | 14 => match self.cpsr.cpu_mode() {
+                CpuMode::System | CpuMode::User => self.general_registers[index] = value,
+                CpuMode::Fiq => self.general_registers_fiq[index - 8] = value,
+                CpuMode::Irq => self.general_registers_irq[index - 13] = value,
+                CpuMode::Supervisor => self.general_registers_svc[index - 13] = value,
+                CpuMode::Abort => self.general_registers_abt[index - 13] = value,
+                CpuMode::Undefined => self.general_registers_und[index - 13] = value,
+            },
             _ => panic!("Index out of range"),
         }
     }

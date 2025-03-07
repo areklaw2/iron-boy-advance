@@ -10,7 +10,7 @@ impl ArmInstruction {
     pub fn disassemble_branch_and_branch_with_link(&self) -> String {
         let cond = self.cond();
         let link = if self.link() { "L" } else { "" };
-        let expression = "";
-        format!("B{link}{cond} {expression}")
+        let expression = self.offset();
+        format!("B{link}{cond} {expression:08X}")
     }
 }
