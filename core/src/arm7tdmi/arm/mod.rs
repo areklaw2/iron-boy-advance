@@ -2,7 +2,7 @@ use super::{cpu::Instruction, Condition, Register};
 
 pub mod disassembler;
 pub mod execute;
-
+// change this to Kind
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ArmInstructionFormat {
     BranchAndExchange,
