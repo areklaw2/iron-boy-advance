@@ -1,6 +1,6 @@
 use std::fmt::{self};
 
-use crate::{Condition, CpuMode, CpuState, Register};
+use crate::{Condition, CpuMode, CpuState, DataProcessingInstructionKind, Register};
 
 impl fmt::Display for CpuMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -71,6 +71,30 @@ impl fmt::Display for Register {
             R13 => write!(f, "sp"),
             R14 => write!(f, "lr"),
             R15 => write!(f, "pc"),
+        }
+    }
+}
+
+impl fmt::Display for DataProcessingInstructionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use DataProcessingInstructionKind::*;
+        match self {
+            AND => write!(f, "AND"),
+            EOR => write!(f, "EOR"),
+            SUB => write!(f, "SUB"),
+            RSB => write!(f, "RSB"),
+            ADD => write!(f, "ADD"),
+            ADC => write!(f, "ADC"),
+            SBC => write!(f, "SBC"),
+            RSC => write!(f, "RSC"),
+            TST => write!(f, "TST"),
+            TEQ => write!(f, "TEQ"),
+            CMP => write!(f, "CMP"),
+            CMN => write!(f, "CMN"),
+            ORR => write!(f, "ORR"),
+            MOV => write!(f, "MOV"),
+            BIC => write!(f, "BIC"),
+            MVN => write!(f, "MVN"),
         }
     }
 }

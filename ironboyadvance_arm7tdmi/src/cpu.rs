@@ -14,6 +14,7 @@ pub const PC: usize = 15;
 pub trait Instruction {
     type Size;
     fn decode(value: Self::Size, pc: u32) -> Self;
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
     fn disassamble(&self) -> String;
     fn value(&self) -> Self::Size;
 }
@@ -125,7 +126,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                     self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Sequential;
                     return;
                 }
-                match self.arm_execute(instruction) {
+                match instruction.execute(self) {
                     CpuAction::Advance(memory_access) => {
                         self.advance_pc_arm();
                         self.next_memory_access = memory_access;

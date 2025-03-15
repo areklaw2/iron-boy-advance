@@ -1,7 +1,14 @@
+use bitvec::{field::BitField, order::Lsb0, vec::BitVec, view::BitView};
+use disassembler::branch::{disassemble_branch_and_branch_with_link, disassemble_branch_and_exchange};
+use execute::branch::{execute_branch_and_branch_with_link, execute_branch_and_exchange};
+
+use crate::{CpuAction, DataProcessingInstructionKind, cpu::Arm7tdmiCpu, memory::MemoryInterface};
+
 use super::{Condition, Register, cpu::Instruction};
 
 pub mod disassembler;
 pub mod execute;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ArmInstructionKind {
     BranchAndExchange,
@@ -61,7 +68,7 @@ impl From<u32> for ArmInstructionKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArmInstruction {
     kind: ArmInstructionKind,
-    value: u32,
+    bits: BitVec<u32>,
     executed_pc: u32,
 }
 
@@ -71,7 +78,7 @@ impl Instruction for ArmInstruction {
     fn decode(instruction: u32, executed_pc: u32) -> ArmInstruction {
         ArmInstruction {
             kind: instruction.into(),
-            value: instruction,
+            bits: instruction.view_bits::<Lsb0>().to_bitvec(),
             executed_pc,
         }
     }
@@ -79,35 +86,89 @@ impl Instruction for ArmInstruction {
     fn disassamble(&self) -> String {
         use ArmInstructionKind::*;
         match self.kind {
-            BranchAndExchange => self.disassemble_branch_and_exchange(),
-            BranchAndBranchWithLink => self.disassemble_branch_and_branch_with_link(),
+            BranchAndExchange => disassemble_branch_and_exchange(self),
+            BranchAndBranchWithLink => disassemble_branch_and_branch_with_link(self),
+            _ => todo!(),
+        }
+    }
+
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+        use ArmInstructionKind::*;
+        match self.kind {
+            BranchAndExchange => execute_branch_and_exchange(cpu, self),
+            BranchAndBranchWithLink => execute_branch_and_branch_with_link(cpu, self),
             _ => todo!(),
         }
     }
 
     fn value(&self) -> u32 {
-        self.value
+        self.bits.load::<u32>()
     }
 }
 
 impl ArmInstruction {
-    pub fn link(&self) -> bool {
-        self.value & (1 << 24) != 0
-    }
-
     pub fn cond(&self) -> Condition {
-        (self.value >> 28 & 0xF).into()
+        self.bits[28..=31].load::<u32>().into()
     }
 
     pub fn rn(&self) -> Register {
         use ArmInstructionKind::*;
         match self.kind {
-            BranchAndExchange => (self.value & 0xF).into(),
+            BranchAndExchange => self.bits[0..=3].load::<u32>().into(),
+            DataProcessing => self.bits[16..=19].load::<u32>().into(),
             _ => todo!(),
         }
     }
 
+    pub fn rd(&self) -> Register {
+        use ArmInstructionKind::*;
+        match self.kind {
+            DataProcessing => self.bits[12..=15].load::<u32>().into(),
+            _ => todo!(),
+        }
+    }
+
+    pub fn rm(&self) -> Register {
+        use ArmInstructionKind::*;
+        match self.kind {
+            DataProcessing => self.bits[0..=3].load::<u32>().into(),
+            _ => todo!(),
+        }
+    }
+
+    pub fn link(&self) -> bool {
+        self.bits[24]
+    }
+
     pub fn offset(&self) -> i32 {
-        (((self.value & 0xFFFFFF) << 8) as i32) >> 6
+        use ArmInstructionKind::*;
+        match self.kind {
+            BranchAndBranchWithLink => ((self.bits[0..=23].load::<u32>() << 8) as i32) >> 6,
+            _ => todo!(),
+        }
+    }
+
+    pub fn is_immediate_operand(&self) -> bool {
+        self.bits[25]
+    }
+
+    pub fn opcode(&self) -> DataProcessingInstructionKind {
+        self.bits[21..=24].load::<u32>().into()
+    }
+
+    pub fn sets_condition(&self) -> bool {
+        self.bits[20]
+    }
+
+    pub fn shift(&self) -> u32 {
+        self.bits[4..=11].load::<u32>()
+    }
+
+    pub fn rotate(&self) -> u32 {
+        self.bits[8..=11].load::<u32>()
+    }
+
+    pub fn immediate(&self) -> u32 {
+        self.bits[0..=7].load::<u32>()
     }
 }

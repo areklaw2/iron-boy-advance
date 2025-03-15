@@ -80,7 +80,9 @@ struct Test {
 #[test]
 fn single_step_tests() {
     // Will keep a list of the files I want to run until i complete all the instructions
-    let files = ["arm_b_bl.json"];
+    // completed
+    let files = ["arm_b_bl.json", "arm_bx.json"];
+    //let files = ["arm_data_proc_immediate_shift.json"];
     for file in files {
         let test_json = fs::read_to_string(format!("../external/arm7tdmi/v1/{file}")).expect("unable to read file");
         let tests: Vec<Test> = serde_json::from_str(&test_json).unwrap();
