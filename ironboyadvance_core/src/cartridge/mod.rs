@@ -1,17 +1,15 @@
-use std::{fs::File, io::Read, path::PathBuf};
+use std::path::PathBuf;
 
 use header::Header;
-use utils::read_file;
+use ironboyadvance_arm7tdmi::memory::IoMemoryAccess;
+use ironboyadvance_utils::read_file;
 
 use crate::{
-    memory::{
-        system_bus::{
-            ROM_WAIT_STATE_0_END, ROM_WAIT_STATE_0_START, ROM_WAIT_STATE_1_END, ROM_WAIT_STATE_1_START,
-            ROM_WAIT_STATE_2_END, ROM_WAIT_STATE_2_START, SRAM_END, SRAM_START,
-        },
-        IoMemoryAccess,
-    },
     GbaError,
+    system_bus::{
+        ROM_WAIT_STATE_0_END, ROM_WAIT_STATE_0_START, ROM_WAIT_STATE_1_END, ROM_WAIT_STATE_1_START, ROM_WAIT_STATE_2_END,
+        ROM_WAIT_STATE_2_START, SRAM_END, SRAM_START,
+    },
 };
 
 pub mod header;

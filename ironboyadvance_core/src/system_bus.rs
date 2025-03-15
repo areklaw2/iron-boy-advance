@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{bios::Bios, cartridge::Cartridge, memory::decompose_access_pattern, scheduler::Scheduler};
+use ironboyadvance_arm7tdmi::memory::{IoMemoryAccess, MemoryAccessWidth, MemoryInterface, decompose_access_pattern};
 
-use super::{IoMemoryAccess, MemoryAccessWidth, MemoryInterface};
+use crate::{bios::Bios, cartridge::Cartridge, scheduler::Scheduler};
 
 pub const BIOS_START: u32 = 0x0000_0000;
 pub const BIOS_END: u32 = 0x0000_3FFF;

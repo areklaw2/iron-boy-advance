@@ -1,4 +1,4 @@
 [workspace] 
-members = [ "core", "utils", "platform/dev", "platform/desktop"]
+members = ["platform/dev", "platform/desktop", "ironboyadvance_sharp_sm83", "ironboyadvance_arm7tdmi", "ironboyadvance_core", "ironboyadvance_utils"]
 
 resolver = "2"

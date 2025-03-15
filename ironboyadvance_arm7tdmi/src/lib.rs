@@ -1,6 +1,7 @@
 mod arm;
 pub mod cpu;
 mod disassembler;
+pub mod memory;
 mod psr;
 mod tests;
 mod thumb;

@@ -1,7 +1,5 @@
 use std::ops::BitOr;
 
-pub mod system_bus;
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MemoryAccess {
     Nonsequential = 0b0,

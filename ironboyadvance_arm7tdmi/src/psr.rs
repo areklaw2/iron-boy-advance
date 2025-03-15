@@ -37,7 +37,7 @@ impl ProgramStatusRegister {
 #[cfg(test)]
 mod tests {
 
-    use crate::arm7tdmi::{CpuMode, CpuState};
+    use crate::{CpuMode, CpuState};
 
     use super::ProgramStatusRegister;
 

@@ -1,18 +1,16 @@
 use crate::{
-    arm7tdmi::{
-        arm::ArmInstructionFormat,
-        cpu::{Arm7tdmiCpu, LR},
-        CpuAction, CpuState,
-    },
-    memory::{MemoryAccess, MemoryInterface},
+    CpuAction, CpuState,
+    arm::ArmInstructionKind,
+    cpu::{Arm7tdmiCpu, LR},
+    memory::MemoryInterface,
 };
 
 use super::ArmInstruction;
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn arm_execute(&mut self, instruction: ArmInstruction) -> CpuAction {
-        use ArmInstructionFormat::*;
-        match instruction.format {
+        use ArmInstructionKind::*;
+        match instruction.kind {
             BranchAndExchange => self.execute_branch_and_exchange(instruction),
             BranchAndBranchWithLink => self.execute_branch_and_branch_with_link(instruction),
             _ => todo!(),

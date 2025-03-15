@@ -1,14 +1,14 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
+use ironboyadvance_arm7tdmi::cpu::Arm7tdmiCpu;
+
 use crate::{
-    arm7tdmi::cpu::Arm7tdmiCpu,
+    GbaError,
     bios::Bios,
     cartridge::Cartridge,
-    memory::system_bus::SystemBus,
     ppu::CYCLES_PER_FRAME,
-    scheduler::{event::EventType, Scheduler},
-    sharp_sm83::cpu::SharpSm83Cpu,
-    GbaError,
+    scheduler::{Scheduler, event::EventType},
+    system_bus::SystemBus,
 };
 
 pub struct GameBoyAdvance {

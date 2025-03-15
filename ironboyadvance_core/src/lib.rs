@@ -1,15 +1,13 @@
-use arm7tdmi::CPU_CLOCK_SPEED;
+use ironboyadvance_arm7tdmi::CPU_CLOCK_SPEED;
 use ppu::CYCLES_PER_FRAME;
 use thiserror::Error;
 
-mod arm7tdmi;
 mod bios;
 mod cartridge;
 pub mod gba;
-mod memory;
 pub mod ppu;
 mod scheduler;
-pub mod sharp_sm83;
+mod system_bus;
 
 pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 

@@ -1,6 +1,6 @@
 use std::fmt::{self};
 
-use crate::arm7tdmi::{Condition, CpuMode, CpuState, Register};
+use crate::{Condition, CpuMode, CpuState, Register};
 
 impl fmt::Display for CpuMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

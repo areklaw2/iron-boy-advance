@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
-use utils::read_file;
+use ironboyadvance_arm7tdmi::memory::IoMemoryAccess;
+use ironboyadvance_utils::read_file;
 
-use crate::{memory::IoMemoryAccess, GbaError};
+use crate::GbaError;
 
 pub struct Bios {
     data: Box<[u8]>,

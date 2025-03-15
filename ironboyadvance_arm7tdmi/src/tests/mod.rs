@@ -2,9 +2,10 @@
 #[cfg(test)]
 use std::fs;
 
-use crate::arm7tdmi::{cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
+
+use crate::{cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
 
 mod test_bus;
 

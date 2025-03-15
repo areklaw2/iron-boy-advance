@@ -1,10 +1,9 @@
-use super::{cpu::Instruction, Condition, Register};
+use super::{Condition, Register, cpu::Instruction};
 
 pub mod disassembler;
 pub mod execute;
-// change this to Kind
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ArmInstructionFormat {
+pub enum ArmInstructionKind {
     BranchAndExchange,
     BlockDataTransfer,
     BranchAndBranchWithLink,
@@ -21,9 +20,9 @@ pub enum ArmInstructionFormat {
     DataProcessing,
 }
 
-impl From<u32> for ArmInstructionFormat {
-    fn from(instruction: u32) -> ArmInstructionFormat {
-        use ArmInstructionFormat::*;
+impl From<u32> for ArmInstructionKind {
+    fn from(instruction: u32) -> ArmInstructionKind {
+        use ArmInstructionKind::*;
         // Decoding order matters
         if instruction & 0x0FFFFFF0 == 0x012FFF10 {
             BranchAndExchange
@@ -61,7 +60,7 @@ impl From<u32> for ArmInstructionFormat {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArmInstruction {
-    format: ArmInstructionFormat,
+    kind: ArmInstructionKind,
     value: u32,
     executed_pc: u32,
 }
@@ -71,15 +70,15 @@ impl Instruction for ArmInstruction {
 
     fn decode(instruction: u32, executed_pc: u32) -> ArmInstruction {
         ArmInstruction {
-            format: instruction.into(),
+            kind: instruction.into(),
             value: instruction,
             executed_pc,
         }
     }
 
     fn disassamble(&self) -> String {
-        use ArmInstructionFormat::*;
-        match self.format {
+        use ArmInstructionKind::*;
+        match self.kind {
             BranchAndExchange => self.disassemble_branch_and_exchange(),
             BranchAndBranchWithLink => self.disassemble_branch_and_branch_with_link(),
             _ => todo!(),
@@ -101,8 +100,8 @@ impl ArmInstruction {
     }
 
     pub fn rn(&self) -> Register {
-        use ArmInstructionFormat::*;
-        match self.format {
+        use ArmInstructionKind::*;
+        match self.kind {
             BranchAndExchange => (self.value & 0xF).into(),
             _ => todo!(),
         }

@@ -1,11 +1,11 @@
-use utils::get_set;
+use ironboyadvance_utils::get_set;
 
 use crate::{
-    arm7tdmi::{Condition, CpuAction},
+    Condition, CpuAction,
     memory::{MemoryAccess, MemoryInterface},
 };
 
-use super::{arm::ArmInstruction, psr::ProgramStatusRegister, CpuMode, CpuState};
+use super::{CpuMode, CpuState, arm::ArmInstruction, psr::ProgramStatusRegister};
 
 pub const SP: usize = 13;
 pub const LR: usize = 14;
