@@ -67,49 +67,6 @@ impl CpuState {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Condition {
-    EQ,
-    NE,
-    CS,
-    CC,
-    MI,
-    PL,
-    VS,
-    VC,
-    HI,
-    LS,
-    GE,
-    LT,
-    GT,
-    LE,
-    AL,
-}
-
-impl From<u32> for Condition {
-    fn from(value: u32) -> Self {
-        use Condition::*;
-        match value {
-            0b0000 => EQ,
-            0b0001 => NE,
-            0b0010 => CS,
-            0b0011 => CC,
-            0b0100 => MI,
-            0b0101 => PL,
-            0b0110 => VS,
-            0b0111 => VC,
-            0b1000 => HI,
-            0b1001 => LS,
-            0b1010 => GE,
-            0b1011 => LT,
-            0b1100 => GT,
-            0b1101 => LE,
-            0b1110 => AL,
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Register {
     R0,
     R1,
@@ -149,51 +106,6 @@ impl From<u32> for Register {
             0b1101 => R13,
             0b1110 => R14,
             _ => R15,
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum DataProcessingInstructionKind {
-    AND,
-    EOR,
-    SUB,
-    RSB,
-    ADD,
-    ADC,
-    SBC,
-    RSC,
-    TST,
-    TEQ,
-    CMP,
-    CMN,
-    ORR,
-    MOV,
-    BIC,
-    MVN,
-}
-
-impl From<u32> for DataProcessingInstructionKind {
-    fn from(value: u32) -> Self {
-        use DataProcessingInstructionKind::*;
-        match value {
-            0b0000 => AND,
-            0b0001 => EOR,
-            0b0010 => SUB,
-            0b0011 => RSB,
-            0b0100 => ADD,
-            0b0101 => ADC,
-            0b0110 => SBC,
-            0b0111 => RSC,
-            0b1000 => TST,
-            0b1001 => TEQ,
-            0b1010 => CMP,
-            0b1011 => CMN,
-            0b1100 => ORR,
-            0b1101 => MOV,
-            0b1110 => BIC,
-            0b1111 => MVN,
-            _ => unreachable!(),
         }
     }
 }

@@ -1,7 +1,8 @@
 use ironboyadvance_utils::get_set;
 
 use crate::{
-    Condition, CpuAction,
+    CpuAction,
+    arm::Condition,
     memory::{MemoryAccess, MemoryInterface},
 };
 
