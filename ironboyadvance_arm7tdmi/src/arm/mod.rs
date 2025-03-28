@@ -97,6 +97,27 @@ impl From<u32> for DataProcessingInstructionKind {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ShiftType {
+    LSL,
+    LSR,
+    ASR,
+    ROR,
+}
+
+impl From<u32> for ShiftType {
+    fn from(value: u32) -> Self {
+        use ShiftType::*;
+        match value {
+            0b00 => LSL,
+            0b01 => LSR,
+            0b10 => ASR,
+            0b11 => ROR,
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ArmInstructionKind {
     BranchAndExchange,
@@ -249,14 +270,26 @@ impl ArmInstruction {
     }
 
     pub fn shift(&self) -> u32 {
-        self.bits[4..=11].load::<u32>()
+        self.bits[4..=11].load()
+    }
+
+    pub fn shift_amount(&self) -> u32 {
+        self.bits[7..=11].load()
+    }
+
+    pub fn rs(&self) -> u32 {
+        self.bits[8..=11].load()
+    }
+
+    pub fn shift_type(&self) -> ShiftType {
+        self.bits[5..=6].load::<u32>().into()
     }
 
     pub fn rotate(&self) -> u32 {
-        self.bits[8..=11].load::<u32>()
+        self.bits[8..=11].load()
     }
 
     pub fn immediate(&self) -> u32 {
-        self.bits[0..=7].load::<u32>()
+        self.bits[0..=7].load()
     }
 }
