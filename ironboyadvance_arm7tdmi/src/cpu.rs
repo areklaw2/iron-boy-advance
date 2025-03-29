@@ -118,7 +118,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = ArmInstruction::decode(instruction, pc - 8);
 
                 //TODO log this
-                println!("{:?}", instruction);
+                println!("{}", instruction);
                 println!("{}", instruction.disassamble());
 
                 let condition = instruction.cond();

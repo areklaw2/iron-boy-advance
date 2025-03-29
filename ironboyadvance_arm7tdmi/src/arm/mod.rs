@@ -1,8 +1,14 @@
 use bitvec::{field::BitField, order::Lsb0, vec::BitVec, view::BitView};
-use disassembler::branch::{disassemble_branch_and_branch_with_link, disassemble_branch_and_exchange};
-use execute::branch::{execute_branch_and_branch_with_link, execute_branch_and_exchange};
+use core::fmt;
+use disassembler::{disassamble_data_processing, disassemble_branch_and_branch_with_link, disassemble_branch_and_exchange};
+use execute::{execute_branch_and_branch_with_link, execute_branch_and_exchange};
 
-use crate::{CpuAction, cpu::Arm7tdmiCpu, memory::MemoryInterface};
+use crate::{
+    CpuAction,
+    alu::{AluInstruction, ShiftBy, ShiftType},
+    cpu::Arm7tdmiCpu,
+    memory::MemoryInterface,
+};
 
 use super::{Register, cpu::Instruction};
 
@@ -47,72 +53,6 @@ impl From<u32> for Condition {
             0b1100 => GT,
             0b1101 => LE,
             0b1110 => AL,
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum DataProcessingInstructionKind {
-    AND,
-    EOR,
-    SUB,
-    RSB,
-    ADD,
-    ADC,
-    SBC,
-    RSC,
-    TST,
-    TEQ,
-    CMP,
-    CMN,
-    ORR,
-    MOV,
-    BIC,
-    MVN,
-}
-
-impl From<u32> for DataProcessingInstructionKind {
-    fn from(value: u32) -> Self {
-        use DataProcessingInstructionKind::*;
-        match value {
-            0b0000 => AND,
-            0b0001 => EOR,
-            0b0010 => SUB,
-            0b0011 => RSB,
-            0b0100 => ADD,
-            0b0101 => ADC,
-            0b0110 => SBC,
-            0b0111 => RSC,
-            0b1000 => TST,
-            0b1001 => TEQ,
-            0b1010 => CMP,
-            0b1011 => CMN,
-            0b1100 => ORR,
-            0b1101 => MOV,
-            0b1110 => BIC,
-            0b1111 => MVN,
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum ShiftType {
-    LSL,
-    LSR,
-    ASR,
-    ROR,
-}
-
-impl From<u32> for ShiftType {
-    fn from(value: u32) -> Self {
-        use ShiftType::*;
-        match value {
-            0b00 => LSL,
-            0b01 => LSR,
-            0b10 => ASR,
-            0b11 => ROR,
             _ => unreachable!(),
         }
     }
@@ -181,6 +121,20 @@ pub struct ArmInstruction {
     executed_pc: u32,
 }
 
+impl fmt::Display for ArmInstruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "ArmInstruction: kind: {:?}, bits: {} -> (0x{:08X}), executed_pc:{} -> (0x{:08X})",
+            self.kind,
+            self.bits.load::<u32>(),
+            self.bits.load::<u32>(),
+            self.executed_pc,
+            self.executed_pc
+        )
+    }
+}
+
 impl Instruction for ArmInstruction {
     type Size = u32;
 
@@ -197,6 +151,7 @@ impl Instruction for ArmInstruction {
         match self.kind {
             BranchAndExchange => disassemble_branch_and_exchange(self),
             BranchAndBranchWithLink => disassemble_branch_and_branch_with_link(self),
+            DataProcessing => disassamble_data_processing(self),
             _ => todo!(),
         }
     }
@@ -261,12 +216,19 @@ impl ArmInstruction {
         self.bits[25]
     }
 
-    pub fn opcode(&self) -> DataProcessingInstructionKind {
+    pub fn opcode(&self) -> AluInstruction {
         self.bits[21..=24].load::<u32>().into()
     }
 
     pub fn sets_condition(&self) -> bool {
         self.bits[20]
+    }
+
+    pub fn shift_by(&self) -> ShiftBy {
+        match self.bits[4] {
+            true => ShiftBy::Register,
+            false => ShiftBy::Amount,
+        }
     }
 
     pub fn shift(&self) -> u32 {

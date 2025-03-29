@@ -1,3 +1,4 @@
+mod alu;
 mod arm;
 pub mod cpu;
 mod disassembler;
