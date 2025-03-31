@@ -1,13 +1,6 @@
-use std::{
-    fmt::{self},
-    sync::Arc,
-};
+use std::fmt::{self};
 
-use crate::{
-    CpuMode, CpuState, Register,
-    alu::{AluInstruction, ShiftType},
-    arm::{ArmInstruction, Condition},
-};
+use crate::{CpuMode, CpuState, Register, alu::AluInstruction, arm::Condition, barrel_shifter::ShiftType};
 
 impl fmt::Display for CpuMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

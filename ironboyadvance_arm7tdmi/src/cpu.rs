@@ -58,6 +58,10 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     fn store_32(&mut self, address: u32, value: u32, access: u8) {
         self.bus.store_32(address, value, access);
     }
+
+    fn idle_cycle(&mut self) {
+        self.bus.idle_cycle();
+    }
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {

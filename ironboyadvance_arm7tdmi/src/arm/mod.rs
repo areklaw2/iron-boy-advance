@@ -1,11 +1,12 @@
 use bitvec::{field::BitField, order::Lsb0, vec::BitVec, view::BitView};
 use core::fmt;
-use disassembler::{disassamble_data_processing, disassemble_branch_and_branch_with_link, disassemble_branch_and_exchange};
-use execute::{execute_branch_and_branch_with_link, execute_branch_and_exchange};
+use disassembler::*;
+use execute::*;
 
 use crate::{
     CpuAction,
-    alu::{AluInstruction, ShiftBy, ShiftType},
+    alu::AluInstruction,
+    barrel_shifter::{ShiftBy, ShiftType},
     cpu::Arm7tdmiCpu,
     memory::MemoryInterface,
 };
@@ -161,6 +162,7 @@ impl Instruction for ArmInstruction {
         match self.kind {
             BranchAndExchange => execute_branch_and_exchange(cpu, self),
             BranchAndBranchWithLink => execute_branch_and_branch_with_link(cpu, self),
+            DataProcessing => execute_data_processing(cpu, self),
             _ => todo!(),
         }
     }
@@ -227,12 +229,8 @@ impl ArmInstruction {
     pub fn shift_by(&self) -> ShiftBy {
         match self.bits[4] {
             true => ShiftBy::Register,
-            false => ShiftBy::Amount,
+            false => ShiftBy::Immediate,
         }
-    }
-
-    pub fn shift(&self) -> u32 {
-        self.bits[4..=11].load()
     }
 
     pub fn shift_amount(&self) -> u32 {

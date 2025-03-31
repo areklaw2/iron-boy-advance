@@ -64,6 +64,10 @@ impl MemoryInterface for SystemBus {
         self.cycle(address, access, MemoryAccessWidth::Word);
         self.write_32(address, value);
     }
+
+    fn idle_cycle(&mut self) {
+        //update the scheduler
+    }
 }
 
 impl IoMemoryAccess for SystemBus {

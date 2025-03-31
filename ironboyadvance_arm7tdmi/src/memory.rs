@@ -57,6 +57,8 @@ pub trait MemoryInterface {
     fn store_16(&mut self, address: u32, value: u16, access_pattern: u8);
 
     fn store_32(&mut self, address: u32, value: u32, access_pattern: u8);
+
+    fn idle_cycle(&mut self);
 }
 
 pub trait IoMemoryAccess {

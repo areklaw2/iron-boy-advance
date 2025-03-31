@@ -1,4 +1,4 @@
-use crate::alu::{AluInstruction, ShiftBy};
+use crate::{alu::AluInstruction, barrel_shifter::ShiftBy};
 
 use super::ArmInstruction;
 
@@ -24,7 +24,7 @@ pub fn disassamble_data_processing(instruction: &ArmInstruction) -> String {
     let rn = instruction.rn();
     let operand_2 = match instruction.is_immediate_operand() {
         true => {
-            let rotate = instruction.rotate();
+            let rotate = 2 * instruction.rotate();
             let immediate = instruction.immediate();
             format!("0x{:08X}", immediate.rotate_right(rotate))
         }
@@ -35,8 +35,8 @@ pub fn disassamble_data_processing(instruction: &ArmInstruction) -> String {
                 ShiftBy::Register => {
                     format!("{},{} {}", rm, shift_type, instruction.rs())
                 }
-                ShiftBy::Amount => {
-                    format!("{},{} 0x{:08X}", rm, shift_type, instruction.shift_amount())
+                ShiftBy::Immediate => {
+                    format!("{},{} #{}", rm, shift_type, instruction.shift_amount())
                 }
             }
         }

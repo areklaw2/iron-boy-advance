@@ -1,4 +1,4 @@
-use crate::memory::{decompose_access_pattern, IoMemoryAccess, MemoryAccess, MemoryInterface};
+use crate::memory::{IoMemoryAccess, MemoryAccess, MemoryInterface, decompose_access_pattern};
 
 use super::{Transaction, TransactionKind};
 
@@ -99,6 +99,8 @@ impl MemoryInterface for TestBus {
             None => panic!("No transaction found"),
         }
     }
+
+    fn idle_cycle(&mut self) {}
 }
 
 impl IoMemoryAccess for TestBus {

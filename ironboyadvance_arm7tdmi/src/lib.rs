@@ -1,5 +1,6 @@
 mod alu;
 mod arm;
+mod barrel_shifter;
 pub mod cpu;
 mod disassembler;
 pub mod memory;

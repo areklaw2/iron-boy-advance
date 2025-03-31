@@ -45,28 +45,6 @@ impl From<u32> for AluInstruction {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum ShiftType {
-    LSL,
-    LSR,
-    ASR,
-    ROR,
-}
-
-impl From<u32> for ShiftType {
-    fn from(value: u32) -> Self {
-        use ShiftType::*;
-        match value {
-            0b00 => LSL,
-            0b01 => LSR,
-            0b10 => ASR,
-            0b11 => ROR,
-            _ => unreachable!(),
-        }
-    }
-}
-
-pub enum ShiftBy {
-    Amount,
-    Register,
+pub fn sbc(operand1: u32, operand: u32, carry: bool) -> u8 {
+    todo!("sbc")
 }
