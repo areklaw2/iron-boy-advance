@@ -1,6 +1,3 @@
-use bitvec::{order::Lsb0, view::BitView};
-use serde::de::value;
-
 #[derive(Debug, Copy, Clone)]
 pub enum ShiftType {
     LSL,

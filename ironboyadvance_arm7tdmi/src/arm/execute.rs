@@ -1,5 +1,5 @@
 use crate::{
-    CpuAction, CpuState, Register,
+    CpuAction, CpuState,
     alu::{AluInstruction::*, *},
     barrel_shifter::{ShiftBy, ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, LR},

@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
