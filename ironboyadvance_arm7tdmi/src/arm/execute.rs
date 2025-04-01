@@ -1,9 +1,6 @@
 use crate::{
     CpuAction, CpuState, Register,
-    alu::{
-        AluInstruction::{self, *},
-        sbc,
-    },
+    alu::{AluInstruction::*, *},
     barrel_shifter::{ShiftBy, ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, LR},
     memory::{MemoryAccess, MemoryInterface},
@@ -34,10 +31,10 @@ pub fn execute_branch_and_branch_with_link<I: MemoryInterface>(
 pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     let mut cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
     let rn = instruction.rn();
-    let operand_1 = cpu.get_register(rn as usize);
+    let operand1 = cpu.get_register(rn as usize);
     let mut carry = cpu.cpsr().carry();
 
-    let operand_2 = match instruction.is_immediate_operand() {
+    let operand2 = match instruction.is_immediate_operand() {
         true => {
             let rotate = 2 * instruction.rotate();
             let immediate = instruction.immediate();
@@ -68,17 +65,16 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     };
 
     let s = instruction.sets_condition();
-    let rd = instruction.rd();
     let opcode = instruction.opcode();
-    let flags: u8 = match opcode {
+    let result = match opcode {
         AND => todo!(),
         EOR => todo!(),
         SUB => todo!(),
         RSB => todo!(),
-        ADD => todo!(),
+        ADD => add(cpu, s, operand1, operand2),
         ADC => todo!(),
-        SBC => sbc(operand_1, operand_2, carry),
-        RSC => todo!(),
+        SBC => sbc(cpu, s, operand1, operand2, cpu.cpsr().carry()),
+        RSC => sbc(cpu, s, operand2, operand1, cpu.cpsr().carry()),
         TST => todo!(),
         TEQ => todo!(),
         CMP => todo!(),
@@ -86,11 +82,14 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
         ORR => todo!(),
         MOV => todo!(),
         BIC => todo!(),
-        MVN => todo!(),
+        MVN => mvn(cpu, s, operand2, carry),
     };
 
-    if s {
-        println!("set flags")
+    match opcode {
+        TST | TEQ | CMP | CMN => {}
+        _ => {
+            cpu.set_register(instruction.rd() as usize, result);
+        }
     }
 
     cpu_action

@@ -259,4 +259,20 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             _ => panic!("Index out of range"),
         }
     }
+
+    pub fn set_negative(&mut self, status: bool) {
+        self.cpsr.set_negative(status);
+    }
+
+    pub fn set_zero(&mut self, status: bool) {
+        self.cpsr.set_zero(status);
+    }
+
+    pub fn set_carry(&mut self, status: bool) {
+        self.cpsr.set_carry(status);
+    }
+
+    pub fn set_overflow(&mut self, status: bool) {
+        self.cpsr.set_overflow(status);
+    }
 }

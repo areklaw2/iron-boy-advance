@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AluInstruction {
     AND,
@@ -45,6 +47,37 @@ impl From<u32> for AluInstruction {
     }
 }
 
-pub fn sbc(operand1: u32, operand: u32, carry: bool) -> u8 {
-    todo!("sbc")
+pub fn add<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
+    let result = operand1.wrapping_add(operand2);
+
+    if set_flags {
+        cpu.set_negative(result >> 31 != 0);
+        cpu.set_zero(result == 0);
+        cpu.set_carry(operand1 < result);
+        cpu.set_overflow((!(operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
+    }
+    result
+}
+
+//SBC and RSC
+pub fn sbc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
+    let operand3 = carry as u32 ^ 1;
+    let result = operand1.wrapping_sub(operand2).wrapping_sub(operand3);
+    if set_flags {
+        cpu.set_negative(result >> 31 != 0);
+        cpu.set_zero(result == 0);
+        cpu.set_carry(operand1 as u64 >= operand2 as u64 + operand3 as u64);
+        cpu.set_overflow(((operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
+    }
+    result
+}
+
+pub fn mvn<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand2: u32, carry: bool) -> u32 {
+    let result = !operand2;
+    if set_flags {
+        cpu.set_negative(result >> 31 != 0);
+        cpu.set_zero(result == 0);
+        cpu.set_carry(carry);
+    }
+    result
 }
