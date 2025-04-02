@@ -27,8 +27,9 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     general_registers_abt: [u32; 2], //r13 to r14
     general_registers_irq: [u32; 2], //r13 to r14
     general_registers_und: [u32; 2], //r13 to r14
-    cpsr: ProgramStatusRegister,
     spsrs: [ProgramStatusRegister; 5],
+    cpsr: ProgramStatusRegister,
+    spsr: ProgramStatusRegister,
     pipeline: [u32; 2],
     bus: I, // May need to make this shared
     next_memory_access: u8,
@@ -73,8 +74,9 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             general_registers_abt: [0; 2], //r13 to r14
             general_registers_irq: [0; 2], //r13 to r14
             general_registers_und: [0; 2], //r13 to r14
-            cpsr: ProgramStatusRegister::from_bits(0x13),
             spsrs: [ProgramStatusRegister::from_bits(0x13); 5],
+            cpsr: ProgramStatusRegister::from_bits(0x13),
+            spsr: ProgramStatusRegister::from_bits(0x13),
             pipeline: [0; 2],
             bus,
             next_memory_access: MemoryAccess::Instruction | MemoryAccess::Nonsequential,
@@ -107,8 +109,9 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     get_set!(general_registers_abt, set_general_registers_abt, [u32; 2]);
     get_set!(general_registers_irq, set_general_registers_irq, [u32; 2]);
     get_set!(general_registers_und, set_general_registers_und, [u32; 2]);
-    get_set!(cpsr, set_cpsr, ProgramStatusRegister);
     get_set!(spsrs, set_spsrs, [ProgramStatusRegister; 5]);
+    get_set!(cpsr, set_cpsr, ProgramStatusRegister);
+    get_set!(spsr, set_spsr, ProgramStatusRegister);
     get_set!(pipeline, set_pipeline, [u32; 2]);
 
     pub fn cycle(&mut self) {
@@ -171,8 +174,79 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
+    pub fn set_negative(&mut self, status: bool) {
+        self.cpsr.set_negative(status);
+    }
+
+    pub fn set_zero(&mut self, status: bool) {
+        self.cpsr.set_zero(status);
+    }
+
+    pub fn set_carry(&mut self, status: bool) {
+        self.cpsr.set_carry(status);
+    }
+
+    pub fn set_overflow(&mut self, status: bool) {
+        self.cpsr.set_overflow(status);
+    }
+
     pub fn set_cpu_state(&mut self, state: CpuState) {
         self.cpsr.set_cpu_state(state);
+    }
+
+    pub fn change_mode(&mut self, new_mode: CpuMode) {
+        let current_mode = self.cpsr.cpu_mode();
+        if current_mode == new_mode {
+            return;
+        }
+
+        let new_bank = new_mode.register_bank(self);
+        match current_mode {
+            CpuMode::User | CpuMode::System => {}
+            CpuMode::Fiq => {
+                for i in 0..7 {
+                    self.general_registers_fiq[i] = self.general_registers[i + 8]
+                }
+                self.spsrs[0] = self.spsr
+            }
+            CpuMode::Supervisor => {
+                self.general_registers_svc[0] = self.general_registers[13];
+                self.general_registers_svc[1] = self.general_registers[14];
+                self.spsrs[1] = self.spsr
+            }
+            CpuMode::Abort => {
+                self.general_registers_abt[0] = self.general_registers[13];
+                self.general_registers_abt[1] = self.general_registers[14];
+                self.spsrs[2] = self.spsr
+            }
+            CpuMode::Irq => {
+                self.general_registers_irq[0] = self.general_registers[13];
+                self.general_registers_irq[1] = self.general_registers[14];
+                self.spsrs[3] = self.spsr
+            }
+            CpuMode::Undefined => {
+                self.general_registers_und[0] = self.general_registers[13];
+                self.general_registers_und[1] = self.general_registers[14];
+                self.spsrs[4] = self.spsr
+            }
+        }
+
+        self.spsr = self.bank_spsr(new_mode);
+        match new_mode {
+            CpuMode::User | CpuMode::System => {}
+            CpuMode::Fiq => {
+                for i in 0..7 {
+                    self.general_registers[i + 8] = self.general_registers_fiq[i]
+                }
+                self.spsrs[0] = self.spsr
+            }
+            CpuMode::Supervisor | CpuMode::Abort | CpuMode::Irq | CpuMode::Undefined => {
+                self.general_registers[13] = new_bank[0];
+                self.general_registers[14] = new_bank[1];
+            }
+        }
+
+        self.cpsr.set_cpu_mode(new_mode)
     }
 
     pub fn pc(&self) -> u32 {
@@ -222,7 +296,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn get_register(&self, index: usize) -> u32 {
+    pub fn register(&self, index: usize) -> u32 {
         match index {
             0..=7 | 15 => self.general_registers[index],
             8..=12 => match self.cpsr.cpu_mode() == CpuMode::Fiq {
@@ -251,28 +325,23 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             13 | 14 => match self.cpsr.cpu_mode() {
                 CpuMode::System | CpuMode::User => self.general_registers[index] = value,
                 CpuMode::Fiq => self.general_registers_fiq[index - 8] = value,
-                CpuMode::Irq => self.general_registers_irq[index - 13] = value,
                 CpuMode::Supervisor => self.general_registers_svc[index - 13] = value,
                 CpuMode::Abort => self.general_registers_abt[index - 13] = value,
+                CpuMode::Irq => self.general_registers_irq[index - 13] = value,
                 CpuMode::Undefined => self.general_registers_und[index - 13] = value,
             },
             _ => panic!("Index out of range"),
         }
     }
 
-    pub fn set_negative(&mut self, status: bool) {
-        self.cpsr.set_negative(status);
-    }
-
-    pub fn set_zero(&mut self, status: bool) {
-        self.cpsr.set_zero(status);
-    }
-
-    pub fn set_carry(&mut self, status: bool) {
-        self.cpsr.set_carry(status);
-    }
-
-    pub fn set_overflow(&mut self, status: bool) {
-        self.cpsr.set_overflow(status);
+    fn bank_spsr(&self, mode: CpuMode) -> ProgramStatusRegister {
+        match mode {
+            CpuMode::User | CpuMode::System => self.cpsr,
+            CpuMode::Fiq => self.spsrs[0],
+            CpuMode::Supervisor => self.spsrs[1],
+            CpuMode::Abort => self.spsrs[2],
+            CpuMode::Irq => self.spsrs[3],
+            CpuMode::Undefined => self.spsrs[4],
+        }
     }
 }

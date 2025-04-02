@@ -1,15 +1,15 @@
 use crate::{
-    CpuAction, CpuState,
+    CpuAction, CpuState, Register,
     alu::{AluInstruction::*, *},
     barrel_shifter::{ShiftBy, ShiftType, asr, lsl, lsr, ror},
-    cpu::{Arm7tdmiCpu, LR},
+    cpu::{Arm7tdmiCpu, LR, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
 use crate::arm::ArmInstruction;
 
 pub fn execute_branch_and_exchange<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
-    let value = cpu.get_register(instruction.rn() as usize);
+    let value = cpu.register(instruction.rn() as usize);
     cpu.set_cpu_state(CpuState::from_bits((value & 0x1) as u8));
     cpu.set_pc(value & !0x1);
     cpu.refill_pipeline();
@@ -30,8 +30,8 @@ pub fn execute_branch_and_branch_with_link<I: MemoryInterface>(
 
 pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     let mut cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
-    let rn = instruction.rn();
-    let operand1 = cpu.get_register(rn as usize);
+    let rn = instruction.rn() as usize;
+    let operand1 = cpu.register(rn);
     let mut carry = cpu.cpsr().carry();
 
     let operand2 = match instruction.is_immediate_operand() {
@@ -42,7 +42,7 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
         }
         false => {
             let rm = instruction.rm();
-            let rm_value = cpu.get_register(rm as usize);
+            let rm_value = cpu.register(rm as usize);
             let shift_by = instruction.shift_by();
             let shift_amount = match shift_by {
                 ShiftBy::Immediate => instruction.shift_amount(),
@@ -52,7 +52,7 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
                     //     cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
                     // }
                     cpu.idle_cycle();
-                    cpu.get_register(instruction.rs() as usize) & 0xFF
+                    cpu.register(instruction.rs() as usize) & 0xFF
                 }
             };
             match instruction.shift_type() {
@@ -65,6 +65,13 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     };
 
     let s = instruction.sets_condition();
+    let rd = instruction.rd() as usize;
+    if s && rd == PC {
+        let spsr = cpu.spsr();
+        cpu.change_mode(spsr.cpu_mode());
+        cpu.set_cpsr(spsr);
+    }
+
     let opcode = instruction.opcode();
     let result = match opcode {
         AND => and(cpu, s, operand1, operand2, carry),
@@ -77,9 +84,9 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
         RSC => sbc(cpu, s, operand2, operand1, cpu.cpsr().carry()),
         TST => todo!(),
         TEQ => todo!(),
-        CMP => todo!(),
+        CMP => sub(cpu, s, operand1, operand2),
         CMN => todo!(),
-        ORR => todo!(),
+        ORR => orr(cpu, s, operand1, operand2, carry),
         MOV => todo!(),
         BIC => todo!(),
         MVN => mvn(cpu, s, operand2, carry),
@@ -88,7 +95,7 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     match opcode {
         TST | TEQ | CMP | CMN => {}
         _ => {
-            cpu.set_register(instruction.rd() as usize, result);
+            cpu.set_register(rd, result);
         }
     }
 

@@ -1,3 +1,6 @@
+use cpu::Arm7tdmiCpu;
+use memory::MemoryInterface;
+
 mod alu;
 mod arm;
 mod barrel_shifter;
@@ -44,6 +47,17 @@ impl CpuMode {
 
     pub const fn into_bits(self) -> u8 {
         self as u8
+    }
+
+    pub fn register_bank<I: MemoryInterface>(&self, cpu: &Arm7tdmiCpu<I>) -> Vec<u32> {
+        match self {
+            CpuMode::User | CpuMode::System => cpu.general_registers().to_vec(),
+            CpuMode::Fiq => cpu.general_registers_fiq().to_vec(),
+            CpuMode::Irq => cpu.general_registers_irq().to_vec(),
+            CpuMode::Abort => cpu.general_registers_abt().to_vec(),
+            CpuMode::Undefined => cpu.general_registers_und().to_vec(),
+            CpuMode::Supervisor => cpu.general_registers_svc().to_vec(),
+        }
     }
 }
 

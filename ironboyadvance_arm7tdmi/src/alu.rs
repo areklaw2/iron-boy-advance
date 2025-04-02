@@ -55,8 +55,24 @@ pub fn and<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
     result
 }
 
+//SUB, CMP
+pub fn sub<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
+    let result = operand1.wrapping_sub(operand2);
+    if set_flags {
+        cpu.set_negative(result >> 31 != 0);
+        cpu.set_zero(result == 0);
+        cpu.set_carry(operand1 as u64 >= operand2 as u64);
+        cpu.set_overflow(((operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
+    }
+    result
+}
+
 pub fn add<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
+    // 2684354715 0b0101_0000_0000_0000_0000_0000_1001_1011
+    // 2147483803 0b1000_0000_0000_0000_0000_0000_1001_1011
+
     let result = operand1.wrapping_add(operand2);
+    println!("{}", set_flags);
     if set_flags {
         cpu.set_negative(result >> 31 != 0);
         cpu.set_zero(result == 0);
@@ -75,6 +91,16 @@ pub fn sbc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
         cpu.set_zero(result == 0);
         cpu.set_carry(operand1 as u64 >= operand2 as u64 + operand3 as u64);
         cpu.set_overflow(((operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
+    }
+    result
+}
+
+pub fn orr<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
+    let result = operand1 | operand2;
+    if set_flags {
+        cpu.set_negative(result >> 31 != 0);
+        cpu.set_zero(result == 0);
+        cpu.set_carry(carry);
     }
     result
 }
