@@ -67,7 +67,7 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     let s = instruction.sets_condition();
     let opcode = instruction.opcode();
     let result = match opcode {
-        AND => todo!(),
+        AND => and(cpu, s, operand1, operand2, carry),
         EOR => todo!(),
         SUB => todo!(),
         RSB => todo!(),
