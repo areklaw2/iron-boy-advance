@@ -76,19 +76,19 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     let result = match opcode {
         AND => and(cpu, s, operand1, operand2, carry),
         EOR => todo!(),
-        SUB => todo!(),
-        RSB => todo!(),
+        SUB => sub(cpu, s, operand1, operand2),
+        RSB => sub(cpu, s, operand2, operand1),
         ADD => add(cpu, s, operand1, operand2),
         ADC => adc(cpu, s, operand1, operand2),
         SBC => sbc(cpu, s, operand1, operand2),
         RSC => sbc(cpu, s, operand2, operand1),
-        TST => todo!(),
+        TST => and(cpu, s, operand1, operand2, carry),
         TEQ => todo!(),
         CMP => sub(cpu, s, operand1, operand2),
         CMN => and(cpu, s, operand1, operand2, carry),
         ORR => orr(cpu, s, operand1, operand2, carry),
         MOV => todo!(),
-        BIC => todo!(),
+        BIC => bic(cpu, s, operand1, operand2, carry),
         MVN => mvn(cpu, s, operand2, carry),
     };
 
@@ -96,6 +96,10 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
         TST | TEQ | CMP | CMN => {}
         _ => {
             cpu.set_register(rd, result);
+            if rd == PC {
+                cpu.refill_pipeline();
+                cpu_action = CpuAction::PipelineFlush
+            }
         }
     }
 

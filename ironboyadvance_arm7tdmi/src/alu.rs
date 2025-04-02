@@ -45,6 +45,7 @@ impl From<u32> for AluInstruction {
     }
 }
 
+//AND, TST
 pub fn and<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
     let result = operand1 & operand2;
     if set_flags {
@@ -55,7 +56,7 @@ pub fn and<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
     result
 }
 
-//SUB, CMP
+//SUB, RSB, CMP
 pub fn sub<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
     let result = operand1.wrapping_sub(operand2);
     if set_flags {
@@ -105,6 +106,16 @@ pub fn sbc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 
 pub fn orr<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
     let result = operand1 | operand2;
+    if set_flags {
+        cpu.set_negative(result >> 31 != 0);
+        cpu.set_zero(result == 0);
+        cpu.set_carry(carry);
+    }
+    result
+}
+
+pub fn bic<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
+    let result = operand1 & !operand2;
     if set_flags {
         cpu.set_negative(result >> 31 != 0);
         cpu.set_zero(result == 0);
