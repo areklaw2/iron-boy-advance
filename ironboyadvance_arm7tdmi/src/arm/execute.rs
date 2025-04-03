@@ -65,17 +65,10 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     };
 
     let s = instruction.sets_condition();
-    let rd = instruction.rd() as usize;
-    if s && rd == PC {
-        let spsr = cpu.spsr();
-        cpu.change_mode(spsr.cpu_mode());
-        cpu.set_cpsr(spsr);
-    }
-
     let opcode = instruction.opcode();
     let result = match opcode {
         AND => and(cpu, s, operand1, operand2, carry),
-        EOR => todo!(),
+        EOR => eor(cpu, s, operand1, operand2, carry),
         SUB => sub(cpu, s, operand1, operand2),
         RSB => sub(cpu, s, operand2, operand1),
         ADD => add(cpu, s, operand1, operand2),
@@ -83,14 +76,21 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
         SBC => sbc(cpu, s, operand1, operand2),
         RSC => sbc(cpu, s, operand2, operand1),
         TST => and(cpu, s, operand1, operand2, carry),
-        TEQ => todo!(),
+        TEQ => eor(cpu, s, operand1, operand2, carry),
         CMP => sub(cpu, s, operand1, operand2),
-        CMN => and(cpu, s, operand1, operand2, carry),
+        CMN => add(cpu, s, operand1, operand2),
         ORR => orr(cpu, s, operand1, operand2, carry),
-        MOV => todo!(),
+        MOV => mov(cpu, s, operand2, carry),
         BIC => bic(cpu, s, operand1, operand2, carry),
         MVN => mvn(cpu, s, operand2, carry),
     };
+
+    let rd = instruction.rd() as usize;
+    if s && rd == PC {
+        let spsr = cpu.spsr();
+        //cpu.change_mode(spsr.cpu_mode());
+        cpu.set_cpsr(spsr);
+    }
 
     match opcode {
         TST | TEQ | CMP | CMN => {}

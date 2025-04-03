@@ -56,6 +56,17 @@ pub fn and<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
     result
 }
 
+//EOR, TEQ
+pub fn eor<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
+    let result = operand1 ^ operand2;
+    if set_flags {
+        cpu.set_negative(result >> 31 != 0);
+        cpu.set_zero(result == 0);
+        cpu.set_carry(carry);
+    }
+    result
+}
+
 //SUB, RSB, CMP
 pub fn sub<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
     let result = operand1.wrapping_sub(operand2);
@@ -124,8 +135,18 @@ pub fn bic<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
     result
 }
 
+pub fn mov<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand2: u32, carry: bool) -> u32 {
+    let result = operand2;
+    if set_flags {
+        cpu.set_negative(result >> 31 != 0);
+        cpu.set_zero(result == 0);
+        cpu.set_carry(carry);
+    }
+    result
+}
+
 pub fn mvn<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand2: u32, carry: bool) -> u32 {
-    let result = !operand2;
+    let result = operand2;
     if set_flags {
         cpu.set_negative(result >> 31 != 0);
         cpu.set_zero(result == 0);
