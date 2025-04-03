@@ -37,7 +37,7 @@ pub fn lsl(value: u32, amount: u32, carry: &mut bool) -> u32 {
     match amount {
         0 => value,
         1..=31 => {
-            *carry = (value << amount) & 0b1 != 0;
+            *carry = (value << (amount - 1)) >> 31 != 0;
             value << amount
         }
         32 => {
