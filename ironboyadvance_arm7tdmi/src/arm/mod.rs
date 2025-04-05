@@ -107,9 +107,12 @@ impl From<u32> for ArmInstructionKind {
             TransferPsrToRegister
         } else if instruction & 0x0DB0F000 == 0x0120F000 {
             TransferRegisterToPsr
-        } else if instruction & 0x0C000000 == 0x0000_0000 {
+        } else if instruction & 0x0C000000 == 0x00000000 {
             DataProcessing
         } else {
+            // Coprocessor Data Operation
+            // Coprocessor Register Transfer
+            // Coprocessor Data Transfer
             unimplemented!("Instruction undefined or unimplemented")
         }
     }

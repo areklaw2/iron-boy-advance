@@ -96,6 +96,9 @@ pub fn ror(value: u32, amount: u32, carry: &mut bool, is_immediate: bool) -> u32
         *carry = value & 0b1 != 0;
         (value >> 1) | (curr_carry) << 31
     } else {
+        if amount == 0 {
+            return value;
+        }
         let amount = amount % 32;
         let value = if amount != 0 { value.rotate_right(amount) } else { value };
         *carry = value >> 31 != 0;

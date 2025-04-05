@@ -31,30 +31,29 @@ pub fn execute_branch_and_branch_with_link<I: MemoryInterface>(
 pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     let mut cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
     let rn = instruction.rn() as usize;
-    let operand1 = cpu.register(rn);
+    let mut operand1 = cpu.register(rn);
     let mut carry = cpu.cpsr().carry();
 
     let operand2 = match instruction.is_immediate_operand() {
         true => {
             let rotate = 2 * instruction.rotate();
             let immediate = instruction.immediate();
-            if rotate != 0 {
-                ror(immediate, rotate, &mut carry, false)
-            } else {
-                immediate
-            }
+            ror(immediate, rotate, &mut carry, false)
         }
         false => {
-            let rm = instruction.rm();
-            let rm_value = cpu.register(rm as usize);
+            let rm = instruction.rm() as usize;
+            let mut rm_value = cpu.register(rm);
             let shift_by = instruction.shift_by();
             let shift_amount = match shift_by {
                 ShiftBy::Immediate => instruction.shift_amount(),
                 ShiftBy::Register => {
-                    // if rn == Register::R15 || rm == Register::R15 {
-                    //     cpu.advance_pc_arm();
-                    //     cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
-                    // }
+                    if rn == PC {
+                        operand1 += 4;
+                    }
+                    if rm == PC {
+                        rm_value += 4;
+                    }
+                    cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
                     cpu.idle_cycle();
                     cpu.register(instruction.rs() as usize) & 0xFF
                 }
@@ -92,6 +91,7 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     let rd = instruction.rd() as usize;
     if set_flags && rd == PC && cpu.cpsr().cpu_mode() != CpuMode::User {
         let spsr = cpu.spsr();
+        //TODO: figure out how changing modes works
         //cpu.change_mode(spsr.cpu_mode());
         cpu.set_cpsr(spsr);
     }
