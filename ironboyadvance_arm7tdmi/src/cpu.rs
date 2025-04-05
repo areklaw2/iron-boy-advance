@@ -243,7 +243,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.general_registers[PC] = self.general_registers[PC].wrapping_add(4);
     }
 
-    pub fn refill_pipeline(&mut self) {
+    pub fn pipeline_flush(&mut self) {
         match self.cpsr.cpu_state() {
             CpuState::Arm => {
                 self.pipeline[0] = self.load_32(

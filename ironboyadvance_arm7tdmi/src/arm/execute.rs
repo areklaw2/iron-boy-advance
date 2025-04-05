@@ -1,5 +1,5 @@
 use crate::{
-    CpuAction, CpuState, Register,
+    CpuAction, CpuMode, CpuState, Register,
     alu::{AluInstruction::*, *},
     barrel_shifter::{ShiftBy, ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, LR, PC},
@@ -12,7 +12,7 @@ pub fn execute_branch_and_exchange<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
     let value = cpu.register(instruction.rn() as usize);
     cpu.set_cpu_state(CpuState::from_bits((value & 0x1) as u8));
     cpu.set_pc(value & !0x1);
-    cpu.refill_pipeline();
+    cpu.pipeline_flush();
     CpuAction::PipelineFlush
 }
 
@@ -24,7 +24,7 @@ pub fn execute_branch_and_branch_with_link<I: MemoryInterface>(
         cpu.set_register(LR, cpu.pc() - 4)
     }
     cpu.set_pc((cpu.pc() as i32).wrapping_add(instruction.offset()) as u32);
-    cpu.refill_pipeline();
+    cpu.pipeline_flush();
     CpuAction::PipelineFlush
 }
 
@@ -38,7 +38,9 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
         true => {
             let rotate = 2 * instruction.rotate();
             let immediate = instruction.immediate();
-            immediate.rotate_right(rotate)
+            println!("{}", rotate);
+            println!("{}", immediate);
+            ror(immediate, rotate, &mut carry, false)
         }
         false => {
             let rm = instruction.rm();
@@ -86,20 +88,17 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     };
 
     let rd = instruction.rd() as usize;
-    if set_flags && rd == PC {
+    if set_flags && rd == PC && cpu.cpsr().cpu_mode() != CpuMode::User {
         let spsr = cpu.spsr();
-        cpu.change_mode(spsr.cpu_mode());
+        //cpu.change_mode(spsr.cpu_mode());
         cpu.set_cpsr(spsr);
     }
 
-    match opcode {
-        TST | TEQ | CMP | CMN => {}
-        _ => {
-            cpu.set_register(rd, result);
-            if rd == PC {
-                cpu.refill_pipeline();
-                cpu_action = CpuAction::PipelineFlush
-            }
+    if !matches!(opcode, TST | TEQ | CMP | CMN) {
+        cpu.set_register(rd, result);
+        if rd == PC {
+            cpu.pipeline_flush();
+            cpu_action = CpuAction::PipelineFlush
         }
     }
 
