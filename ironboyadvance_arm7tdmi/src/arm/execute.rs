@@ -38,9 +38,11 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
         true => {
             let rotate = 2 * instruction.rotate();
             let immediate = instruction.immediate();
-            println!("{}", rotate);
-            println!("{}", immediate);
-            ror(immediate, rotate, &mut carry, false)
+            if rotate != 0 {
+                ror(immediate, rotate, &mut carry, false)
+            } else {
+                immediate
+            }
         }
         false => {
             let rm = instruction.rm();
