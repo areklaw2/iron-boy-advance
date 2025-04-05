@@ -111,8 +111,8 @@ impl From<u32> for ArmInstructionKind {
             DataProcessing
         } else {
             // Coprocessor Data Operation
-            // Coprocessor Register Transfer
             // Coprocessor Data Transfer
+            // Coprocessor Register Transfer
             unimplemented!("Instruction undefined or unimplemented")
         }
     }

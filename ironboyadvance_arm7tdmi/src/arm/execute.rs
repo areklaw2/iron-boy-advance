@@ -92,6 +92,7 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     if set_flags && rd == PC && cpu.cpsr().cpu_mode() != CpuMode::User {
         let spsr = cpu.spsr();
         //TODO: figure out how changing modes works
+        //There maybe an exception after which un does this mode change
         //cpu.change_mode(spsr.cpu_mode());
         cpu.set_cpsr(spsr);
     }
