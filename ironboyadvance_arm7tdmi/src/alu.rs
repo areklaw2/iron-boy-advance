@@ -92,19 +92,14 @@ pub fn add<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 }
 
 pub fn adc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
-    let result = operand1.wrapping_add(operand2).wrapping_add(cpu.cpsr().carry() as u32);
-
-    println!("0b{:032b}", 2147483795 as u32);
-    println!("0b{:032b}", 2684354707 as u32);
-    println!("0b{:032b}", result);
-
+    let result = operand1 as u64 + operand2 as u64 + cpu.cpsr().carry() as u64;
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
+        cpu.set_negative((result >> 31) & 0b1 != 0);
         cpu.set_zero(result == 0);
-        cpu.set_carry(result < operand1);
-        cpu.set_overflow((!(operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
+        cpu.set_carry(result >> 32 != 0);
+        cpu.set_overflow((!(operand1 ^ operand2) & (operand1 ^ result as u32)) >> 31 != 0);
     }
-    result
+    result as u32
 }
 
 //SBC and RSC

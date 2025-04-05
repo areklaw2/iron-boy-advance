@@ -19,7 +19,7 @@ pub fn disassamble_data_processing(instruction: &ArmInstruction) -> String {
     use AluInstruction::*;
     let cond = instruction.cond();
     let opcode = instruction.opcode();
-    let s = if instruction.sets_condition() { "S" } else { "" };
+    let s = if instruction.sets_flags() { "S" } else { "" };
     let rd = instruction.rd();
     let rn = instruction.rn();
     let operand_2 = match instruction.is_immediate_operand() {

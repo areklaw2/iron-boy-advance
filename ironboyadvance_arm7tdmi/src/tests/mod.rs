@@ -96,11 +96,11 @@ fn single_step_tests() {
             let final_state = test.final_state;
 
             cpu.set_general_registers(intial_state.r);
-            cpu.set_general_registers_fiq(intial_state.r_fiq);
-            cpu.set_general_registers_svc(intial_state.r_svc);
-            cpu.set_general_registers_abt(intial_state.r_abt);
-            cpu.set_general_registers_irq(intial_state.r_irq);
-            cpu.set_general_registers_und(intial_state.r_und);
+            cpu.set_banked_registers_fiq(intial_state.r_fiq);
+            cpu.set_banked_registers_svc(intial_state.r_svc);
+            cpu.set_banked_registers_abt(intial_state.r_abt);
+            cpu.set_banked_registers_irq(intial_state.r_irq);
+            cpu.set_banked_registers_und(intial_state.r_und);
             cpu.set_cpsr(ProgramStatusRegister::from_bits(intial_state.cpsr));
             cpu.set_spsrs(intial_state.spsr.map(|x| ProgramStatusRegister::from_bits(x)));
             cpu.set_pipeline(intial_state.pipeline);
@@ -108,11 +108,11 @@ fn single_step_tests() {
             cpu.cycle();
 
             assert_eq!(cpu.general_registers(), final_state.r);
-            assert_eq!(cpu.general_registers_fiq(), final_state.r_fiq);
-            assert_eq!(cpu.general_registers_svc(), final_state.r_svc);
-            assert_eq!(cpu.general_registers_abt(), final_state.r_abt);
-            assert_eq!(cpu.general_registers_irq(), final_state.r_irq);
-            assert_eq!(cpu.general_registers_und(), final_state.r_und);
+            assert_eq!(cpu.banked_registers_fiq(), final_state.r_fiq);
+            assert_eq!(cpu.banked_registers_svc(), final_state.r_svc);
+            assert_eq!(cpu.banked_registers_abt(), final_state.r_abt);
+            assert_eq!(cpu.banked_registers_irq(), final_state.r_irq);
+            assert_eq!(cpu.banked_registers_und(), final_state.r_und);
             assert_eq!(cpu.spsrs().map(|x| x.into_bits()), final_state.spsr);
             assert_eq!(cpu.cpsr().into_bits(), final_state.cpsr);
             assert_eq!(cpu.pipeline(), final_state.pipeline);

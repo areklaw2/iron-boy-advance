@@ -64,31 +64,31 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
         }
     };
 
-    let s = instruction.sets_condition();
+    let set_flags = instruction.sets_flags();
     let opcode = instruction.opcode();
     let result = match opcode {
-        AND => and(cpu, s, operand1, operand2, carry),
-        EOR => eor(cpu, s, operand1, operand2, carry),
-        SUB => sub(cpu, s, operand1, operand2),
-        RSB => sub(cpu, s, operand2, operand1),
-        ADD => add(cpu, s, operand1, operand2),
-        ADC => adc(cpu, s, operand1, operand2),
-        SBC => sbc(cpu, s, operand1, operand2),
-        RSC => sbc(cpu, s, operand2, operand1),
-        TST => and(cpu, s, operand1, operand2, carry),
-        TEQ => eor(cpu, s, operand1, operand2, carry),
-        CMP => sub(cpu, s, operand1, operand2),
-        CMN => add(cpu, s, operand1, operand2),
-        ORR => orr(cpu, s, operand1, operand2, carry),
-        MOV => mov(cpu, s, operand2, carry),
-        BIC => bic(cpu, s, operand1, operand2, carry),
-        MVN => mvn(cpu, s, operand2, carry),
+        AND => and(cpu, set_flags, operand1, operand2, carry),
+        EOR => eor(cpu, set_flags, operand1, operand2, carry),
+        SUB => sub(cpu, set_flags, operand1, operand2),
+        RSB => sub(cpu, set_flags, operand2, operand1),
+        ADD => add(cpu, set_flags, operand1, operand2),
+        ADC => adc(cpu, set_flags, operand1, operand2),
+        SBC => sbc(cpu, set_flags, operand1, operand2),
+        RSC => sbc(cpu, set_flags, operand2, operand1),
+        TST => and(cpu, set_flags, operand1, operand2, carry),
+        TEQ => eor(cpu, set_flags, operand1, operand2, carry),
+        CMP => sub(cpu, set_flags, operand1, operand2),
+        CMN => add(cpu, set_flags, operand1, operand2),
+        ORR => orr(cpu, set_flags, operand1, operand2, carry),
+        MOV => mov(cpu, set_flags, operand2, carry),
+        BIC => bic(cpu, set_flags, operand1, operand2, carry),
+        MVN => mvn(cpu, set_flags, operand2, carry),
     };
 
     let rd = instruction.rd() as usize;
-    if s && rd == PC {
+    if set_flags && rd == PC {
         let spsr = cpu.spsr();
-        //cpu.change_mode(spsr.cpu_mode());
+        cpu.change_mode(spsr.cpu_mode());
         cpu.set_cpsr(spsr);
     }
 

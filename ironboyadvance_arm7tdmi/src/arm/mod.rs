@@ -222,7 +222,7 @@ impl ArmInstruction {
         self.bits[21..=24].load::<u32>().into()
     }
 
-    pub fn sets_condition(&self) -> bool {
+    pub fn sets_flags(&self) -> bool {
         self.bits[20]
     }
 

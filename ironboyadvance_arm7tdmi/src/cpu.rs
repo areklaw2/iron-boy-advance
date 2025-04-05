@@ -22,11 +22,11 @@ pub trait Instruction {
 
 pub struct Arm7tdmiCpu<I: MemoryInterface> {
     general_registers: [u32; 16],
-    general_registers_fiq: [u32; 7], //r8 to r12
-    general_registers_svc: [u32; 2], //r13 to r14
-    general_registers_abt: [u32; 2], //r13 to r14
-    general_registers_irq: [u32; 2], //r13 to r14
-    general_registers_und: [u32; 2], //r13 to r14
+    banked_registers_fiq: [u32; 7], //r8 to r14
+    banked_registers_svc: [u32; 2], //r13 to r14
+    banked_registers_abt: [u32; 2], //r13 to r14
+    banked_registers_irq: [u32; 2], //r13 to r14
+    banked_registers_und: [u32; 2], //r13 to r14
     spsrs: [ProgramStatusRegister; 5],
     cpsr: ProgramStatusRegister,
     pipeline: [u32; 2],
@@ -68,11 +68,11 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn new(bus: I, skip_bios: bool) -> Self {
         let mut cpu = Arm7tdmiCpu {
             general_registers: [0; 16],
-            general_registers_fiq: [0; 7], //r8 to r12
-            general_registers_svc: [0; 2], //r13 to r14
-            general_registers_abt: [0; 2], //r13 to r14
-            general_registers_irq: [0; 2], //r13 to r14
-            general_registers_und: [0; 2], //r13 to r14
+            banked_registers_fiq: [0; 7], //r8 to r14
+            banked_registers_svc: [0; 2], //r13 to r14
+            banked_registers_abt: [0; 2], //r13 to r14
+            banked_registers_irq: [0; 2], //r13 to r14
+            banked_registers_und: [0; 2], //r13 to r14
             spsrs: [ProgramStatusRegister::from_bits(0x13); 5],
             cpsr: ProgramStatusRegister::from_bits(0x13),
             pipeline: [0; 2],
@@ -85,8 +85,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 cpu.general_registers[SP] = 0x03007F00;
                 cpu.general_registers[LR] = 0x08000000;
                 cpu.general_registers[PC] = 0x08000000;
-                cpu.general_registers_svc[0] = 0x3007FE0;
-                cpu.general_registers_irq[0] = 0x3007FA0;
+                cpu.banked_registers_svc[0] = 0x3007FE0;
+                cpu.banked_registers_irq[0] = 0x3007FA0;
                 cpu.cpsr.set_cpu_mode(CpuMode::System);
                 cpu.cpsr.set_irq_disable(false);
             }
@@ -102,11 +102,11 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     get_set!(general_registers, set_general_registers, [u32; 16]);
-    get_set!(general_registers_fiq, set_general_registers_fiq, [u32; 7]);
-    get_set!(general_registers_svc, set_general_registers_svc, [u32; 2]);
-    get_set!(general_registers_abt, set_general_registers_abt, [u32; 2]);
-    get_set!(general_registers_irq, set_general_registers_irq, [u32; 2]);
-    get_set!(general_registers_und, set_general_registers_und, [u32; 2]);
+    get_set!(banked_registers_fiq, set_banked_registers_fiq, [u32; 7]);
+    get_set!(banked_registers_svc, set_banked_registers_svc, [u32; 2]);
+    get_set!(banked_registers_abt, set_banked_registers_abt, [u32; 2]);
+    get_set!(banked_registers_irq, set_banked_registers_irq, [u32; 2]);
+    get_set!(banked_registers_und, set_banked_registers_und, [u32; 2]);
     get_set!(spsrs, set_spsrs, [ProgramStatusRegister; 5]);
     get_set!(cpsr, set_cpsr, ProgramStatusRegister);
     get_set!(pipeline, set_pipeline, [u32; 2]);
@@ -202,40 +202,28 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         let current_spsr = self.bank_spsr(current_mode);
         match current_mode {
             CpuMode::User | CpuMode::System => todo!(),
-            CpuMode::Fiq => todo!(),
-            CpuMode::Supervisor => {
-                self.spsrs[1] = new_spsr;
-            }
+            CpuMode::Fiq => {}
+            CpuMode::Supervisor => {}
             CpuMode::Abort => {
-                self.general_registers_abt[0] = self.general_registers[13];
-                self.general_registers_abt[1] = self.general_registers[14];
-                self.spsrs[2] = new_spsr;
+                self.banked_registers_abt[0] = self.general_registers[13];
+                self.banked_registers_abt[1] = self.general_registers[14];
+                self.spsrs[2] = current_spsr;
             }
-            CpuMode::Irq => {
-                self.spsrs[3] = new_spsr;
-            }
-            CpuMode::Undefined => {
-                self.spsrs[4] = new_spsr;
-            }
+            CpuMode::Irq => {}
+            CpuMode::Undefined => {}
         }
 
         match new_mode {
             CpuMode::User | CpuMode::System => todo!(),
             CpuMode::Fiq => todo!(),
             CpuMode::Supervisor => {
-                self.general_registers[13] = self.general_registers_svc[0];
-                self.general_registers[14] = self.general_registers_svc[1];
-                self.spsrs[2] = current_spsr;
+                self.general_registers[13] = self.banked_registers_svc[0];
+                self.general_registers[14] = self.banked_registers_svc[1];
+                self.spsrs[1] = new_spsr;
             }
-            CpuMode::Abort => {
-                self.spsrs[2] = current_spsr;
-            }
-            CpuMode::Irq => {
-                self.spsrs[3] = current_spsr;
-            }
-            CpuMode::Undefined => {
-                self.spsrs[4] = current_spsr;
-            }
+            CpuMode::Abort => {}
+            CpuMode::Irq => {}
+            CpuMode::Undefined => {}
         }
     }
 
@@ -290,16 +278,16 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         match index {
             0..=7 | 15 => self.general_registers[index],
             8..=12 => match self.cpsr.cpu_mode() == CpuMode::Fiq {
-                true => self.general_registers_fiq[index - 8],
+                true => self.banked_registers_fiq[index - 8],
                 false => self.general_registers[index],
             },
             13 | 14 => match self.cpsr.cpu_mode() {
                 CpuMode::System | CpuMode::User => self.general_registers[index],
-                CpuMode::Fiq => self.general_registers_fiq[index - 8],
-                CpuMode::Irq => self.general_registers_irq[index - 13],
-                CpuMode::Supervisor => self.general_registers_svc[index - 13],
-                CpuMode::Abort => self.general_registers_abt[index - 13],
-                CpuMode::Undefined => self.general_registers_und[index - 13],
+                CpuMode::Fiq => self.banked_registers_fiq[index - 8],
+                CpuMode::Irq => self.banked_registers_irq[index - 13],
+                CpuMode::Supervisor => self.banked_registers_svc[index - 13],
+                CpuMode::Abort => self.banked_registers_abt[index - 13],
+                CpuMode::Undefined => self.banked_registers_und[index - 13],
             },
             _ => panic!("Index out of range"),
         }
@@ -309,16 +297,16 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         match index {
             0..=7 | 15 => self.general_registers[index] = value,
             8..=12 => match self.cpsr.cpu_mode() == CpuMode::Fiq {
-                true => self.general_registers_fiq[index - 8] = value,
+                true => self.banked_registers_fiq[index - 8] = value,
                 false => self.general_registers[index] = value,
             },
             13 | 14 => match self.cpsr.cpu_mode() {
                 CpuMode::System | CpuMode::User => self.general_registers[index] = value,
-                CpuMode::Fiq => self.general_registers_fiq[index - 8] = value,
-                CpuMode::Supervisor => self.general_registers_svc[index - 13] = value,
-                CpuMode::Abort => self.general_registers_abt[index - 13] = value,
-                CpuMode::Irq => self.general_registers_irq[index - 13] = value,
-                CpuMode::Undefined => self.general_registers_und[index - 13] = value,
+                CpuMode::Fiq => self.banked_registers_fiq[index - 8] = value,
+                CpuMode::Supervisor => self.banked_registers_svc[index - 13] = value,
+                CpuMode::Abort => self.banked_registers_abt[index - 13] = value,
+                CpuMode::Irq => self.banked_registers_irq[index - 13] = value,
+                CpuMode::Undefined => self.banked_registers_und[index - 13] = value,
             },
             _ => panic!("Index out of range"),
         }
@@ -338,11 +326,11 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     fn bank_registers(&self, mode: CpuMode) -> Vec<u32> {
         match mode {
             CpuMode::User | CpuMode::System => self.general_registers.to_vec(),
-            CpuMode::Fiq => self.general_registers_fiq.to_vec(),
-            CpuMode::Irq => self.general_registers_irq.to_vec(),
-            CpuMode::Abort => self.general_registers_abt.to_vec(),
-            CpuMode::Undefined => self.general_registers_und.to_vec(),
-            CpuMode::Supervisor => self.general_registers_svc.to_vec(),
+            CpuMode::Fiq => self.banked_registers_fiq.to_vec(),
+            CpuMode::Irq => self.banked_registers_irq.to_vec(),
+            CpuMode::Abort => self.banked_registers_abt.to_vec(),
+            CpuMode::Undefined => self.banked_registers_und.to_vec(),
+            CpuMode::Supervisor => self.banked_registers_svc.to_vec(),
         }
     }
 
@@ -350,10 +338,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         match mode {
             CpuMode::User | CpuMode::System => self.cpsr,
             CpuMode::Fiq => self.spsrs[0],
-            CpuMode::Irq => self.spsrs[1],
+            CpuMode::Supervisor => self.spsrs[1],
             CpuMode::Abort => self.spsrs[2],
-            CpuMode::Undefined => self.spsrs[3],
-            CpuMode::Supervisor => self.spsrs[4],
+            CpuMode::Irq => self.spsrs[3],
+            CpuMode::Undefined => self.spsrs[4],
         }
     }
 }
