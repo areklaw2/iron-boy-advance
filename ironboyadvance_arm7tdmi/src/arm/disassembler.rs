@@ -2,13 +2,13 @@ use crate::{alu::AluInstruction, barrel_shifter::ShiftBy};
 
 use super::ArmInstruction;
 
-pub fn disassemble_branch_and_exchange(instruction: &ArmInstruction) -> String {
+pub fn disassemble_bx(instruction: &ArmInstruction) -> String {
     let cond = instruction.cond();
     let rn = instruction.rn();
     format!("BX{cond} {rn}")
 }
 
-pub fn disassemble_branch_and_branch_with_link(instruction: &ArmInstruction) -> String {
+pub fn disassemble_b_bl(instruction: &ArmInstruction) -> String {
     let cond = instruction.cond();
     let link = if instruction.link() { "L" } else { "" };
     let expression = instruction.offset();

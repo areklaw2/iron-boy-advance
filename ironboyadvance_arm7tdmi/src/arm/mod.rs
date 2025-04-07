@@ -61,20 +61,22 @@ impl From<u32> for Condition {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ArmInstructionKind {
-    BranchAndExchange,
-    BlockDataTransfer,
-    BranchAndBranchWithLink,
-    SoftwareInterrupt,
-    Undefined,
-    SingleDataTransfer,
-    SingleDataSwap,
+    DataProcessing,
+    PsrTransfer,
     Multiply,
     MultiplyLong,
+    SingleDataSwap,
+    BranchAndExchange,
     HalfwordDataTransferRegister,
     HalfwordDataTransferImmediate,
-    TransferPsrToRegister,
-    TransferRegisterToPsr,
-    DataProcessing,
+    SingleDataTransfer,
+    Undefined,
+    BlockDataTransfer,
+    BranchAndBranchWithLink,
+    // CoprocessorDataTransfer,
+    // CoprocessorDataOperation,
+    // CoprocessorRegisterTransfer,
+    SoftwareInterrupt,
 }
 
 impl From<u32> for ArmInstructionKind {
@@ -83,7 +85,7 @@ impl From<u32> for ArmInstructionKind {
         // Decoding order matters
         if instruction & 0x0FFFFFF0 == 0x012FFF10 {
             BranchAndExchange
-        } else if instruction & 0x0E000000 == 0x0800_0000 {
+        } else if instruction & 0x0E000000 == 0x08000000 {
             BlockDataTransfer
         } else if instruction & 0x0F000000 == 0x0A000000 || instruction & 0x0F000000 == 0x0B000000 {
             BranchAndBranchWithLink
@@ -103,10 +105,8 @@ impl From<u32> for ArmInstructionKind {
             HalfwordDataTransferRegister
         } else if instruction & 0x0E400090 == 0x00400090 {
             HalfwordDataTransferImmediate
-        } else if instruction & 0x0FBF0000 == 0x010F0000 {
-            TransferPsrToRegister
-        } else if instruction & 0x0DB0F000 == 0x0120F000 {
-            TransferRegisterToPsr
+        } else if instruction & 0x0FBF0000 == 0x010F0000 || instruction & 0x0DB0F000 == 0x0120F000 {
+            PsrTransfer
         } else if instruction & 0x0C000000 == 0x00000000 {
             DataProcessing
         } else {
@@ -153,8 +153,8 @@ impl Instruction for ArmInstruction {
     fn disassamble(&self) -> String {
         use ArmInstructionKind::*;
         match self.kind {
-            BranchAndExchange => disassemble_branch_and_exchange(self),
-            BranchAndBranchWithLink => disassemble_branch_and_branch_with_link(self),
+            BranchAndExchange => disassemble_bx(self),
+            BranchAndBranchWithLink => disassemble_b_bl(self),
             DataProcessing => disassamble_data_processing(self),
             _ => todo!(),
         }
@@ -163,8 +163,8 @@ impl Instruction for ArmInstruction {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         use ArmInstructionKind::*;
         match self.kind {
-            BranchAndExchange => execute_branch_and_exchange(cpu, self),
-            BranchAndBranchWithLink => execute_branch_and_branch_with_link(cpu, self),
+            BranchAndExchange => execute_bx(cpu, self),
+            BranchAndBranchWithLink => execute_b_bl(cpu, self),
             DataProcessing => execute_data_processing(cpu, self),
             _ => todo!(),
         }

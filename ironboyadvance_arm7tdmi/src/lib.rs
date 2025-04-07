@@ -1,7 +1,3 @@
-use cpu::Arm7tdmiCpu;
-use memory::MemoryInterface;
-use psr::ProgramStatusRegister;
-
 mod alu;
 mod arm;
 mod barrel_shifter;

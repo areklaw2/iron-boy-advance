@@ -8,7 +8,7 @@ use crate::{
 
 use crate::arm::ArmInstruction;
 
-pub fn execute_branch_and_exchange<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+pub fn execute_bx<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     let value = cpu.register(instruction.rn() as usize);
     cpu.set_cpu_state(CpuState::from_bits((value & 0x1) as u8));
     cpu.set_pc(value & !0x1);
@@ -16,10 +16,7 @@ pub fn execute_branch_and_exchange<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
     CpuAction::PipelineFlush
 }
 
-pub fn execute_branch_and_branch_with_link<I: MemoryInterface>(
-    cpu: &mut Arm7tdmiCpu<I>,
-    instruction: &ArmInstruction,
-) -> CpuAction {
+pub fn execute_b_bl<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     if instruction.link() {
         cpu.set_register(LR, cpu.pc() - 4)
     }
