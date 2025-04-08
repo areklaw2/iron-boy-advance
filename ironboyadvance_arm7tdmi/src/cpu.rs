@@ -22,6 +22,7 @@ pub trait Instruction {
 
 pub struct Arm7tdmiCpu<I: MemoryInterface> {
     general_registers: [u32; 16],
+    banked_registers_old: [u32; 7], //r8 to r14
     banked_registers_fiq: [u32; 7], //r8 to r14
     banked_registers_svc: [u32; 2], //r13 to r14
     banked_registers_abt: [u32; 2], //r13 to r14
@@ -68,6 +69,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn new(bus: I, skip_bios: bool) -> Self {
         let mut cpu = Arm7tdmiCpu {
             general_registers: [0; 16],
+            banked_registers_old: [0; 7], //r8 to r14
             banked_registers_fiq: [0; 7], //r8 to r14
             banked_registers_svc: [0; 2], //r13 to r14
             banked_registers_abt: [0; 2], //r13 to r14
@@ -102,6 +104,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     get_set!(general_registers, set_general_registers, [u32; 16]);
+    get_set!(banked_registers_old, set_banked_registers_old, [u32; 7]);
     get_set!(banked_registers_fiq, set_banked_registers_fiq, [u32; 7]);
     get_set!(banked_registers_svc, set_banked_registers_svc, [u32; 2]);
     get_set!(banked_registers_abt, set_banked_registers_abt, [u32; 2]);
@@ -198,32 +201,76 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             return;
         }
 
-        let new_spsr = self.bank_spsr(new_mode);
-        let current_spsr = self.bank_spsr(current_mode);
         match current_mode {
-            CpuMode::User | CpuMode::System => todo!(),
-            CpuMode::Fiq => {}
-            CpuMode::Supervisor => {}
+            CpuMode::User | CpuMode::System => {
+                self.banked_registers_old[0] = self.general_registers[13];
+                self.banked_registers_old[1] = self.general_registers[14];
+            }
+            CpuMode::Fiq => {
+                for i in 0..7 {
+                    self.banked_registers_fiq[i] = self.general_registers[i + 8]
+                }
+                for i in 0..5 {
+                    self.general_registers[i + 8] = self.banked_registers_old[i]
+                }
+                self.spsrs[0] = self.spsr();
+            }
+            CpuMode::Supervisor => {
+                self.banked_registers_svc[0] = self.general_registers[13];
+                self.banked_registers_svc[1] = self.general_registers[14];
+                self.spsrs[1] = self.spsr();
+            }
             CpuMode::Abort => {
                 self.banked_registers_abt[0] = self.general_registers[13];
                 self.banked_registers_abt[1] = self.general_registers[14];
-                self.spsrs[2] = current_spsr;
+                self.spsrs[2] = self.spsr();
             }
-            CpuMode::Irq => {}
-            CpuMode::Undefined => {}
+            CpuMode::Irq => {
+                self.banked_registers_irq[0] = self.general_registers[13];
+                self.banked_registers_irq[1] = self.general_registers[14];
+                self.spsrs[3] = self.spsr();
+            }
+            CpuMode::Undefined => {
+                self.banked_registers_und[0] = self.general_registers[13];
+                self.banked_registers_und[1] = self.general_registers[14];
+                self.spsrs[4] = self.spsr();
+            }
         }
 
         match new_mode {
-            CpuMode::User | CpuMode::System => todo!(),
-            CpuMode::Fiq => todo!(),
+            CpuMode::User | CpuMode::System => {
+                self.general_registers[13] = self.banked_registers_old[0];
+                self.general_registers[14] = self.banked_registers_old[1];
+            }
+            CpuMode::Fiq => {
+                for i in 0..5 {
+                    self.banked_registers_old[i] = self.general_registers[i + 8]
+                }
+                for i in 0..7 {
+                    self.general_registers[i + 8] = self.banked_registers_fiq[i]
+                }
+                self.set_spsr(self.spsrs[0]);
+            }
             CpuMode::Supervisor => {
                 self.general_registers[13] = self.banked_registers_svc[0];
                 self.general_registers[14] = self.banked_registers_svc[1];
-                self.spsrs[1] = new_spsr;
+                self.set_spsr(self.spsrs[1])
             }
-            CpuMode::Abort => {}
-            CpuMode::Irq => {}
-            CpuMode::Undefined => {}
+            CpuMode::Abort => {
+                self.general_registers[13] = self.banked_registers_abt[0];
+                self.general_registers[14] = self.banked_registers_abt[1];
+                self.set_spsr(self.spsrs[2])
+            }
+            CpuMode::Irq => {
+                self.general_registers[13] = self.banked_registers_irq[0];
+                self.general_registers[14] = self.banked_registers_irq[1];
+                self.set_spsr(self.spsrs[3])
+            }
+            CpuMode::Undefined => {
+                self.general_registers[13] = self.banked_registers_und[0];
+                self.general_registers[14] = self.banked_registers_und[1];
+                self.set_spsr(self.spsrs[4])
+            }
         }
     }
 
@@ -323,25 +370,14 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    fn bank_registers(&self, mode: CpuMode) -> Vec<u32> {
-        match mode {
-            CpuMode::User | CpuMode::System => self.general_registers.to_vec(),
-            CpuMode::Fiq => self.banked_registers_fiq.to_vec(),
-            CpuMode::Irq => self.banked_registers_irq.to_vec(),
-            CpuMode::Abort => self.banked_registers_abt.to_vec(),
-            CpuMode::Undefined => self.banked_registers_und.to_vec(),
-            CpuMode::Supervisor => self.banked_registers_svc.to_vec(),
-        }
-    }
-
-    fn bank_spsr(&self, mode: CpuMode) -> ProgramStatusRegister {
-        match mode {
-            CpuMode::User | CpuMode::System => self.cpsr,
-            CpuMode::Fiq => self.spsrs[0],
-            CpuMode::Supervisor => self.spsrs[1],
-            CpuMode::Abort => self.spsrs[2],
-            CpuMode::Irq => self.spsrs[3],
-            CpuMode::Undefined => self.spsrs[4],
+    pub fn set_spsr(&mut self, spsr: ProgramStatusRegister) {
+        match self.cpsr.cpu_mode() {
+            CpuMode::User | CpuMode::System => {}
+            CpuMode::Fiq => self.spsrs[0] = spsr,
+            CpuMode::Supervisor => self.spsrs[1] = spsr,
+            CpuMode::Abort => self.spsrs[2] = spsr,
+            CpuMode::Irq => self.spsrs[3] = spsr,
+            CpuMode::Undefined => self.spsrs[4] = spsr,
         }
     }
 }
