@@ -1,4 +1,4 @@
-use crate::{alu::AluInstruction, barrel_shifter::ShiftBy};
+use crate::{CpuMode, alu::AluInstruction, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
 use super::ArmInstruction;
 
@@ -47,4 +47,23 @@ pub fn disassamble_data_processing(instruction: &ArmInstruction) -> String {
         CMP | CMN | TEQ | TST => format!("{opcode}{cond} {rn},{operand_2}"),
         _ => format!("{opcode}{cond}{s} {rd},{rn},{operand_2}"),
     }
+}
+
+pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> String {
+    //msr
+    let cond = instruction.cond();
+    let rd = instruction.rd();
+    let psr = match instruction.is_spsr() {
+        false => "CPSR",
+        true => match cpu.cpsr().mode() {
+            CpuMode::User | CpuMode::System => "CPSR",
+            CpuMode::Fiq => "SPSR_fiq",
+            CpuMode::Supervisor => "SPSR_svc",
+            CpuMode::Abort => "SPSR_abt",
+            CpuMode::Irq => "SPSR_irq",
+            CpuMode::Undefined => "SPSR_und",
+        },
+    };
+
+    format!("MRS{} {},{}", cond, rd, psr)
 }

@@ -101,3 +101,14 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
 
     cpu_action
 }
+
+pub fn execute_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+    //MRS
+    let psr = match instruction.is_spsr() {
+        false => cpu.cpsr(),
+        true => cpu.spsr(),
+    };
+    let rd = instruction.rd() as usize;
+    cpu.set_register(rd, psr.into_bits());
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
+}

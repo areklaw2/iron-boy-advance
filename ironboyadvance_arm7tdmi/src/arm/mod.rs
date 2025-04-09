@@ -150,12 +150,13 @@ impl Instruction for ArmInstruction {
         }
     }
 
-    fn disassamble(&self) -> String {
+    fn disassamble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
         use ArmInstructionKind::*;
         match self.kind {
             BranchAndExchange => disassemble_bx(self),
             BranchAndBranchWithLink => disassemble_b_bl(self),
             DataProcessing => disassamble_data_processing(self),
+            PsrTransfer => disassemble_psr_transfer(cpu, self),
             _ => todo!(),
         }
     }
@@ -166,6 +167,7 @@ impl Instruction for ArmInstruction {
             BranchAndExchange => execute_bx(cpu, self),
             BranchAndBranchWithLink => execute_b_bl(cpu, self),
             DataProcessing => execute_data_processing(cpu, self),
+            PsrTransfer => execute_psr_transfer(cpu, self),
             _ => todo!(),
         }
     }
@@ -192,7 +194,7 @@ impl ArmInstruction {
     pub fn rd(&self) -> Register {
         use ArmInstructionKind::*;
         match self.kind {
-            DataProcessing => self.bits[12..=15].load::<u32>().into(),
+            PsrTransfer | DataProcessing => self.bits[12..=15].load::<u32>().into(),
             _ => todo!(),
         }
     }
@@ -254,5 +256,9 @@ impl ArmInstruction {
 
     pub fn immediate(&self) -> u32 {
         self.bits[0..=7].load()
+    }
+
+    pub fn is_spsr(&self) -> bool {
+        self.bits[22]
     }
 }

@@ -16,7 +16,7 @@ pub trait Instruction {
     type Size;
     fn decode(value: Self::Size, pc: u32) -> Self;
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
-    fn disassamble(&self) -> String;
+    fn disassamble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
     fn value(&self) -> Self::Size;
 }
 
@@ -126,7 +126,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
 
                 //TODO log this
                 println!("{}", instruction);
-                println!("{}", instruction.disassamble());
+                println!("{}", instruction.disassamble(self));
 
                 let condition = instruction.cond();
                 if condition != Condition::AL && !self.is_condition_met(condition) {
