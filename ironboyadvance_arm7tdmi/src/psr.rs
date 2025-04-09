@@ -6,9 +6,9 @@ use super::{CpuMode, CpuState};
 #[derive(Copy, Clone)]
 pub struct ProgramStatusRegister {
     #[bits(5)]
-    cpu_mode: CpuMode,
+    mode: CpuMode,
     #[bits(1)]
-    cpu_state: CpuState,
+    state: CpuState,
     fiq_disable: bool,
     irq_disable: bool,
     #[bits(20)]
@@ -140,48 +140,48 @@ mod tests {
     #[test]
     fn get_psr_state() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        assert_eq!(psr.cpu_state(), CpuState::Thumb)
+        assert_eq!(psr.state(), CpuState::Thumb)
     }
 
     #[test]
     fn set_psr_state() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        psr.set_cpu_state(CpuState::Arm);
-        assert_eq!(psr.cpu_state(), CpuState::Arm)
+        psr.set_state(CpuState::Arm);
+        assert_eq!(psr.state(), CpuState::Arm)
     }
 
     #[test]
     fn get_psr_mode() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        assert_eq!(psr.cpu_mode(), CpuMode::System)
+        assert_eq!(psr.mode(), CpuMode::System)
     }
 
     #[test]
     fn set_psr_mode() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        psr.set_cpu_mode(CpuMode::User);
-        assert_eq!(psr.cpu_mode(), CpuMode::User);
+        psr.set_mode(CpuMode::User);
+        assert_eq!(psr.mode(), CpuMode::User);
 
-        psr.set_cpu_mode(CpuMode::Fiq);
-        assert_eq!(psr.cpu_mode(), CpuMode::Fiq);
+        psr.set_mode(CpuMode::Fiq);
+        assert_eq!(psr.mode(), CpuMode::Fiq);
 
-        psr.set_cpu_mode(CpuMode::Irq);
-        assert_eq!(psr.cpu_mode(), CpuMode::Irq);
+        psr.set_mode(CpuMode::Irq);
+        assert_eq!(psr.mode(), CpuMode::Irq);
 
-        psr.set_cpu_mode(CpuMode::Supervisor);
-        assert_eq!(psr.cpu_mode(), CpuMode::Supervisor);
+        psr.set_mode(CpuMode::Supervisor);
+        assert_eq!(psr.mode(), CpuMode::Supervisor);
 
-        psr.set_cpu_mode(CpuMode::Abort);
-        assert_eq!(psr.cpu_mode(), CpuMode::Abort);
+        psr.set_mode(CpuMode::Abort);
+        assert_eq!(psr.mode(), CpuMode::Abort);
 
-        psr.set_cpu_mode(CpuMode::Undefined);
-        assert_eq!(psr.cpu_mode(), CpuMode::Undefined);
+        psr.set_mode(CpuMode::Undefined);
+        assert_eq!(psr.mode(), CpuMode::Undefined);
     }
 
     #[test]
     #[should_panic]
     fn get_psr_mode_panics() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFF15);
-        psr.cpu_mode();
+        psr.mode();
     }
 }

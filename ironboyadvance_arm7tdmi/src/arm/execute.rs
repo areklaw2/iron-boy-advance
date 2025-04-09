@@ -10,7 +10,7 @@ use crate::arm::ArmInstruction;
 
 pub fn execute_bx<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     let value = cpu.register(instruction.rn() as usize);
-    cpu.set_cpu_state(CpuState::from_bits((value & 0x1) as u8));
+    cpu.set_state(CpuState::from_bits((value & 0x1) as u8));
     cpu.set_pc(value & !0x1);
     cpu.pipeline_flush();
     CpuAction::PipelineFlush
@@ -86,10 +86,8 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     };
 
     let rd = instruction.rd() as usize;
-    if set_flags && rd == PC && cpu.cpsr().cpu_mode() != CpuMode::User {
+    if set_flags && rd == PC {
         let spsr = cpu.spsr();
-        //TODO: figure this out
-        //cpu.change_mode(spsr.cpu_mode());
         cpu.set_cpsr(spsr);
     }
 
