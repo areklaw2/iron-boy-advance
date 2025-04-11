@@ -3,7 +3,7 @@ use bitfields::bitfield;
 use super::{CpuMode, CpuState};
 
 #[bitfield(u32)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ProgramStatusRegister {
     #[bits(5)]
     mode: CpuMode,
@@ -25,12 +25,10 @@ impl ProgramStatusRegister {
     }
 
     pub fn set_flags(&mut self, value: u8) {
-        //Take first 4 bits
-        let value = (value & !0x0F) >> 4;
-        self.set_negative((value >> 3) != 0);
-        self.set_zero((value >> 2) != 0);
-        self.set_carry((value >> 1) != 0);
-        self.set_overflow(value & 0x01 != 0);
+        self.set_negative(value & 0b1000 != 0);
+        self.set_zero(value & 0b0100 != 0);
+        self.set_carry((value & 0b0010) != 0);
+        self.set_overflow(value & 0b0001 != 0);
     }
 }
 
@@ -50,11 +48,11 @@ mod tests {
     #[test]
     fn set_psr_flags() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFF11);
-        psr.set_flags(0xEF);
+        psr.set_flags(0xE);
         assert_eq!(psr.into_bits(), 0xE0000011);
         assert_eq!(psr.flags(), 0xE);
 
-        psr.set_flags(0x00);
+        psr.set_flags(0x0);
         assert_eq!(psr.into_bits(), 0x00000011);
         assert_eq!(psr.flags(), 0x0);
     }

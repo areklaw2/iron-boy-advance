@@ -1,9 +1,12 @@
+use bitvec::field::BitField;
+
 use crate::{
     CpuAction, CpuMode, CpuState, Register,
     alu::{AluInstruction::*, *},
     barrel_shifter::{ShiftBy, ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, LR, PC},
     memory::{MemoryAccess, MemoryInterface},
+    psr::ProgramStatusRegister,
 };
 
 use crate::arm::ArmInstruction;
@@ -103,12 +106,64 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
 }
 
 pub fn execute_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+    let cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
+    let is_spsr = instruction.is_spsr();
+
     //MRS
-    let psr = match instruction.is_spsr() {
-        false => cpu.cpsr(),
-        true => cpu.spsr(),
+    if instruction.bits[16..=21].load::<u8>() == 0xF {
+        let rd = instruction.rd() as usize;
+        let psr = match is_spsr {
+            false => cpu.cpsr(),
+            true => cpu.spsr(),
+        };
+        cpu.set_register(rd, psr.into_bits());
+        return cpu_action;
+    }
+
+    //MSR
+    let mut operand = match instruction.is_immediate_operand() {
+        false => cpu.register(instruction.rm() as usize),
+        true => {
+            let mut carry = cpu.cpsr().carry();
+            let rotate = 2 * instruction.rotate();
+            let immediate = instruction.immediate();
+            let value = ror(immediate, rotate, &mut carry, false);
+            cpu.set_carry(carry);
+            value
+        }
     };
-    let rd = instruction.rd() as usize;
-    cpu.set_register(rd, psr.into_bits());
-    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
+
+    let mut mask = 0u32;
+    if instruction.bits[19] {
+        mask |= 0xFF000000;
+    }
+    if instruction.bits[18] {
+        mask |= 0xFF0000;
+    }
+    if instruction.bits[17] {
+        mask |= 0xFF00;
+    }
+    if instruction.bits[16] {
+        mask |= 0xFF;
+    }
+
+    match is_spsr {
+        true => {
+            debug_assert!(cpu.cpsr().mode() != CpuMode::User && cpu.cpsr().mode() != CpuMode::System);
+            let new_psr = ProgramStatusRegister::from_bits((cpu.spsr().into_bits() & !mask) | (operand & mask));
+            cpu.set_spsr(new_psr);
+        }
+        false => {
+            if cpu.cpsr().mode() != CpuMode::User && cpu.cpsr().mode() != CpuMode::System {
+                mask &= 0xFF000000;
+                println!("flag");
+                println!("{:032b}", (cpu.cpsr().into_bits() & !mask) | (operand & mask))
+            }
+
+            let new_psr = ProgramStatusRegister::from_bits((cpu.cpsr().into_bits() & !mask) | (operand & mask));
+            cpu.set_cpsr(new_psr);
+        }
+    }
+
+    return cpu_action;
 }

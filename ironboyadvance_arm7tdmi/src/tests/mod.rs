@@ -82,15 +82,57 @@ fn single_step_tests() {
     // Will keep a list of the files I want to run until i complete all the instructions
     // completed
     let files = [
-        //     "arm_b_bl.json",
-        //     "arm_bx.json",
-        //     "arm_data_proc_immediate_shift.json",
-        //     "arm_data_proc_immediate.json",
-        //     "arm_data_proc_register_shift.json",
-        "arm_mrs.json",
+        // "arm_b_bl.json",                      //Done
+        // "arm_bx.json",                        //Done
+        // "arm_cdp.json",                       //Skip
+        // "arm_data_proc_immediate.json",       //Done
+        // "arm_data_proc_immediate_shift.json", //Done
+        // "arm_data_proc_register_shift.json",  //Done
+        // "arm_ldm_stm.json",
+        // "arm_ldr_str_immediate_offset.json",
+        // "arm_ldr_str_register_offset.json",
+        // "arm_ldrh_strh.json",
+        // "arm_ldrsb_ldrsh.json",
+        // "arm_mcr_mrc.json",
+        // "arm_mrs.json", //Done
+        // "arm_msr_imm.json",
+        "arm_msr_reg.json",
+        // "arm_mul_mla.json",
+        // "arm_mull_mlal.json",
+        // "arm_stc_ldc.json",
+        // "arm_swi.json",
+        // "arm_swp.json",
+        // "thumb_add_cmp_mov_hi.json",
+        // "thumb_add_sp_or_pc.json",
+        // "thumb_add_sub.json",
+        // "thumb_add_sub_sp.json",
+        // "thumb_b.json",
+        // "thumb_bcc.json",
+        // "thumb_bl_blx_prefix.json",
+        // "thumb_bl_suffix.json",
+        // "thumb_bx.json",
+        // "thumb_data_proc.json",
+        // "thumb_ldm_stm.json",
+        // "thumb_ldr_pc_rel.json",
+        // "thumb_ldr_str_imm_offset.json",
+        // "thumb_ldr_str_reg_offset.json",
+        // "thumb_ldr_str_sp_rel.json",
+        // "thumb_ldrb_strb_imm_offset.json",
+        // "thumb_ldrh_strh_imm_offset.json",
+        // "thumb_ldrh_strh_reg_offset.json",
+        // "thumb_ldrsb_strb_reg_offset.json",
+        // "thumb_ldrsh_ldrsb_reg_offset.json",
+        // "thumb_lsl_lsr_asr.json",
+        // "thumb_mov_cmp_add_sub.json",
+        // "thumb_push_pop.json",
+        // "thumb_swi.json",
+        // "thumb_undefined_bcc.json",
     ];
 
-    //let exclude_files = ["arm_cdp.json"];
+    // let directory = fs::read_dir("../external/arm7tdmi/v1").expect("Unable to access directory");
+    // for file in directory {
+    //     let file = file.unwrap().path();
+    // }
 
     for file in files {
         let test_json = fs::read_to_string(format!("../external/arm7tdmi/v1/{file}")).expect("unable to read file");
@@ -122,8 +164,14 @@ fn single_step_tests() {
             assert_eq!(cpu.banked_registers_abt(), final_state.r_abt);
             assert_eq!(cpu.banked_registers_irq(), final_state.r_irq);
             assert_eq!(cpu.banked_registers_und(), final_state.r_und);
-            assert_eq!(cpu.spsrs().map(|x| x.into_bits()), final_state.spsr);
-            assert_eq!(cpu.cpsr().into_bits(), final_state.cpsr);
+            assert_eq!(
+                cpu.spsrs().map(|x| x.into_bits()),
+                final_state.spsr.map(|x| ProgramStatusRegister::from_bits(x).into_bits())
+            );
+            assert_eq!(
+                cpu.cpsr().into_bits(),
+                ProgramStatusRegister::from_bits(final_state.cpsr).into_bits()
+            );
             assert_eq!(cpu.pipeline(), final_state.pipeline);
         }
     }

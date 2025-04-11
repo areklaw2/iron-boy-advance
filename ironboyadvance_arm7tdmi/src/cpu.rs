@@ -190,6 +190,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.cpsr.set_overflow(status);
     }
 
+    pub fn set_flags(&mut self, value: u8) {
+        self.cpsr.set_flags(value);
+    }
+
     pub fn set_state(&mut self, state: CpuState) {
         self.cpsr.set_state(state);
     }
@@ -292,7 +296,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
 
     pub fn set_spsr(&mut self, spsr: ProgramStatusRegister) {
         match self.cpsr.mode() {
-            CpuMode::User | CpuMode::System => {}
+            CpuMode::User | CpuMode::System => self.cpsr = spsr,
             CpuMode::Fiq => self.spsrs[0] = spsr,
             CpuMode::Supervisor => self.spsrs[1] = spsr,
             CpuMode::Abort => self.spsrs[2] = spsr,

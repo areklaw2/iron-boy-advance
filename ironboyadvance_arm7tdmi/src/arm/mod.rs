@@ -1,3 +1,4 @@
+use ArmInstructionKind::*;
 use bitvec::{field::BitField, order::Lsb0, vec::BitVec, view::BitView};
 use core::fmt;
 use disassembler::*;
@@ -81,7 +82,6 @@ pub enum ArmInstructionKind {
 
 impl From<u32> for ArmInstructionKind {
     fn from(instruction: u32) -> ArmInstructionKind {
-        use ArmInstructionKind::*;
         // Decoding order matters
         if instruction & 0x0FFFFFF0 == 0x012FFF10 {
             BranchAndExchange
@@ -151,7 +151,6 @@ impl Instruction for ArmInstruction {
     }
 
     fn disassamble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
-        use ArmInstructionKind::*;
         match self.kind {
             BranchAndExchange => disassemble_bx(self),
             BranchAndBranchWithLink => disassemble_b_bl(self),
@@ -162,7 +161,6 @@ impl Instruction for ArmInstruction {
     }
 
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        use ArmInstructionKind::*;
         match self.kind {
             BranchAndExchange => execute_bx(cpu, self),
             BranchAndBranchWithLink => execute_b_bl(cpu, self),
@@ -183,7 +181,6 @@ impl ArmInstruction {
     }
 
     pub fn rn(&self) -> Register {
-        use ArmInstructionKind::*;
         match self.kind {
             BranchAndExchange => self.bits[0..=3].load::<u32>().into(),
             DataProcessing => self.bits[16..=19].load::<u32>().into(),
@@ -192,7 +189,6 @@ impl ArmInstruction {
     }
 
     pub fn rd(&self) -> Register {
-        use ArmInstructionKind::*;
         match self.kind {
             PsrTransfer | DataProcessing => self.bits[12..=15].load::<u32>().into(),
             _ => todo!(),
@@ -200,9 +196,8 @@ impl ArmInstruction {
     }
 
     pub fn rm(&self) -> Register {
-        use ArmInstructionKind::*;
         match self.kind {
-            DataProcessing => self.bits[0..=3].load::<u32>().into(),
+            PsrTransfer | DataProcessing => self.bits[0..=3].load::<u32>().into(),
             _ => todo!(),
         }
     }
@@ -212,7 +207,6 @@ impl ArmInstruction {
     }
 
     pub fn offset(&self) -> i32 {
-        use ArmInstructionKind::*;
         match self.kind {
             BranchAndBranchWithLink => ((self.bits[0..=23].load::<u32>() << 8) as i32) >> 6,
             _ => todo!(),
@@ -220,7 +214,10 @@ impl ArmInstruction {
     }
 
     pub fn is_immediate_operand(&self) -> bool {
-        self.bits[25]
+        match self.kind {
+            PsrTransfer | DataProcessing => self.bits[25],
+            _ => todo!(),
+        }
     }
 
     pub fn opcode(&self) -> AluInstruction {
@@ -251,11 +248,17 @@ impl ArmInstruction {
     }
 
     pub fn rotate(&self) -> u32 {
-        self.bits[8..=11].load()
+        match self.kind {
+            PsrTransfer | DataProcessing => self.bits[8..=11].load(),
+            _ => todo!(),
+        }
     }
 
     pub fn immediate(&self) -> u32 {
-        self.bits[0..=7].load()
+        match self.kind {
+            PsrTransfer | DataProcessing => self.bits[0..=7].load(),
+            _ => todo!(),
+        }
     }
 
     pub fn is_spsr(&self) -> bool {

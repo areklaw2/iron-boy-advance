@@ -1,3 +1,5 @@
+use bitvec::field::BitField;
+
 use crate::{CpuMode, alu::AluInstruction, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
 use super::ArmInstruction;
@@ -50,9 +52,8 @@ pub fn disassamble_data_processing(instruction: &ArmInstruction) -> String {
 }
 
 pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> String {
-    //msr
     let cond = instruction.cond();
-    let rd = instruction.rd();
+    let is_spsr = instruction.is_spsr();
     let psr = match instruction.is_spsr() {
         false => "CPSR",
         true => match cpu.cpsr().mode() {
@@ -64,6 +65,30 @@ pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
             CpuMode::Undefined => "SPSR_und",
         },
     };
+    //MRS
+    if instruction.bits[16..=21].load::<u8>() == 0xF {
+        let rd = instruction.rd() as usize;
+        return format!("MRS{} {},{}", cond, rd, psr);
+    }
 
-    format!("MRS{} {},{}", cond, rd, psr)
+    //MSR
+    let operand = match instruction.is_immediate_operand() {
+        false => format!("{}", instruction.rm()),
+        true => {
+            let rotate = 2 * instruction.rotate();
+            let immediate = instruction.immediate();
+            let expression = immediate.rotate_right(rotate);
+            format!("{:08X}", expression)
+        }
+    };
+
+    match is_spsr {
+        true => format!("MSR{} {},{}", cond, psr, operand),
+        false => {
+            if cpu.cpsr().mode() != CpuMode::User && cpu.cpsr().mode() != CpuMode::System {
+                return format!("MSR{} {}_flg,{}", cond, psr, operand);
+            }
+            format!("MSR{} {}_all,{}", cond, psr, operand)
+        }
+    }
 }
