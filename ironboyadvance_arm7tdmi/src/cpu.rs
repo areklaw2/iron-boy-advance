@@ -259,6 +259,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 CpuMode::Supervisor => self.banked_registers_svc[index - 13],
                 CpuMode::Abort => self.banked_registers_abt[index - 13],
                 CpuMode::Undefined => self.banked_registers_und[index - 13],
+                CpuMode::Invalid => panic!("invalid mode"),
             },
             _ => panic!("Index out of range"),
         }
@@ -278,6 +279,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 CpuMode::Abort => self.banked_registers_abt[index - 13] = value,
                 CpuMode::Irq => self.banked_registers_irq[index - 13] = value,
                 CpuMode::Undefined => self.banked_registers_und[index - 13] = value,
+                CpuMode::Invalid => panic!("invalid mode"),
             },
             _ => panic!("Index out of range"),
         }
@@ -291,6 +293,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             CpuMode::Abort => self.spsrs[2],
             CpuMode::Irq => self.spsrs[3],
             CpuMode::Undefined => self.spsrs[4],
+            CpuMode::Invalid => panic!("invalid mode"),
         }
     }
 
@@ -302,6 +305,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             CpuMode::Abort => self.spsrs[2] = spsr,
             CpuMode::Irq => self.spsrs[3] = spsr,
             CpuMode::Undefined => self.spsrs[4] = spsr,
+            CpuMode::Invalid => panic!("invalid mode"),
         }
     }
 }

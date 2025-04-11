@@ -154,10 +154,9 @@ pub fn execute_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instru
             cpu.set_spsr(new_psr);
         }
         false => {
-            if cpu.cpsr().mode() != CpuMode::User && cpu.cpsr().mode() != CpuMode::System {
+            if cpu.cpsr().mode() == CpuMode::User && cpu.cpsr().mode() == CpuMode::System {
                 mask &= 0xFF000000;
-                println!("flag");
-                println!("{:032b}", (cpu.cpsr().into_bits() & !mask) | (operand & mask))
+                println!("flags")
             }
 
             let new_psr = ProgramStatusRegister::from_bits((cpu.cpsr().into_bits() & !mask) | (operand & mask));

@@ -63,6 +63,7 @@ pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
             CpuMode::Abort => "SPSR_abt",
             CpuMode::Irq => "SPSR_irq",
             CpuMode::Undefined => "SPSR_und",
+            CpuMode::Invalid => panic!("invalid mode"),
         },
     };
     //MRS
@@ -85,7 +86,7 @@ pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
     match is_spsr {
         true => format!("MSR{} {},{}", cond, psr, operand),
         false => {
-            if cpu.cpsr().mode() != CpuMode::User && cpu.cpsr().mode() != CpuMode::System {
+            if cpu.cpsr().mode() == CpuMode::User && cpu.cpsr().mode() == CpuMode::System {
                 return format!("MSR{} {}_flg,{}", cond, psr, operand);
             }
             format!("MSR{} {}_all,{}", cond, psr, operand)

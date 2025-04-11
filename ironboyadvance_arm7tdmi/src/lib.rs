@@ -25,6 +25,7 @@ pub enum CpuMode {
     Abort = 0b10111,
     Undefined = 0b11011,
     System = 0b11111,
+    Invalid,
 }
 
 impl CpuMode {
@@ -38,7 +39,7 @@ impl CpuMode {
             0b10111 => Abort,
             0b11011 => Undefined,
             0b11111 => System,
-            _ => unreachable!(),
+            _ => Invalid,
         }
     }
 

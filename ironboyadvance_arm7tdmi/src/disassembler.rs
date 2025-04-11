@@ -1,4 +1,4 @@
-use std::fmt::{self};
+use std::fmt::{self, write};
 
 use crate::{CpuMode, CpuState, Register, alu::AluInstruction, arm::Condition, barrel_shifter::ShiftType};
 
@@ -13,6 +13,7 @@ impl fmt::Display for CpuMode {
             Abort => write!(f, "abt"),
             Undefined => write!(f, "und"),
             System => write!(f, "sys"),
+            Invalid => write!(f, "invalid mode"),
         }
     }
 }
