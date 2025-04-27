@@ -2,6 +2,7 @@ use crate::memory::{IoMemoryAccess, MemoryAccess, MemoryInterface, decompose_acc
 
 use super::{Transaction, TransactionKind};
 
+#[allow(dead_code)]
 pub struct TestBus {
     data: Vec<u8>,
     base_address: u32,
@@ -113,6 +114,7 @@ impl IoMemoryAccess for TestBus {
     }
 }
 
+#[allow(dead_code)]
 impl TestBus {
     pub fn new(base_address: u32, opcode: u32, transactions: Vec<Transaction>) -> Self {
         TestBus {

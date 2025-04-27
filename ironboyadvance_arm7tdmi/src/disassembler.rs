@@ -1,4 +1,4 @@
-use std::fmt::{self, write};
+use std::fmt;
 
 use crate::{CpuMode, CpuState, Register, alu::AluInstruction, arm::Condition, barrel_shifter::ShiftType};
 

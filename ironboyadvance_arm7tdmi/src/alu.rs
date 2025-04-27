@@ -1,7 +1,4 @@
-use crate::{
-    cpu::{self, Arm7tdmiCpu},
-    memory::MemoryInterface,
-};
+use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AluInstruction {
