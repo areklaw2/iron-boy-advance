@@ -156,6 +156,8 @@ impl Instruction for ArmInstruction {
             BranchAndBranchWithLink => disassemble_b_bl(self),
             DataProcessing => disassamble_data_processing(self),
             PsrTransfer => disassemble_psr_transfer(cpu, self),
+            Multiply => disassemble_multiply(self),
+            MultiplyLong => disassemble_multiply_long(self),
             _ => todo!(),
         }
     }
@@ -166,6 +168,8 @@ impl Instruction for ArmInstruction {
             BranchAndBranchWithLink => execute_b_bl(cpu, self),
             DataProcessing => execute_data_processing(cpu, self),
             PsrTransfer => execute_psr_transfer(cpu, self),
+            Multiply => execute_multiply(cpu, self),
+            MultiplyLong => execute_multiply_long(cpu, self),
             _ => todo!(),
         }
     }
@@ -184,6 +188,7 @@ impl ArmInstruction {
         match self.kind {
             BranchAndExchange => self.bits[0..=3].load::<u32>().into(),
             DataProcessing => self.bits[16..=19].load::<u32>().into(),
+            Multiply => self.bits[12..=15].load::<u32>().into(),
             _ => todo!(),
         }
     }
@@ -191,13 +196,21 @@ impl ArmInstruction {
     pub fn rd(&self) -> Register {
         match self.kind {
             PsrTransfer | DataProcessing => self.bits[12..=15].load::<u32>().into(),
+            Multiply => self.bits[16..=19].load::<u32>().into(),
             _ => todo!(),
         }
     }
 
     pub fn rm(&self) -> Register {
         match self.kind {
-            PsrTransfer | DataProcessing => self.bits[0..=3].load::<u32>().into(),
+            PsrTransfer | DataProcessing | Multiply => self.bits[0..=3].load::<u32>().into(),
+            _ => todo!(),
+        }
+    }
+
+    pub fn rs(&self) -> Register {
+        match self.kind {
+            DataProcessing | Multiply => self.bits[8..=11].load::<u32>().into(),
             _ => todo!(),
         }
     }
@@ -225,7 +238,10 @@ impl ArmInstruction {
     }
 
     pub fn sets_flags(&self) -> bool {
-        self.bits[20]
+        match self.kind {
+            DataProcessing | Multiply => self.bits[20],
+            _ => todo!(),
+        }
     }
 
     pub fn shift_by(&self) -> ShiftBy {
@@ -237,10 +253,6 @@ impl ArmInstruction {
 
     pub fn shift_amount(&self) -> u32 {
         self.bits[7..=11].load()
-    }
-
-    pub fn rs(&self) -> u32 {
-        self.bits[8..=11].load()
     }
 
     pub fn shift_type(&self) -> ShiftType {
@@ -263,5 +275,9 @@ impl ArmInstruction {
 
     pub fn is_spsr(&self) -> bool {
         self.bits[22]
+    }
+
+    pub fn accumulate(&self) -> bool {
+        self.bits[21]
     }
 }

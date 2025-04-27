@@ -22,7 +22,6 @@ pub trait Instruction {
 
 pub struct Arm7tdmiCpu<I: MemoryInterface> {
     general_registers: [u32; 16],
-    banked_registers_old: [u32; 7], //r8 to r14
     banked_registers_fiq: [u32; 7], //r8 to r14
     banked_registers_svc: [u32; 2], //r13 to r14
     banked_registers_abt: [u32; 2], //r13 to r14
@@ -69,7 +68,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub fn new(bus: I, skip_bios: bool) -> Self {
         let mut cpu = Arm7tdmiCpu {
             general_registers: [0; 16],
-            banked_registers_old: [0; 7], //r8 to r14
             banked_registers_fiq: [0; 7], //r8 to r14
             banked_registers_svc: [0; 2], //r13 to r14
             banked_registers_abt: [0; 2], //r13 to r14
@@ -104,7 +102,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     get_set!(general_registers, set_general_registers, [u32; 16]);
-    get_set!(banked_registers_old, set_banked_registers_old, [u32; 7]);
     get_set!(banked_registers_fiq, set_banked_registers_fiq, [u32; 7]);
     get_set!(banked_registers_svc, set_banked_registers_svc, [u32; 2]);
     get_set!(banked_registers_abt, set_banked_registers_abt, [u32; 2]);
@@ -124,7 +121,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let instruction = ArmInstruction::decode(instruction, pc - 8);
 
-                //TODO log this
                 println!("{}", instruction);
                 println!("{}", instruction.disassamble(self));
 

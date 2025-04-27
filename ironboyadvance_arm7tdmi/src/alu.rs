@@ -1,4 +1,7 @@
-use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
+use crate::{
+    cpu::{self, Arm7tdmiCpu},
+    memory::MemoryInterface,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AluInstruction {
@@ -153,4 +156,16 @@ pub fn mvn<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
         cpu.set_carry(carry);
     }
     result
+}
+
+pub fn multiplier_array_cycles(multiplier: u32) -> usize {
+    if multiplier & 0xFF == multiplier {
+        1
+    } else if multiplier & 0xFFFF == multiplier {
+        2
+    } else if multiplier & 0xFFFFFF == multiplier {
+        3
+    } else {
+        4
+    }
 }

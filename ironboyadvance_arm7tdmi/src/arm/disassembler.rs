@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use bitvec::field::BitField;
 
 use crate::{CpuMode, alu::AluInstruction, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
@@ -54,7 +56,7 @@ pub fn disassamble_data_processing(instruction: &ArmInstruction) -> String {
 pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> String {
     let cond = instruction.cond();
     let is_spsr = instruction.is_spsr();
-    let psr = match instruction.is_spsr() {
+    let psr = match is_spsr {
         false => "CPSR",
         true => match cpu.cpsr().mode() {
             CpuMode::User | CpuMode::System => "CPSR",
@@ -66,30 +68,49 @@ pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
             CpuMode::Invalid => panic!("invalid mode"),
         },
     };
-    //MRS
-    if instruction.bits[16..=21].load::<u8>() == 0xF {
-        let rd = instruction.rd() as usize;
-        return format!("MRS{} {},{}", cond, rd, psr);
-    }
 
-    //MSR
-    let operand = match instruction.is_immediate_operand() {
-        false => format!("{}", instruction.rm()),
+    match instruction.bits[16..=21].load::<u8>() == 0xF {
         true => {
-            let rotate = 2 * instruction.rotate();
-            let immediate = instruction.immediate();
-            let expression = immediate.rotate_right(rotate);
-            format!("{:08X}", expression)
+            let rd = instruction.rd() as usize;
+            return format!("MRS{} {},{}", cond, rd, psr);
         }
-    };
-
-    match is_spsr {
-        true => format!("MSR{} {},{}", cond, psr, operand),
         false => {
-            if cpu.cpsr().mode() == CpuMode::User && cpu.cpsr().mode() == CpuMode::System {
-                return format!("MSR{} {}_flg,{}", cond, psr, operand);
+            let operand = match instruction.is_immediate_operand() {
+                false => format!("{}", instruction.rm()),
+                true => {
+                    let rotate = 2 * instruction.rotate();
+                    let immediate = instruction.immediate();
+                    let expression = immediate.rotate_right(rotate);
+                    format!("0x{:08X}", expression)
+                }
+            };
+
+            match is_spsr {
+                false => {
+                    if cpu.cpsr().mode() == CpuMode::User {
+                        return format!("MSR{} {}_flg,{}", cond, psr, operand);
+                    }
+                    format!("MSR{} {}_all,{}", cond, psr, operand)
+                }
+                true => format!("MSR{} {},{}", cond, psr, operand),
             }
-            format!("MSR{} {}_all,{}", cond, psr, operand)
         }
     }
+}
+
+pub fn disassemble_multiply(instruction: &ArmInstruction) -> String {
+    let cond = instruction.cond();
+    let s = if instruction.sets_flags() { "S" } else { "" };
+    let rd = instruction.rd();
+    let rm = instruction.rm();
+    let rs = instruction.rs();
+    let rn = instruction.rn();
+    match instruction.accumulate() {
+        true => format!("MLA{}{} {},{},{},{}", cond, s, rd, rm, rs, rn),
+        false => format!("MUL{}{} {},{},{}", cond, s, rd, rm, rs),
+    }
+}
+
+pub fn disassemble_multiply_long(instruction: &ArmInstruction) -> String {
+    todo!()
 }

@@ -106,63 +106,113 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
 }
 
 pub fn execute_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
-    let cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
     let is_spsr = instruction.is_spsr();
-
-    //MRS
-    if instruction.bits[16..=21].load::<u8>() == 0xF {
-        let rd = instruction.rd() as usize;
-        let psr = match is_spsr {
-            false => cpu.cpsr(),
-            true => cpu.spsr(),
-        };
-        cpu.set_register(rd, psr.into_bits());
-        return cpu_action;
-    }
-
-    //MSR
-    let mut operand = match instruction.is_immediate_operand() {
-        false => cpu.register(instruction.rm() as usize),
+    match instruction.bits[16..=21].load::<u8>() == 0xF {
         true => {
-            let mut carry = cpu.cpsr().carry();
-            let rotate = 2 * instruction.rotate();
-            let immediate = instruction.immediate();
-            let value = ror(immediate, rotate, &mut carry, false);
-            cpu.set_carry(carry);
-            value
-        }
-    };
-
-    let mut mask = 0u32;
-    if instruction.bits[19] {
-        mask |= 0xFF000000;
-    }
-    if instruction.bits[18] {
-        mask |= 0xFF0000;
-    }
-    if instruction.bits[17] {
-        mask |= 0xFF00;
-    }
-    if instruction.bits[16] {
-        mask |= 0xFF;
-    }
-
-    match is_spsr {
-        true => {
-            debug_assert!(cpu.cpsr().mode() != CpuMode::User && cpu.cpsr().mode() != CpuMode::System);
-            let new_psr = ProgramStatusRegister::from_bits((cpu.spsr().into_bits() & !mask) | (operand & mask));
-            cpu.set_spsr(new_psr);
+            let rd = instruction.rd() as usize;
+            let psr = match is_spsr {
+                false => cpu.cpsr(),
+                true => cpu.spsr(),
+            };
+            cpu.set_register(rd, psr.into_bits());
         }
         false => {
-            if cpu.cpsr().mode() == CpuMode::User && cpu.cpsr().mode() == CpuMode::System {
-                mask &= 0xFF000000;
-                println!("flags")
+            let mut mask = 0u32;
+            if instruction.bits[19] {
+                mask |= 0xFF000000;
+            }
+            if instruction.bits[18] {
+                mask |= 0xFF0000;
+            }
+            if instruction.bits[17] {
+                mask |= 0xFF00;
+            }
+            if instruction.bits[16] {
+                mask |= 0xFF;
             }
 
-            let new_psr = ProgramStatusRegister::from_bits((cpu.cpsr().into_bits() & !mask) | (operand & mask));
-            cpu.set_cpsr(new_psr);
+            let mut operand = match instruction.is_immediate_operand() {
+                false => cpu.register(instruction.rm() as usize),
+                true => {
+                    let mut carry = cpu.cpsr().carry();
+                    let rotate = 2 * instruction.rotate();
+                    let immediate = instruction.immediate();
+                    ror(immediate, rotate, &mut carry, false)
+                }
+            };
+
+            match is_spsr {
+                false => {
+                    // User mode can only change flags
+                    if cpu.cpsr().mode() == CpuMode::User {
+                        mask &= 0xFF000000;
+                    }
+
+                    // Make sure operand has the 4th bit
+                    if mask & 0xFF != 0 {
+                        operand |= 0x10;
+                    }
+
+                    let bits = (cpu.cpsr().into_bits() & !mask) | (operand & mask);
+                    cpu.set_cpsr(ProgramStatusRegister::from_bits(bits));
+                }
+                true => {
+                    if cpu.cpsr().mode() != CpuMode::User && cpu.cpsr().mode() != CpuMode::System {
+                        let bits = (cpu.spsr().into_bits() & !mask) | (operand & mask);
+                        cpu.set_spsr(ProgramStatusRegister::from_bits(bits));
+                    }
+                }
+            }
         }
     }
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+}
 
-    return cpu_action;
+pub fn execute_multiply<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+    let rd = instruction.rd() as usize;
+    let rm = instruction.rm() as usize;
+    let rs = instruction.rs() as usize;
+    let rn = instruction.rn() as usize;
+
+    let mut operand1 = cpu.register(rm);
+    if rm == PC {
+        operand1 += 4
+    }
+    let mut operand2 = cpu.register(rs);
+    if rs == PC {
+        operand2 += 4
+    }
+
+    let mut result = operand1.wrapping_mul(operand2);
+    let multiplier_cycles = multiplier_array_cycles(operand2);
+    for _ in 0..multiplier_cycles {
+        cpu.idle_cycle();
+    }
+
+    if instruction.accumulate() {
+        let mut accumulator = cpu.register(rn);
+        if rn == PC {
+            accumulator += 4
+        }
+        result = result.wrapping_add(accumulator);
+        cpu.idle_cycle();
+    };
+
+    if instruction.sets_flags() {
+        cpu.set_negative(result >> 31 != 0);
+        cpu.set_zero(result == 0);
+    }
+
+    cpu.set_register(rd, result);
+    match rd == PC {
+        true => {
+            cpu.pipeline_flush();
+            CpuAction::PipelineFlush
+        }
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+    }
+}
+
+pub fn execute_multiply_long<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+    todo!()
 }
