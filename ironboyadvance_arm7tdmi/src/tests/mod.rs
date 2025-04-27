@@ -97,8 +97,8 @@ fn single_step_tests() {
         // "arm_mrs.json", //Done
         // "arm_msr_imm.json", //Done
         // "arm_msr_reg.json", //Done
-        "arm_mul_mla.json",
-        // "arm_mull_mlal.json",
+        // "arm_mul_mla.json", //Done
+        "arm_mull_mlal.json",
         // "arm_stc_ldc.json",
         // "arm_swi.json",
         // "arm_swp.json",

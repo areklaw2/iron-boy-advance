@@ -112,5 +112,18 @@ pub fn disassemble_multiply(instruction: &ArmInstruction) -> String {
 }
 
 pub fn disassemble_multiply_long(instruction: &ArmInstruction) -> String {
-    todo!()
+    let cond = instruction.cond();
+    let s = if instruction.sets_flags() { "S" } else { "" };
+    let rd_hi = instruction.rd_hi();
+    let rd_lo = instruction.rd_lo();
+    let rm = instruction.rm();
+    let rs = instruction.rs();
+    let unsigned = instruction.signed();
+    let accumulate = instruction.accumulate();
+    match (unsigned, accumulate) {
+        (true, false) => format!("UMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
+        (true, true) => format!("UMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
+        (false, false) => format!("SMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
+        (false, true) => format!("SMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
+    }
 }

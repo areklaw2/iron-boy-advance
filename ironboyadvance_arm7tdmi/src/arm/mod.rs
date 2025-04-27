@@ -201,16 +201,24 @@ impl ArmInstruction {
         }
     }
 
+    pub fn rd_hi(&self) -> Register {
+        self.bits[16..=19].load::<u32>().into()
+    }
+
+    pub fn rd_lo(&self) -> Register {
+        self.bits[12..=15].load::<u32>().into()
+    }
+
     pub fn rm(&self) -> Register {
         match self.kind {
-            PsrTransfer | DataProcessing | Multiply => self.bits[0..=3].load::<u32>().into(),
+            PsrTransfer | DataProcessing | Multiply | MultiplyLong => self.bits[0..=3].load::<u32>().into(),
             _ => todo!(),
         }
     }
 
     pub fn rs(&self) -> Register {
         match self.kind {
-            DataProcessing | Multiply => self.bits[8..=11].load::<u32>().into(),
+            DataProcessing | Multiply | MultiplyLong => self.bits[8..=11].load::<u32>().into(),
             _ => todo!(),
         }
     }
@@ -239,7 +247,7 @@ impl ArmInstruction {
 
     pub fn sets_flags(&self) -> bool {
         match self.kind {
-            DataProcessing | Multiply => self.bits[20],
+            DataProcessing | Multiply | MultiplyLong => self.bits[20],
             _ => todo!(),
         }
     }
@@ -278,6 +286,13 @@ impl ArmInstruction {
     }
 
     pub fn accumulate(&self) -> bool {
-        self.bits[21]
+        match self.kind {
+            Multiply | MultiplyLong => self.bits[21],
+            _ => todo!(),
+        }
+    }
+
+    pub fn signed(&self) -> bool {
+        self.bits[22]
     }
 }

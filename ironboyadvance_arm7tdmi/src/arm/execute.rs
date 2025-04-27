@@ -214,5 +214,58 @@ pub fn execute_multiply<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instructio
 }
 
 pub fn execute_multiply_long<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
-    todo!()
+    let rd_lo = instruction.rd_lo() as usize;
+    let rd_hi = instruction.rd_hi() as usize;
+    let rm = instruction.rm() as usize;
+    let rs = instruction.rs() as usize;
+
+    let mut operand1 = cpu.register(rm);
+    if rm == PC {
+        operand1 += 4
+    }
+    let mut operand2 = cpu.register(rs);
+    if rs == PC {
+        operand2 += 4
+    }
+
+    let mut result = if instruction.signed() {
+        (operand1 as i32 as i64).wrapping_mul(operand2 as i32 as i64) as u64
+    } else {
+        (operand1 as u64).wrapping_mul(operand2 as u64)
+    };
+
+    let multiplier_cycles = multiplier_array_cycles(operand2);
+    for _ in 0..multiplier_cycles {
+        cpu.idle_cycle();
+    }
+
+    if instruction.accumulate() {
+        let mut accumulator_lo = cpu.register(rd_lo) as u64;
+        if rd_lo == PC {
+            accumulator_lo += 4
+        }
+        let mut accumulator_hi = cpu.register(rd_hi) as u64;
+        if rd_hi == PC {
+            accumulator_hi += 4
+        }
+        result = result.wrapping_add(accumulator_hi << 32 | accumulator_lo);
+        cpu.idle_cycle();
+    };
+
+    let result_lo = (result & 0xFFFFFFFF) as u32;
+    let result_hi = (result >> 32) as u32;
+    if instruction.sets_flags() {
+        cpu.set_negative(result_hi >> 31 != 0);
+        cpu.set_zero(result == 0);
+    }
+
+    cpu.set_register(rd_lo, result_lo);
+    cpu.set_register(rd_hi, result_hi);
+    match rd_hi == PC || rd_lo == PC {
+        true => {
+            cpu.pipeline_flush();
+            CpuAction::PipelineFlush
+        }
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+    }
 }
