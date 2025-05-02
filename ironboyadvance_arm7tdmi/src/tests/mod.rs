@@ -89,7 +89,7 @@ fn single_step_tests() {
         // "arm_data_proc_immediate_shift.json", //Done
         // "arm_data_proc_register_shift.json",  //Done
         // "arm_ldm_stm.json",
-        // "arm_ldr_str_immediate_offset.json",
+        "arm_ldr_str_immediate_offset.json",
         // "arm_ldr_str_register_offset.json",
         // "arm_ldrh_strh.json",
         // "arm_ldrsb_ldrsh.json",
@@ -98,7 +98,7 @@ fn single_step_tests() {
         // "arm_msr_imm.json", //Done
         // "arm_msr_reg.json", //Done
         // "arm_mul_mla.json", //Done
-        "arm_mull_mlal.json",
+        // "arm_mull_mlal.json", //Done
         // "arm_stc_ldc.json",
         // "arm_swi.json",
         // "arm_swp.json",

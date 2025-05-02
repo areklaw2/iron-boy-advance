@@ -11,7 +11,7 @@ use crate::{
 
 use crate::arm::ArmInstruction;
 
-pub fn execute_bx<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+pub fn execute_branch_exchange<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     let value = cpu.register(instruction.rn() as usize);
     cpu.set_state(CpuState::from_bits((value & 0x1) as u8));
     cpu.set_pc(value & !0x1);
@@ -19,7 +19,7 @@ pub fn execute_bx<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &Ar
     CpuAction::PipelineFlush
 }
 
-pub fn execute_b_bl<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+pub fn execute_branch_and_branch_link<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     if instruction.link() {
         cpu.set_register(LR, cpu.pc() - 4)
     }
@@ -34,7 +34,7 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     let mut operand1 = cpu.register(rn);
     let mut carry = cpu.cpsr().carry();
 
-    let operand2 = match instruction.is_immediate_operand() {
+    let operand2 = match instruction.is_immediate() {
         true => {
             let rotate = 2 * instruction.rotate();
             let immediate = instruction.immediate();
@@ -131,7 +131,7 @@ pub fn execute_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instru
                 mask |= 0xFF;
             }
 
-            let mut operand = match instruction.is_immediate_operand() {
+            let mut operand = match instruction.is_immediate() {
                 false => cpu.register(instruction.rm() as usize),
                 true => {
                     let mut carry = cpu.cpsr().carry();
@@ -268,4 +268,37 @@ pub fn execute_multiply_long<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instr
         }
         false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
     }
+}
+
+pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+    let pre_index = instruction.pre_index();
+    let add = instruction.add();
+    let byte = instruction.byte();
+    let write_back = instruction.write_back();
+    let load = instruction.load();
+
+    let rd = instruction.rd();
+    let rn = instruction.rn();
+
+    let offset = match instruction.is_immediate() {
+        true => instruction.immediate(),
+        false => {
+            let rm = instruction.rm() as usize;
+            let mut rm_value = cpu.register(rm);
+            // may not need
+            if rm == PC {
+                rm_value += 4;
+            }
+            let shift_amount = instruction.shift_amount();
+            let mut carry = cpu.cpsr().carry();
+            match instruction.shift_type() {
+                ShiftType::LSL => lsl(rm_value, shift_amount, &mut carry),
+                ShiftType::LSR => lsr(rm_value, shift_amount, &mut carry, true),
+                ShiftType::ASR => asr(rm_value, shift_amount, &mut carry, true),
+                ShiftType::ROR => ror(rm_value, shift_amount, &mut carry, true),
+            }
+        }
+    };
+
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
 }

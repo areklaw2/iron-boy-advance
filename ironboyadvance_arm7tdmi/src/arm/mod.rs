@@ -152,24 +152,26 @@ impl Instruction for ArmInstruction {
 
     fn disassamble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
         match self.kind {
-            BranchAndExchange => disassemble_bx(self),
-            BranchAndBranchWithLink => disassemble_b_bl(self),
+            BranchAndExchange => disassemble_branch_exchange(self),
+            BranchAndBranchWithLink => disassemble_branch_branch_link(self),
             DataProcessing => disassamble_data_processing(self),
             PsrTransfer => disassemble_psr_transfer(cpu, self),
             Multiply => disassemble_multiply(self),
             MultiplyLong => disassemble_multiply_long(self),
+            SingleDataTransfer => disassemble_single_data_transfer(self),
             _ => todo!(),
         }
     }
 
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         match self.kind {
-            BranchAndExchange => execute_bx(cpu, self),
-            BranchAndBranchWithLink => execute_b_bl(cpu, self),
+            BranchAndExchange => execute_branch_exchange(cpu, self),
+            BranchAndBranchWithLink => execute_branch_and_branch_link(cpu, self),
             DataProcessing => execute_data_processing(cpu, self),
             PsrTransfer => execute_psr_transfer(cpu, self),
             Multiply => execute_multiply(cpu, self),
             MultiplyLong => execute_multiply_long(cpu, self),
+            SingleDataTransfer => execute_single_data_transfer(cpu, self),
             _ => todo!(),
         }
     }
@@ -187,7 +189,7 @@ impl ArmInstruction {
     pub fn rn(&self) -> Register {
         match self.kind {
             BranchAndExchange => self.bits[0..=3].load::<u32>().into(),
-            DataProcessing => self.bits[16..=19].load::<u32>().into(),
+            DataProcessing | SingleDataTransfer => self.bits[16..=19].load::<u32>().into(),
             Multiply => self.bits[12..=15].load::<u32>().into(),
             _ => todo!(),
         }
@@ -195,7 +197,7 @@ impl ArmInstruction {
 
     pub fn rd(&self) -> Register {
         match self.kind {
-            PsrTransfer | DataProcessing => self.bits[12..=15].load::<u32>().into(),
+            PsrTransfer | DataProcessing | SingleDataTransfer => self.bits[12..=15].load::<u32>().into(),
             Multiply => self.bits[16..=19].load::<u32>().into(),
             _ => todo!(),
         }
@@ -211,14 +213,14 @@ impl ArmInstruction {
 
     pub fn rm(&self) -> Register {
         match self.kind {
-            PsrTransfer | DataProcessing | Multiply | MultiplyLong => self.bits[0..=3].load::<u32>().into(),
+            PsrTransfer | DataProcessing | Multiply | MultiplyLong | SingleDataTransfer => self.bits[0..=3].load::<u32>().into(),
             _ => todo!(),
         }
     }
 
     pub fn rs(&self) -> Register {
         match self.kind {
-            DataProcessing | Multiply | MultiplyLong => self.bits[8..=11].load::<u32>().into(),
+            DataProcessing | Multiply | MultiplyLong | SingleDataTransfer => self.bits[8..=11].load::<u32>().into(),
             _ => todo!(),
         }
     }
@@ -234,9 +236,10 @@ impl ArmInstruction {
         }
     }
 
-    pub fn is_immediate_operand(&self) -> bool {
+    pub fn is_immediate(&self) -> bool {
         match self.kind {
             PsrTransfer | DataProcessing => self.bits[25],
+            SingleDataTransfer => !self.bits[25],
             _ => todo!(),
         }
     }
@@ -277,6 +280,7 @@ impl ArmInstruction {
     pub fn immediate(&self) -> u32 {
         match self.kind {
             PsrTransfer | DataProcessing => self.bits[0..=7].load(),
+            SingleDataTransfer => self.bits[0..=11].load(),
             _ => todo!(),
         }
     }
@@ -294,5 +298,25 @@ impl ArmInstruction {
 
     pub fn signed(&self) -> bool {
         self.bits[22]
+    }
+
+    pub fn pre_index(&self) -> bool {
+        self.bits[24]
+    }
+
+    pub fn add(&self) -> bool {
+        self.bits[23]
+    }
+
+    pub fn byte(&self) -> bool {
+        self.bits[22]
+    }
+
+    pub fn write_back(&self) -> bool {
+        self.bits[21]
+    }
+
+    pub fn load(&self) -> bool {
+        self.bits[20]
     }
 }

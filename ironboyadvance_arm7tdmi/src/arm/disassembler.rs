@@ -1,18 +1,16 @@
-use std::fmt::format;
-
 use bitvec::field::BitField;
 
 use crate::{CpuMode, alu::AluInstruction, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
 use super::ArmInstruction;
 
-pub fn disassemble_bx(instruction: &ArmInstruction) -> String {
+pub fn disassemble_branch_exchange(instruction: &ArmInstruction) -> String {
     let cond = instruction.cond();
     let rn = instruction.rn();
     format!("BX{cond} {rn}")
 }
 
-pub fn disassemble_b_bl(instruction: &ArmInstruction) -> String {
+pub fn disassemble_branch_branch_link(instruction: &ArmInstruction) -> String {
     let cond = instruction.cond();
     let link = if instruction.link() { "L" } else { "" };
     let expression = instruction.offset();
@@ -26,7 +24,7 @@ pub fn disassamble_data_processing(instruction: &ArmInstruction) -> String {
     let s = if instruction.sets_flags() { "S" } else { "" };
     let rd = instruction.rd();
     let rn = instruction.rn();
-    let operand_2 = match instruction.is_immediate_operand() {
+    let operand_2 = match instruction.is_immediate() {
         true => {
             let rotate = 2 * instruction.rotate();
             let immediate = instruction.immediate();
@@ -75,7 +73,7 @@ pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
             return format!("MRS{} {},{}", cond, rd, psr);
         }
         false => {
-            let operand = match instruction.is_immediate_operand() {
+            let operand = match instruction.is_immediate() {
                 false => format!("{}", instruction.rm()),
                 true => {
                     let rotate = 2 * instruction.rotate();
@@ -125,5 +123,48 @@ pub fn disassemble_multiply_long(instruction: &ArmInstruction) -> String {
         (true, true) => format!("UMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
         (false, false) => format!("SMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
         (false, true) => format!("SMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
+    }
+}
+
+pub fn disassemble_single_data_transfer(instruction: &ArmInstruction) -> String {
+    let cond = instruction.cond();
+    let pre_index = instruction.pre_index();
+    let t = if pre_index { "" } else { "T" };
+    let add = if instruction.add() { "+" } else { "-" };
+    let byte = if instruction.byte() { "B" } else { "" };
+    let rn = instruction.rn();
+    let rd = instruction.rd();
+    let address = match rd as usize == 15 {
+        true => {
+            let expression = instruction.immediate().wrapping_add(8);
+            format!("#{:08X}", expression)
+        }
+        false => {
+            let offset = match instruction.is_immediate() {
+                true => {
+                    let immediate = instruction.immediate();
+                    match immediate {
+                        0 => "".into(),
+                        _ => format!(",#{}", immediate),
+                    }
+                }
+                false => {
+                    let rm = instruction.rm();
+                    let shift_type = instruction.shift_type();
+                    format!(",{}{},{} #{}", add, rm, shift_type, instruction.shift_amount())
+                }
+            };
+
+            let write_back = if instruction.write_back() && offset != "0" { "!" } else { "" };
+            match pre_index {
+                true => format!("[{}{}]{}", rn, offset, write_back),
+                false => format!("[{}]{}", rn, offset),
+            }
+        }
+    };
+
+    match instruction.load() {
+        true => format!("LDR{}{}{} {},{}", cond, byte, t, rd, address),
+        false => format!("STR{}{}{} {},{}", cond, byte, t, rd, address),
     }
 }
