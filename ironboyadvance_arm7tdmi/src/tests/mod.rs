@@ -90,7 +90,7 @@ fn single_step_tests() {
         // "arm_data_proc_register_shift.json",  //Done
         // "arm_ldm_stm.json",
         "arm_ldr_str_immediate_offset.json",
-        // "arm_ldr_str_register_offset.json",
+        //"arm_ldr_str_register_offset.json",
         // "arm_ldrh_strh.json",
         // "arm_ldrsb_ldrsh.json",
         // "arm_mcr_mrc.json",

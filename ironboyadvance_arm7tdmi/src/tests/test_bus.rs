@@ -80,7 +80,7 @@ impl MemoryInterface for TestBus {
         }
     }
 
-    fn store_8(&mut self, address: u32, value: u8, _access_pattern: u8) {
+    fn store_8(&mut self, _address: u32, value: u8, _access_pattern: u8) {
         let mut transaction_index = None;
         for (i, transaction) in self.transactions.iter().enumerate() {
             if transaction.kind == TransactionKind::Write {

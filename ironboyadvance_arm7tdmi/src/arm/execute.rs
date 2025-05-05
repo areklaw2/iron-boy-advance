@@ -301,7 +301,7 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>
 
     let pre_index = instruction.pre_index();
     if pre_index {
-        address = (address as i32).wrapping_add(offset as i32) as u32
+        address = address.wrapping_add(offset)
     }
 
     let load = instruction.load();
@@ -314,6 +314,9 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>
                 false => cpu.load_rotated_32(address, MemoryAccess::Nonsequential as u8),
             };
             if write_back || !pre_index {
+                if rn != rd && rn == PC {
+                    cpu.pipeline_flush();
+                }
                 cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
             }
             cpu.idle_cycle();
@@ -329,13 +332,12 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>
                 false => cpu.store_32(address, value, MemoryAccess::Nonsequential as u8),
             };
             if write_back || !pre_index {
+                if rn == PC {
+                    cpu.pipeline_flush();
+                }
                 cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
             }
         }
-    }
-
-    if rn == PC {
-        cpu.pipeline_flush();
     }
 
     match load && rd == PC {
