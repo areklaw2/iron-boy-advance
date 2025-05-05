@@ -136,7 +136,7 @@ pub fn disassemble_single_data_transfer(instruction: &ArmInstruction) -> String 
     let rd = instruction.rd();
     let address = match rd as usize == 15 {
         true => {
-            let expression = instruction.immediate().wrapping_add(8);
+            let expression = instruction.immediate();
             format!("#{:08X}", expression)
         }
         false => {

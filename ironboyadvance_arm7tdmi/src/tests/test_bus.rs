@@ -11,8 +11,27 @@ pub struct TestBus {
 }
 
 impl MemoryInterface for TestBus {
-    fn load_8(&mut self, address: u32, _access_pattern: u8) -> u32 {
-        self.read_8(address) as u32
+    fn load_8(&mut self, _address: u32, access_pattern: u8) -> u32 {
+        let access = decompose_access_pattern(access_pattern);
+        let is_instruction_read = access.contains(&MemoryAccess::Instruction);
+        let mut transaction_index = None;
+        for (i, transaction) in self.transactions.iter().enumerate() {
+            if is_instruction_read && transaction.kind == TransactionKind::InstructionRead {
+                transaction_index = Some(i);
+                break;
+            } else if transaction.kind == TransactionKind::GeneralRead {
+                transaction_index = Some(i);
+                break;
+            }
+        }
+
+        match transaction_index {
+            Some(index) => {
+                let transaction = self.transactions.remove(index);
+                transaction.data
+            }
+            None => panic!("No transaction found"),
+        }
     }
 
     fn load_16(&mut self, _address: u32, access_pattern: u8) -> u32 {
@@ -62,7 +81,21 @@ impl MemoryInterface for TestBus {
     }
 
     fn store_8(&mut self, address: u32, value: u8, _access_pattern: u8) {
-        self.write_8(address, value);
+        let mut transaction_index = None;
+        for (i, transaction) in self.transactions.iter().enumerate() {
+            if transaction.kind == TransactionKind::Write {
+                transaction_index = Some(i);
+                break;
+            }
+        }
+
+        match transaction_index {
+            Some(index) => {
+                let transaction = self.transactions.remove(index);
+                assert_eq!(value, transaction.data as u8);
+            }
+            None => panic!("No transaction found"),
+        }
     }
 
     fn store_16(&mut self, _address: u32, value: u16, _access_pattern: u8) {

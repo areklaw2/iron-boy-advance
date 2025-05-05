@@ -1,5 +1,7 @@
 use std::ops::BitOr;
 
+use crate::cpu::Arm7tdmiCpu;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MemoryAccess {
     Nonsequential = 0b0,
@@ -90,5 +92,13 @@ pub trait IoMemoryAccess {
         let half_word2 = (value >> 16) as u16;
         self.write_16(address, half_word1);
         self.write_16(address + 2, half_word2);
+    }
+}
+
+impl<I: MemoryInterface> Arm7tdmiCpu<I> {
+    pub fn load_rotated_32(&mut self, address: u32, access_pattern: u8) -> u32 {
+        let value = self.load_32(address, access_pattern);
+        let rotation = (address & 0x3) << 3;
+        (value >> rotation) | value.wrapping_shl(32 - rotation)
     }
 }

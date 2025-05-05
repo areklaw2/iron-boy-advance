@@ -271,21 +271,16 @@ pub fn execute_multiply_long<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instr
 }
 
 pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
-    let pre_index = instruction.pre_index();
-    let add = instruction.add();
-    let byte = instruction.byte();
-    let write_back = instruction.write_back();
-    let load = instruction.load();
+    let rd = instruction.rd() as usize;
+    let rn = instruction.rn() as usize;
 
-    let rd = instruction.rd();
-    let rn = instruction.rn();
-
-    let offset = match instruction.is_immediate() {
+    let mut address = cpu.register(rn);
+    let mut offset = match instruction.is_immediate() {
         true => instruction.immediate(),
         false => {
             let rm = instruction.rm() as usize;
             let mut rm_value = cpu.register(rm);
-            // may not need
+            // may not need??
             if rm == PC {
                 rm_value += 4;
             }
@@ -300,5 +295,54 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>
         }
     };
 
-    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
+    if !instruction.add() {
+        offset = (-(offset as i32)) as u32
+    }
+
+    let pre_index = instruction.pre_index();
+    if pre_index {
+        address = (address as i32).wrapping_add(offset as i32) as u32
+    }
+
+    let load = instruction.load();
+    let byte = instruction.byte();
+    let write_back = instruction.write_back();
+    match load {
+        true => {
+            let value = match byte {
+                true => cpu.load_8(address, MemoryAccess::Nonsequential as u8),
+                false => cpu.load_rotated_32(address, MemoryAccess::Nonsequential as u8),
+            };
+            if write_back || !pre_index {
+                cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+            }
+            cpu.idle_cycle();
+            cpu.set_register(rd, value);
+        }
+        false => {
+            let mut value = cpu.register(rd);
+            if rd == PC {
+                value += 4;
+            }
+            match byte {
+                true => cpu.store_8(address, value as u8, MemoryAccess::Nonsequential as u8),
+                false => cpu.store_32(address, value, MemoryAccess::Nonsequential as u8),
+            };
+            if write_back || !pre_index {
+                cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+            }
+        }
+    }
+
+    if rn == PC {
+        cpu.pipeline_flush();
+    }
+
+    match load && rd == PC {
+        true => {
+            cpu.pipeline_flush();
+            CpuAction::PipelineFlush
+        }
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+    }
 }
