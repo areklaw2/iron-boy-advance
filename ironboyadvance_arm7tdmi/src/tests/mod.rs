@@ -89,8 +89,8 @@ fn single_step_tests() {
         // "arm_data_proc_immediate_shift.json", //Done
         // "arm_data_proc_register_shift.json",  //Done
         // "arm_ldm_stm.json",
-        "arm_ldr_str_immediate_offset.json",
-        //"arm_ldr_str_register_offset.json",
+        // "arm_ldr_str_immediate_offset.json", //Done
+        // "arm_ldr_str_register_offset.json", //Done
         // "arm_ldrh_strh.json",
         // "arm_ldrsb_ldrsh.json",
         // "arm_mcr_mrc.json",
@@ -138,6 +138,10 @@ fn single_step_tests() {
     let multiplication = ["arm_mul_mla.json", "arm_mull_mlal.json"];
 
     for file in files {
+        if skip.contains(&file) {
+            continue;
+        }
+
         let test_json = fs::read_to_string(format!("../external/arm7tdmi/v1/{file}")).expect("unable to read file");
         let tests: Vec<Test> = serde_json::from_str(&test_json).unwrap();
         for test in tests {

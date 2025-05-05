@@ -279,11 +279,7 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>
         true => instruction.immediate(),
         false => {
             let rm = instruction.rm() as usize;
-            let mut rm_value = cpu.register(rm);
-            // may not need??
-            if rm == PC {
-                rm_value += 4;
-            }
+            let rm_value = cpu.register(rm);
             let shift_amount = instruction.shift_amount();
             let mut carry = cpu.cpsr().carry();
             match instruction.shift_type() {
@@ -296,7 +292,7 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>
     };
 
     if !instruction.add() {
-        offset = (-(offset as i32)) as u32
+        offset = (-(offset as i64)) as u32
     }
 
     let pre_index = instruction.pre_index();
