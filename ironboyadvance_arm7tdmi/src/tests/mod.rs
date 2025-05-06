@@ -91,15 +91,15 @@ fn single_step_tests() {
         // "arm_ldm_stm.json",
         // "arm_ldr_str_immediate_offset.json", //Done
         // "arm_ldr_str_register_offset.json", //Done
-        // "arm_ldrh_strh.json",
+        "arm_ldrh_strh.json",
         // "arm_ldrsb_ldrsh.json",
-        // "arm_mcr_mrc.json",
+        // "arm_mcr_mrc.json", //Skip
         // "arm_mrs.json", //Done
         // "arm_msr_imm.json", //Done
         // "arm_msr_reg.json", //Done
         // "arm_mul_mla.json", //Done
         // "arm_mull_mlal.json", //Done
-        // "arm_stc_ldc.json",
+        // "arm_stc_ldc.json", //Skip
         // "arm_swi.json",
         // "arm_swp.json",
         // "thumb_add_cmp_mov_hi.json",
@@ -134,7 +134,7 @@ fn single_step_tests() {
     //     let file = file.unwrap().path();
     // }
 
-    let skip = ["arm_cdp.json"];
+    let skip = ["arm_cdp.json", "arm_mcr_mrc.json", "arm_stc_ldc.json"];
     let multiplication = ["arm_mul_mla.json", "arm_mull_mlal.json"];
 
     for file in files {

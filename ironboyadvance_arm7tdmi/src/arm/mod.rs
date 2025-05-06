@@ -159,6 +159,8 @@ impl Instruction for ArmInstruction {
             Multiply => disassemble_multiply(self),
             MultiplyLong => disassemble_multiply_long(self),
             SingleDataTransfer => disassemble_single_data_transfer(self),
+            HalfwordDataTransferRegister => disassemble_halfword_data_transfer_register(self),
+            HalfwordDataTransferImmediate => disassemble_halfword_data_transfer_immediate(self),
             _ => todo!(),
         }
     }
@@ -172,6 +174,8 @@ impl Instruction for ArmInstruction {
             Multiply => execute_multiply(cpu, self),
             MultiplyLong => execute_multiply_long(cpu, self),
             SingleDataTransfer => execute_single_data_transfer(cpu, self),
+            HalfwordDataTransferRegister => execute_halfword_data_transfer_register(cpu, self),
+            HalfwordDataTransferImmediate => execute_halfword_data_transfer_immediate(cpu, self),
             _ => todo!(),
         }
     }
@@ -189,7 +193,9 @@ impl ArmInstruction {
     pub fn rn(&self) -> Register {
         match self.kind {
             BranchAndExchange => self.bits[0..=3].load::<u32>().into(),
-            DataProcessing | SingleDataTransfer => self.bits[16..=19].load::<u32>().into(),
+            DataProcessing | SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => {
+                self.bits[16..=19].load::<u32>().into()
+            }
             Multiply => self.bits[12..=15].load::<u32>().into(),
             _ => todo!(),
         }
@@ -197,7 +203,11 @@ impl ArmInstruction {
 
     pub fn rd(&self) -> Register {
         match self.kind {
-            PsrTransfer | DataProcessing | SingleDataTransfer => self.bits[12..=15].load::<u32>().into(),
+            PsrTransfer
+            | DataProcessing
+            | SingleDataTransfer
+            | HalfwordDataTransferImmediate
+            | HalfwordDataTransferRegister => self.bits[12..=15].load::<u32>().into(),
             Multiply => self.bits[16..=19].load::<u32>().into(),
             _ => todo!(),
         }
@@ -213,7 +223,9 @@ impl ArmInstruction {
 
     pub fn rm(&self) -> Register {
         match self.kind {
-            PsrTransfer | DataProcessing | Multiply | MultiplyLong | SingleDataTransfer => self.bits[0..=3].load::<u32>().into(),
+            PsrTransfer | DataProcessing | Multiply | MultiplyLong | SingleDataTransfer | HalfwordDataTransferRegister => {
+                self.bits[0..=3].load::<u32>().into()
+            }
             _ => todo!(),
         }
     }
@@ -285,6 +297,14 @@ impl ArmInstruction {
         }
     }
 
+    pub fn immediate_hi(&self) -> u32 {
+        self.bits[8..=11].load()
+    }
+
+    pub fn immediate_lo(&self) -> u32 {
+        self.bits[0..=3].load()
+    }
+
     pub fn is_spsr(&self) -> bool {
         self.bits[22]
     }
@@ -296,16 +316,22 @@ impl ArmInstruction {
         }
     }
 
-    pub fn signed(&self) -> bool {
+    pub fn unsigned(&self) -> bool {
         self.bits[22]
     }
 
     pub fn pre_index(&self) -> bool {
-        self.bits[24]
+        match self.kind {
+            SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => self.bits[24],
+            _ => todo!(),
+        }
     }
 
     pub fn add(&self) -> bool {
-        self.bits[23]
+        match self.kind {
+            SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => self.bits[23],
+            _ => todo!(),
+        }
     }
 
     pub fn byte(&self) -> bool {
@@ -313,10 +339,24 @@ impl ArmInstruction {
     }
 
     pub fn write_back(&self) -> bool {
-        self.bits[21]
+        match self.kind {
+            SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => self.bits[21],
+            _ => todo!(),
+        }
     }
 
     pub fn load(&self) -> bool {
-        self.bits[20]
+        match self.kind {
+            SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => self.bits[20],
+            _ => todo!(),
+        }
+    }
+
+    pub fn signed(&self) -> bool {
+        self.bits[6]
+    }
+
+    pub fn halfword(&self) -> bool {
+        self.bits[5]
     }
 }

@@ -116,7 +116,7 @@ pub fn disassemble_multiply_long(instruction: &ArmInstruction) -> String {
     let rd_lo = instruction.rd_lo();
     let rm = instruction.rm();
     let rs = instruction.rs();
-    let unsigned = instruction.signed();
+    let unsigned = instruction.unsigned();
     let accumulate = instruction.accumulate();
     match (unsigned, accumulate) {
         (true, false) => format!("UMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
@@ -134,20 +134,15 @@ pub fn disassemble_single_data_transfer(instruction: &ArmInstruction) -> String 
     let byte = if instruction.byte() { "B" } else { "" };
     let rn = instruction.rn();
     let rd = instruction.rd();
+    let immediate = instruction.immediate();
     let address = match rd as usize == 15 {
-        true => {
-            let expression = instruction.immediate();
-            format!("#{:08X}", expression)
-        }
+        true => format!("#{:08X}", immediate),
         false => {
             let offset = match instruction.is_immediate() {
-                true => {
-                    let immediate = instruction.immediate();
-                    match immediate {
-                        0 => "".into(),
-                        _ => format!(",#{}", immediate),
-                    }
-                }
+                true => match immediate {
+                    0 => "".into(),
+                    _ => format!(",#{}", immediate),
+                },
                 false => {
                     let rm = instruction.rm();
                     let shift_type = instruction.shift_type();
@@ -155,7 +150,7 @@ pub fn disassemble_single_data_transfer(instruction: &ArmInstruction) -> String 
                 }
             };
 
-            let write_back = if instruction.write_back() && offset != "0" { "!" } else { "" };
+            let write_back = if instruction.write_back() && offset != "" { "!" } else { "" };
             match pre_index {
                 true => format!("[{}{}]{}", rn, offset, write_back),
                 false => format!("[{}]{}", rn, offset),
@@ -166,5 +161,76 @@ pub fn disassemble_single_data_transfer(instruction: &ArmInstruction) -> String 
     match instruction.load() {
         true => format!("LDR{}{}{} {},{}", cond, byte, t, rd, address),
         false => format!("STR{}{}{} {},{}", cond, byte, t, rd, address),
+    }
+}
+
+pub fn disassemble_halfword_data_transfer_register(instruction: &ArmInstruction) -> String {
+    let cond = instruction.cond();
+    let pre_index = instruction.pre_index();
+    let add = if instruction.add() { "+" } else { "-" };
+    let rn = instruction.rn();
+    let rd = instruction.rd();
+    let immediate = instruction.immediate_hi() << 4 | instruction.immediate_lo();
+    let address = match rd as usize == 15 {
+        true => format!("#{:08X}", immediate),
+        false => {
+            let rm = instruction.rm();
+            let offset = format!(",{}{}", add, rm);
+            let write_back = if instruction.write_back() { "!" } else { "" };
+            match pre_index {
+                true => format!("[{}{}]{}", rn, offset, write_back),
+                false => format!("[{}]{}", rn, offset),
+            }
+        }
+    };
+
+    let s = instruction.signed();
+    let h = instruction.halfword();
+    let sh = match (s, h) {
+        (false, false) => "",
+        (false, true) => "H",
+        (true, false) => "SB",
+        (true, true) => "SH",
+    };
+
+    match instruction.load() {
+        true => format!("LDR{}{} {},{}", cond, sh, rd, address),
+        false => format!("STR{}{} {},{}", cond, sh, rd, address),
+    }
+}
+
+pub fn disassemble_halfword_data_transfer_immediate(instruction: &ArmInstruction) -> String {
+    let cond = instruction.cond();
+    let pre_index = instruction.pre_index();
+    let rn = instruction.rn();
+    let rd = instruction.rd();
+    let immediate = instruction.immediate_hi() << 4 | instruction.immediate_lo();
+    let address = match rd as usize == 15 {
+        true => format!("#{:08X}", immediate),
+        false => {
+            let offset = match immediate {
+                0 => "".into(),
+                _ => format!(",#{}", immediate),
+            };
+            let write_back = if instruction.write_back() && offset != "" { "!" } else { "" };
+            match pre_index {
+                true => format!("[{}{}]{}", rn, offset, write_back),
+                false => format!("[{}]{}", rn, offset),
+            }
+        }
+    };
+
+    let s = instruction.signed();
+    let h = instruction.halfword();
+    let sh = match (s, h) {
+        (false, false) => "",
+        (false, true) => "H",
+        (true, false) => "SB",
+        (true, true) => "SH",
+    };
+
+    match instruction.load() {
+        true => format!("LDR{}{} {},{}", cond, sh, rd, address),
+        false => format!("STR{}{} {},{}", cond, sh, rd, address),
     }
 }

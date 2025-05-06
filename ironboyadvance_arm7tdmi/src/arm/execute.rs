@@ -19,7 +19,10 @@ pub fn execute_branch_exchange<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
     CpuAction::PipelineFlush
 }
 
-pub fn execute_branch_and_branch_link<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+pub fn execute_branch_and_branch_link<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ArmInstruction,
+) -> CpuAction {
     if instruction.link() {
         cpu.set_register(LR, cpu.pc() - 4)
     }
@@ -228,7 +231,7 @@ pub fn execute_multiply_long<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instr
         operand2 += 4
     }
 
-    let mut result = if instruction.signed() {
+    let mut result = if instruction.unsigned() {
         (operand1 as i32 as i64).wrapping_mul(operand2 as i32 as i64) as u64
     } else {
         (operand1 as u64).wrapping_mul(operand2 as u64)
@@ -270,7 +273,10 @@ pub fn execute_multiply_long<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instr
     }
 }
 
-pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+pub fn execute_single_data_transfer<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ArmInstruction,
+) -> CpuAction {
     let rd = instruction.rd() as usize;
     let rn = instruction.rn() as usize;
 
@@ -343,4 +349,18 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>
         }
         false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
     }
+}
+
+pub fn execute_halfword_data_transfer_register<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ArmInstruction,
+) -> CpuAction {
+    todo!()
+}
+
+pub fn execute_halfword_data_transfer_immediate<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ArmInstruction,
+) -> CpuAction {
+    todo!()
 }
