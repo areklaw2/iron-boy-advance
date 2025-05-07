@@ -92,7 +92,7 @@ fn single_step_tests() {
         // "arm_ldr_str_immediate_offset.json", //Done
         // "arm_ldr_str_register_offset.json", //Done
         "arm_ldrh_strh.json",
-        // "arm_ldrsb_ldrsh.json",
+        //"arm_ldrsb_ldrsh.json",
         // "arm_mcr_mrc.json", //Skip
         // "arm_mrs.json", //Done
         // "arm_msr_imm.json", //Done
@@ -137,6 +137,7 @@ fn single_step_tests() {
     let skip = ["arm_cdp.json", "arm_mcr_mrc.json", "arm_stc_ldc.json"];
     let multiplication = ["arm_mul_mla.json", "arm_mull_mlal.json"];
 
+    let mut cpu = Arm7tdmiCpu::new(test_bus::TestBus::default(), true);
     for file in files {
         if skip.contains(&file) {
             continue;
@@ -145,10 +146,8 @@ fn single_step_tests() {
         let test_json = fs::read_to_string(format!("../external/arm7tdmi/v1/{file}")).expect("unable to read file");
         let tests: Vec<Test> = serde_json::from_str(&test_json).unwrap();
         for test in tests {
-            let mut cpu = Arm7tdmiCpu::new(
-                test_bus::TestBus::new(test.base_addr[0], test.opcode, test.transactions.clone()),
-                true,
-            );
+            let test_bus = test_bus::TestBus::new(test.base_addr[0], test.opcode, test.transactions.clone());
+            cpu.set_bus(test_bus);
 
             let intial_state = test.initial_state;
             let final_state = test.final_state;
@@ -186,6 +185,8 @@ fn single_step_tests() {
             assert_eq!(expected.into_bits(), actual.into_bits());
 
             assert_eq!(cpu.pipeline(), final_state.pipeline);
+
+            cpu.reset(true)
         }
     }
 }

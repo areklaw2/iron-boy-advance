@@ -10,14 +10,14 @@ pub fn disassemble_branch_exchange(instruction: &ArmInstruction) -> String {
     format!("BX{cond} {rn}")
 }
 
-pub fn disassemble_branch_branch_link(instruction: &ArmInstruction) -> String {
+pub fn disassemble_branch_and_branch_link(instruction: &ArmInstruction) -> String {
     let cond = instruction.cond();
     let link = if instruction.link() { "L" } else { "" };
     let expression = instruction.offset();
     format!("B{link}{cond} 0x{expression:08X}")
 }
 
-pub fn disassamble_data_processing(instruction: &ArmInstruction) -> String {
+pub fn disassemble_data_processing(instruction: &ArmInstruction) -> String {
     use AluInstruction::*;
     let cond = instruction.cond();
     let opcode = instruction.opcode();
@@ -164,7 +164,7 @@ pub fn disassemble_single_data_transfer(instruction: &ArmInstruction) -> String 
     }
 }
 
-pub fn disassemble_halfword_data_transfer_register(instruction: &ArmInstruction) -> String {
+pub fn disassemble_halfword_and_signed_data_transfer(instruction: &ArmInstruction) -> String {
     let cond = instruction.cond();
     let pre_index = instruction.pre_index();
     let add = if instruction.add() { "+" } else { "-" };
@@ -175,8 +175,15 @@ pub fn disassemble_halfword_data_transfer_register(instruction: &ArmInstruction)
         true => format!("#{:08X}", immediate),
         false => {
             let rm = instruction.rm();
-            let offset = format!(",{}{}", add, rm);
-            let write_back = if instruction.write_back() { "!" } else { "" };
+            let offset = match instruction.bits[22] {
+                true => format!(",{}{}", add, rm),
+                false => match immediate {
+                    0 => "".into(),
+                    _ => format!(",#{}", immediate),
+                },
+            };
+
+            let write_back = if instruction.write_back() && offset != "" { "!" } else { "" };
             match pre_index {
                 true => format!("[{}{}]{}", rn, offset, write_back),
                 false => format!("[{}]{}", rn, offset),
@@ -199,38 +206,18 @@ pub fn disassemble_halfword_data_transfer_register(instruction: &ArmInstruction)
     }
 }
 
-pub fn disassemble_halfword_data_transfer_immediate(instruction: &ArmInstruction) -> String {
-    let cond = instruction.cond();
-    let pre_index = instruction.pre_index();
-    let rn = instruction.rn();
-    let rd = instruction.rd();
-    let immediate = instruction.immediate_hi() << 4 | instruction.immediate_lo();
-    let address = match rd as usize == 15 {
-        true => format!("#{:08X}", immediate),
-        false => {
-            let offset = match immediate {
-                0 => "".into(),
-                _ => format!(",#{}", immediate),
-            };
-            let write_back = if instruction.write_back() && offset != "" { "!" } else { "" };
-            match pre_index {
-                true => format!("[{}{}]{}", rn, offset, write_back),
-                false => format!("[{}]{}", rn, offset),
-            }
-        }
-    };
+pub fn disassemble_single_data_swap(instruction: &ArmInstruction) -> String {
+    todo!()
+}
 
-    let s = instruction.signed();
-    let h = instruction.halfword();
-    let sh = match (s, h) {
-        (false, false) => "",
-        (false, true) => "H",
-        (true, false) => "SB",
-        (true, true) => "SH",
-    };
+pub fn disassemble_undefined(instruction: &ArmInstruction) -> String {
+    todo!()
+}
 
-    match instruction.load() {
-        true => format!("LDR{}{} {},{}", cond, sh, rd, address),
-        false => format!("STR{}{} {},{}", cond, sh, rd, address),
-    }
+pub fn disassemble_block_data_transfer(instruction: &ArmInstruction) -> String {
+    todo!()
+}
+
+pub fn disassemble_software_interrupt(instruction: &ArmInstruction) -> String {
+    todo!()
 }

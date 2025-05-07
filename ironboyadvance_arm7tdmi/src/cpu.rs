@@ -2,7 +2,7 @@ use ironboyadvance_utils::get_set;
 
 use crate::{
     CpuAction,
-    arm::Condition,
+    arm::{ArmInstructionKind, Condition, lut::generate_arm_lut},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -14,7 +14,6 @@ pub const PC: usize = 15;
 
 pub trait Instruction {
     type Size;
-    fn decode(value: Self::Size, pc: u32) -> Self;
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
     fn disassamble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
     fn value(&self) -> Self::Size;
@@ -32,6 +31,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     pipeline: [u32; 2],
     bus: I, // May need to make this shared
     next_memory_access: u8,
+    arm_lut: [ArmInstructionKind; 4096],
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
@@ -78,7 +78,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             pipeline: [0; 2],
             bus,
             next_memory_access: MemoryAccess::Instruction | MemoryAccess::Nonsequential,
+            arm_lut: [ArmInstructionKind::Undefined; 4096],
         };
+
+        cpu.arm_lut = generate_arm_lut();
 
         match skip_bios {
             true => {
@@ -119,7 +122,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
-                let instruction = ArmInstruction::decode(instruction, pc - 8);
+                let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
+                let instruction = ArmInstruction::new(self.arm_lut[lut_index as usize], instruction, pc - 8);
 
                 println!("{}", instruction);
                 println!("{}", instruction.disassamble(self));
@@ -302,6 +306,39 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             CpuMode::Irq => self.spsrs[3] = spsr,
             CpuMode::Undefined => self.spsrs[4] = spsr,
             CpuMode::Invalid => panic!("invalid mode"),
+        }
+    }
+
+    pub fn set_bus(&mut self, bus: I) {
+        self.bus = bus
+    }
+
+    pub fn reset(&mut self, skip_bios: bool) {
+        self.general_registers = [0; 16];
+        self.banked_registers_fiq = [0; 7]; //r8 to r14
+        self.banked_registers_svc = [0; 2]; //r13 to r14
+        self.banked_registers_abt = [0; 2]; //r13 to r14
+        self.banked_registers_irq = [0; 2]; //r13 to r14
+        self.banked_registers_und = [0; 2]; //r13 to r14
+        self.spsrs = [ProgramStatusRegister::from_bits(0x13); 5];
+        self.cpsr = ProgramStatusRegister::from_bits(0x13);
+        self.pipeline = [0; 2];
+        self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Nonsequential;
+
+        match skip_bios {
+            true => {
+                self.general_registers[SP] = 0x03007F00;
+                self.general_registers[LR] = 0x08000000;
+                self.general_registers[PC] = 0x08000000;
+                self.banked_registers_svc[0] = 0x3007FE0;
+                self.banked_registers_irq[0] = 0x3007FA0;
+                self.cpsr.set_mode(CpuMode::System);
+                self.cpsr.set_irq_disable(false);
+            }
+            false => {
+                self.cpsr.set_mode(CpuMode::Supervisor);
+                self.cpsr.set_irq_disable(true);
+            }
         }
     }
 }

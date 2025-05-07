@@ -158,3 +158,14 @@ impl TestBus {
         }
     }
 }
+
+impl Default for TestBus {
+    fn default() -> Self {
+        Self {
+            data: Default::default(),
+            base_address: Default::default(),
+            opcode: Default::default(),
+            transactions: Default::default(),
+        }
+    }
+}

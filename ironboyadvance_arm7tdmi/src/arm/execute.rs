@@ -351,16 +351,25 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(
     }
 }
 
-pub fn execute_halfword_data_transfer_register<I: MemoryInterface>(
+pub fn execute_halfword_and_signed_data_transfer<I: MemoryInterface>(
     cpu: &mut Arm7tdmiCpu<I>,
     instruction: &ArmInstruction,
 ) -> CpuAction {
     todo!()
 }
 
-pub fn execute_halfword_data_transfer_immediate<I: MemoryInterface>(
-    cpu: &mut Arm7tdmiCpu<I>,
-    instruction: &ArmInstruction,
-) -> CpuAction {
+pub fn execute_single_data_swap<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+    todo!()
+}
+
+pub fn execute_undefined<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+    todo!()
+}
+
+pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
+    todo!()
+}
+
+pub fn execute_software_interrupt<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     todo!()
 }

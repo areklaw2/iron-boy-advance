@@ -16,6 +16,7 @@ use super::{Register, cpu::Instruction};
 
 pub mod disassembler;
 pub mod execute;
+pub mod lut;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Condition {
@@ -68,54 +69,15 @@ pub enum ArmInstructionKind {
     MultiplyLong,
     SingleDataSwap,
     BranchAndExchange,
-    HalfwordDataTransferRegister,
-    HalfwordDataTransferImmediate,
+    HalfwordAndSignedDataTransfer,
     SingleDataTransfer,
     Undefined,
     BlockDataTransfer,
     BranchAndBranchWithLink,
-    // CoprocessorDataTransfer,
-    // CoprocessorDataOperation,
-    // CoprocessorRegisterTransfer,
     SoftwareInterrupt,
-}
-
-impl From<u32> for ArmInstructionKind {
-    fn from(instruction: u32) -> ArmInstructionKind {
-        // Decoding order matters
-        if instruction & 0x0FFFFFF0 == 0x012FFF10 {
-            BranchAndExchange
-        } else if instruction & 0x0E000000 == 0x08000000 {
-            BlockDataTransfer
-        } else if instruction & 0x0F000000 == 0x0A000000 || instruction & 0x0F000000 == 0x0B000000 {
-            BranchAndBranchWithLink
-        } else if instruction & 0x0F000000 == 0x0F000000 {
-            SoftwareInterrupt
-        } else if instruction & 0x0E000010 == 0x06000010 {
-            Undefined
-        } else if instruction & 0x0C000000 == 0x04000000 {
-            SingleDataTransfer
-        } else if instruction & 0x0FB00FF0 == 0x01000090 {
-            SingleDataSwap
-        } else if instruction & 0x0F8000F0 == 0x00000090 {
-            Multiply
-        } else if instruction & 0x0F8000F0 == 0x00800090 {
-            MultiplyLong
-        } else if instruction & 0x0E400F90 == 0x00000090 {
-            HalfwordDataTransferRegister
-        } else if instruction & 0x0E400090 == 0x00400090 {
-            HalfwordDataTransferImmediate
-        } else if instruction & 0x0FBF0000 == 0x010F0000 || instruction & 0x0DB0F000 == 0x0120F000 {
-            PsrTransfer
-        } else if instruction & 0x0C000000 == 0x00000000 {
-            DataProcessing
-        } else {
-            // Coprocessor Data Operation
-            // Coprocessor Data Transfer
-            // Coprocessor Register Transfer
-            unimplemented!("Instruction undefined or unimplemented")
-        }
-    }
+    //CoprocessorDataTransfer,
+    //CoprocessorDataOperation,
+    //CoprocessorRegisterTransfer,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -142,25 +104,16 @@ impl fmt::Display for ArmInstruction {
 impl Instruction for ArmInstruction {
     type Size = u32;
 
-    fn decode(instruction: u32, executed_pc: u32) -> ArmInstruction {
-        ArmInstruction {
-            kind: instruction.into(),
-            bits: instruction.view_bits::<Lsb0>().to_bitvec(),
-            executed_pc,
-        }
-    }
-
     fn disassamble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
         match self.kind {
             BranchAndExchange => disassemble_branch_exchange(self),
-            BranchAndBranchWithLink => disassemble_branch_branch_link(self),
-            DataProcessing => disassamble_data_processing(self),
+            BranchAndBranchWithLink => disassemble_branch_and_branch_link(self),
+            DataProcessing => disassemble_data_processing(self),
             PsrTransfer => disassemble_psr_transfer(cpu, self),
             Multiply => disassemble_multiply(self),
             MultiplyLong => disassemble_multiply_long(self),
             SingleDataTransfer => disassemble_single_data_transfer(self),
-            HalfwordDataTransferRegister => disassemble_halfword_data_transfer_register(self),
-            HalfwordDataTransferImmediate => disassemble_halfword_data_transfer_immediate(self),
+            HalfwordAndSignedDataTransfer => disassemble_halfword_and_signed_data_transfer(self),
             _ => todo!(),
         }
     }
@@ -174,8 +127,7 @@ impl Instruction for ArmInstruction {
             Multiply => execute_multiply(cpu, self),
             MultiplyLong => execute_multiply_long(cpu, self),
             SingleDataTransfer => execute_single_data_transfer(cpu, self),
-            HalfwordDataTransferRegister => execute_halfword_data_transfer_register(cpu, self),
-            HalfwordDataTransferImmediate => execute_halfword_data_transfer_immediate(cpu, self),
+            HalfwordAndSignedDataTransfer => execute_halfword_and_signed_data_transfer(cpu, self),
             _ => todo!(),
         }
     }
@@ -186,6 +138,14 @@ impl Instruction for ArmInstruction {
 }
 
 impl ArmInstruction {
+    pub fn new(kind: ArmInstructionKind, instruction: u32, executed_pc: u32) -> ArmInstruction {
+        ArmInstruction {
+            kind,
+            bits: instruction.view_bits::<Lsb0>().to_bitvec(),
+            executed_pc,
+        }
+    }
+
     pub fn cond(&self) -> Condition {
         self.bits[28..=31].load::<u32>().into()
     }
@@ -193,9 +153,7 @@ impl ArmInstruction {
     pub fn rn(&self) -> Register {
         match self.kind {
             BranchAndExchange => self.bits[0..=3].load::<u32>().into(),
-            DataProcessing | SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => {
-                self.bits[16..=19].load::<u32>().into()
-            }
+            DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[16..=19].load::<u32>().into(),
             Multiply => self.bits[12..=15].load::<u32>().into(),
             _ => todo!(),
         }
@@ -203,11 +161,9 @@ impl ArmInstruction {
 
     pub fn rd(&self) -> Register {
         match self.kind {
-            PsrTransfer
-            | DataProcessing
-            | SingleDataTransfer
-            | HalfwordDataTransferImmediate
-            | HalfwordDataTransferRegister => self.bits[12..=15].load::<u32>().into(),
+            PsrTransfer | DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer => {
+                self.bits[12..=15].load::<u32>().into()
+            }
             Multiply => self.bits[16..=19].load::<u32>().into(),
             _ => todo!(),
         }
@@ -223,7 +179,7 @@ impl ArmInstruction {
 
     pub fn rm(&self) -> Register {
         match self.kind {
-            PsrTransfer | DataProcessing | Multiply | MultiplyLong | SingleDataTransfer | HalfwordDataTransferRegister => {
+            PsrTransfer | DataProcessing | Multiply | MultiplyLong | SingleDataTransfer | HalfwordAndSignedDataTransfer => {
                 self.bits[0..=3].load::<u32>().into()
             }
             _ => todo!(),
@@ -322,14 +278,14 @@ impl ArmInstruction {
 
     pub fn pre_index(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => self.bits[24],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[24],
             _ => todo!(),
         }
     }
 
     pub fn add(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => self.bits[23],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[23],
             _ => todo!(),
         }
     }
@@ -340,14 +296,14 @@ impl ArmInstruction {
 
     pub fn write_back(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => self.bits[21],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[21],
             _ => todo!(),
         }
     }
 
     pub fn load(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordDataTransferImmediate | HalfwordDataTransferRegister => self.bits[20],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[20],
             _ => todo!(),
         }
     }
