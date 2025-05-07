@@ -5,6 +5,7 @@ use std::fs;
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
+#[allow(unused)]
 use crate::{CpuMode, cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
 
 mod test_bus;
@@ -26,6 +27,7 @@ enum Size {
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 enum Access {
     Nonsequential = 0b0,
     Sequential = 0b1,
@@ -35,9 +37,10 @@ enum Access {
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
+#[allow(unused)]
 pub struct Transaction {
-    pub kind: TransactionKind,
-    pub size: Size,
+    kind: TransactionKind,
+    size: Size,
     pub addr: u32,
     pub data: u32,
     pub cycle: u8,
@@ -45,7 +48,7 @@ pub struct Transaction {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused)]
 struct State {
     #[serde(rename = "R")]
     r: [u32; 16],
@@ -67,6 +70,7 @@ struct State {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(unused)]
 struct Test {
     #[serde(rename = "initial")]
     initial_state: State,
