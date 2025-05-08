@@ -96,9 +96,30 @@ pub trait IoMemoryAccess {
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {
+    pub fn load_signed_8(&mut self, address: u32, access_pattern: u8) -> u32 {
+        self.load_8(address, access_pattern) as i8 as i32 as u32
+    }
+
+    pub fn load_signed_16(&mut self, address: u32, access_pattern: u8) -> u32 {
+        println!("address: {}", address);
+
+        match address & 0x1 != 0 {
+            true => self.load_8(address, access_pattern) as i8 as i32 as u32,
+            false => self.load_16(address, access_pattern) as i16 as i32 as u32,
+        }
+    }
+
+    pub fn load_rotated_16(&mut self, address: u32, access_pattern: u8) -> u32 {
+        let value = self.load_16(address, access_pattern);
+        match address & 0x1 != 0 {
+            true => value >> 8 | value << 24,
+            false => value,
+        }
+    }
+
     pub fn load_rotated_32(&mut self, address: u32, access_pattern: u8) -> u32 {
         let value = self.load_32(address, access_pattern);
         let rotation = (address & 0x3) << 3;
-        (value >> rotation) | value.wrapping_shl(32 - rotation)
+        value >> rotation | value.wrapping_shl(32 - rotation)
     }
 }

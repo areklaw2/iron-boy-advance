@@ -208,6 +208,7 @@ impl ArmInstruction {
         match self.kind {
             PsrTransfer | DataProcessing => self.bits[25],
             SingleDataTransfer => !self.bits[25],
+            HalfwordAndSignedDataTransfer => self.bits[22],
             _ => todo!(),
         }
     }

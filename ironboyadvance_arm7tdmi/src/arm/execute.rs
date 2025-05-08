@@ -284,8 +284,7 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(
     let mut offset = match instruction.is_immediate() {
         true => instruction.immediate(),
         false => {
-            let rm = instruction.rm() as usize;
-            let rm_value = cpu.register(rm);
+            let rm_value = cpu.register(instruction.rm() as usize);
             let shift_amount = instruction.shift_amount();
             let mut carry = cpu.cpsr().carry();
             match instruction.shift_type() {
@@ -355,7 +354,111 @@ pub fn execute_halfword_and_signed_data_transfer<I: MemoryInterface>(
     cpu: &mut Arm7tdmiCpu<I>,
     instruction: &ArmInstruction,
 ) -> CpuAction {
-    todo!()
+    let rd = instruction.rd() as usize;
+    let rn = instruction.rn() as usize;
+
+    let mut address = cpu.register(rn);
+    let mut offset = match instruction.is_immediate() {
+        true => instruction.immediate_hi() << 4 | instruction.immediate_lo(),
+        false => cpu.register(instruction.rm() as usize),
+    };
+
+    if !instruction.add() {
+        offset = (-(offset as i64)) as u32
+    }
+
+    let pre_index = instruction.pre_index();
+    if pre_index {
+        address = address.wrapping_add(offset)
+    }
+
+    let load = instruction.load();
+    let write_back = instruction.write_back();
+    let s = instruction.signed();
+    let h = instruction.halfword();
+    match load {
+        true => match (s, h) {
+            (false, false) => {}
+            (false, true) => {
+                let value = cpu.load_rotated_16(address, MemoryAccess::Nonsequential as u8);
+                if write_back || !pre_index {
+                    if rn != rd && rn == PC {
+                        cpu.pipeline_flush();
+                    }
+                    cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+                }
+                cpu.idle_cycle();
+                cpu.set_register(rd, value);
+            }
+            (true, false) => {
+                let value = cpu.load_signed_8(address, MemoryAccess::Nonsequential as u8);
+                if write_back || !pre_index {
+                    if rn != rd && rn == PC {
+                        cpu.pipeline_flush();
+                    }
+                    cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+                }
+                cpu.idle_cycle();
+                cpu.set_register(rd, value);
+            }
+            (true, true) => {
+                let value = cpu.load_signed_16(address, MemoryAccess::Nonsequential as u8);
+                println!("{}", value);
+                if write_back || !pre_index {
+                    if rn != rd && rn == PC {
+                        cpu.pipeline_flush();
+                    }
+                    cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+                }
+                cpu.idle_cycle();
+                cpu.set_register(rd, value);
+            }
+        },
+        false => {
+            let mut value = cpu.register(rd);
+            if rd == PC {
+                value += 4;
+            }
+            match (s, h) {
+                (false, false) => {}
+                (false, true) => {
+                    cpu.store_16(address, value as u16, MemoryAccess::Nonsequential as u8);
+                    if write_back || !pre_index {
+                        if rn == PC {
+                            cpu.pipeline_flush();
+                        }
+                        cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+                    }
+                }
+                (true, false) => {
+                    cpu.idle_cycle();
+                    if write_back || !pre_index {
+                        if rn == PC {
+                            cpu.pipeline_flush();
+                        }
+                        cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+                    }
+                }
+                (true, true) => {
+                    cpu.idle_cycle();
+                    if write_back || !pre_index {
+                        if rn == PC {
+                            cpu.pipeline_flush();
+                        }
+                        cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+                    }
+                }
+            };
+        }
+    }
+
+    match load && rd == PC {
+        true => {
+            cpu.pipeline_flush();
+            CpuAction::PipelineFlush
+        }
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+    }
 }
 
 pub fn execute_single_data_swap<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {

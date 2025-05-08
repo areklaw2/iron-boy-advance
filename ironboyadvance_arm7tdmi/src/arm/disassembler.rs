@@ -175,12 +175,12 @@ pub fn disassemble_halfword_and_signed_data_transfer(instruction: &ArmInstructio
         true => format!("#{:08X}", immediate),
         false => {
             let rm = instruction.rm();
-            let offset = match instruction.bits[22] {
-                true => format!(",{}{}", add, rm),
-                false => match immediate {
+            let offset = match instruction.is_immediate() {
+                true => match immediate {
                     0 => "".into(),
                     _ => format!(",#{}", immediate),
                 },
+                false => format!(",{}{}", add, rm),
             };
 
             let write_back = if instruction.write_back() && offset != "" { "!" } else { "" };
