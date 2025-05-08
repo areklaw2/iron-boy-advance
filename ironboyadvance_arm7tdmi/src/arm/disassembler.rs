@@ -141,7 +141,7 @@ pub fn disassemble_single_data_transfer(instruction: &ArmInstruction) -> String 
             let offset = match instruction.is_immediate() {
                 true => match immediate {
                     0 => "".into(),
-                    _ => format!(",#{}", immediate),
+                    _ => format!(",#{}{}", add, immediate),
                 },
                 false => {
                     let rm = instruction.rm();
@@ -178,7 +178,7 @@ pub fn disassemble_halfword_and_signed_data_transfer(instruction: &ArmInstructio
             let offset = match instruction.is_immediate() {
                 true => match immediate {
                     0 => "".into(),
-                    _ => format!(",#{}", immediate),
+                    _ => format!(",#{}{}", add, immediate),
                 },
                 false => format!(",{}{}", add, rm),
             };

@@ -95,8 +95,8 @@ fn single_step_tests() {
         // "arm_ldm_stm.json",
         // "arm_ldr_str_immediate_offset.json", //Done
         // "arm_ldr_str_register_offset.json", //Done
-        //"arm_ldrh_strh.json", //Done
-        "arm_ldrsb_ldrsh.json",
+        // "arm_ldrh_strh.json", //Done
+        // "arm_ldrsb_ldrsh.json", //Done
         // "arm_mcr_mrc.json", //Skip
         // "arm_mrs.json", //Done
         // "arm_msr_imm.json", //Done

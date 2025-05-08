@@ -403,7 +403,6 @@ pub fn execute_halfword_and_signed_data_transfer<I: MemoryInterface>(
             }
             (true, true) => {
                 let value = cpu.load_signed_16(address, MemoryAccess::Nonsequential as u8);
-                println!("{}", value);
                 if write_back || !pre_index {
                     if rn != rd && rn == PC {
                         cpu.pipeline_flush();
