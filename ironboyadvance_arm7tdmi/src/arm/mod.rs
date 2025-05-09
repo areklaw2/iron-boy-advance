@@ -114,7 +114,10 @@ impl Instruction for ArmInstruction {
             MultiplyLong => disassemble_multiply_long(self),
             SingleDataTransfer => disassemble_single_data_transfer(self),
             HalfwordAndSignedDataTransfer => disassemble_halfword_and_signed_data_transfer(self),
-            _ => todo!(),
+            BlockDataTransfer => disassemble_block_data_transfer(self),
+            SingleDataSwap => disassemble_single_data_swap(self),
+            SoftwareInterrupt => disassemble_software_interrupt(self),
+            Undefined => disassemble_undefined(self),
         }
     }
 
@@ -128,7 +131,10 @@ impl Instruction for ArmInstruction {
             MultiplyLong => execute_multiply_long(cpu, self),
             SingleDataTransfer => execute_single_data_transfer(cpu, self),
             HalfwordAndSignedDataTransfer => execute_halfword_and_signed_data_transfer(cpu, self),
-            _ => todo!(),
+            BlockDataTransfer => execute_block_data_transfer(cpu, self),
+            SingleDataSwap => execute_single_data_swap(cpu, self),
+            SoftwareInterrupt => execute_software_interrupt(cpu, self),
+            Undefined => execute_undefined(cpu, self),
         }
     }
 
@@ -153,7 +159,9 @@ impl ArmInstruction {
     pub fn rn(&self) -> Register {
         match self.kind {
             BranchAndExchange => self.bits[0..=3].load::<u32>().into(),
-            DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[16..=19].load::<u32>().into(),
+            DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => {
+                self.bits[16..=19].load::<u32>().into()
+            }
             Multiply => self.bits[12..=15].load::<u32>().into(),
             _ => todo!(),
         }
@@ -279,14 +287,14 @@ impl ArmInstruction {
 
     pub fn pre_index(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[24],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[24],
             _ => todo!(),
         }
     }
 
     pub fn add(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[23],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[23],
             _ => todo!(),
         }
     }
@@ -297,14 +305,14 @@ impl ArmInstruction {
 
     pub fn write_back(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[21],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[21],
             _ => todo!(),
         }
     }
 
     pub fn load(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer => self.bits[20],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[20],
             _ => todo!(),
         }
     }
@@ -315,5 +323,21 @@ impl ArmInstruction {
 
     pub fn halfword(&self) -> bool {
         self.bits[5]
+    }
+
+    pub fn load_psr_force_user(&self) -> bool {
+        self.bits[22]
+    }
+
+    pub fn register_list(&self) -> Vec<usize> {
+        self.bits[0..=15]
+            .iter()
+            .enumerate()
+            .rev()
+            .filter_map(|(i, b)| match b.as_ref() {
+                true => Some(15 - i),
+                false => None,
+            })
+            .collect()
     }
 }

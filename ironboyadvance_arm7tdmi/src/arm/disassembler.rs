@@ -1,6 +1,6 @@
-use bitvec::field::BitField;
+use bitvec::{field::BitField, order::Lsb0, view::BitView};
 
-use crate::{CpuMode, alu::AluInstruction, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
+use crate::{CpuMode, Register, alu::AluInstruction, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
 use super::ArmInstruction;
 
@@ -206,18 +206,67 @@ pub fn disassemble_halfword_and_signed_data_transfer(instruction: &ArmInstructio
     }
 }
 
+pub fn disassemble_block_data_transfer(instruction: &ArmInstruction) -> String {
+    let cond = instruction.cond();
+    let pre_index = instruction.pre_index();
+    let add = instruction.add();
+    let load_psr_force_user = if instruction.load_psr_force_user() { "^" } else { "" };
+    let write_back = if instruction.write_back() { "!" } else { "" };
+    let load = instruction.load();
+    let rn = instruction.rn();
+    let register_list = instruction
+        .register_list()
+        .iter()
+        .map(|register| Register::from(*register as u32).to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+
+    let mnemonic = match (load, pre_index, add) {
+        (true, true, true) => match rn == Register::R13 {
+            true => format!("LDM{}ED", cond),
+            false => format!("LDM{}IB", cond),
+        },
+        (true, false, true) => match rn == Register::R13 {
+            true => format!("LDM{}FD", cond),
+            false => format!("LDM{}IA", cond),
+        },
+        (true, true, false) => match rn == Register::R13 {
+            true => format!("LDM{}EA", cond),
+            false => format!("LDM{}DB", cond),
+        },
+        (true, false, false) => match rn == Register::R13 {
+            true => format!("LDM{}FA", cond),
+            false => format!("LDM{}DA", cond),
+        },
+        (false, true, true) => match rn == Register::R13 {
+            true => format!("STM{}FA", cond),
+            false => format!("STM{}IB", cond),
+        },
+        (false, false, true) => match rn == Register::R13 {
+            true => format!("STM{}EA", cond),
+            false => format!("STM{}IA", cond),
+        },
+        (false, true, false) => match rn == Register::R13 {
+            true => format!("STM{}FD", cond),
+            false => format!("STM{}DB", cond),
+        },
+        (false, false, false) => match rn == Register::R13 {
+            true => format!("STM{}ED", cond),
+            false => format!("STM{}DA", cond),
+        },
+    };
+
+    format!("{} {}{},({}){}", mnemonic, rn, write_back, register_list, load_psr_force_user)
+}
+
 pub fn disassemble_single_data_swap(instruction: &ArmInstruction) -> String {
     todo!()
 }
 
-pub fn disassemble_undefined(instruction: &ArmInstruction) -> String {
-    todo!()
-}
-
-pub fn disassemble_block_data_transfer(instruction: &ArmInstruction) -> String {
-    todo!()
-}
-
 pub fn disassemble_software_interrupt(instruction: &ArmInstruction) -> String {
+    todo!()
+}
+
+pub fn disassemble_undefined(instruction: &ArmInstruction) -> String {
     todo!()
 }
