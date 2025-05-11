@@ -5,7 +5,8 @@ use execute::*;
 use std::fmt;
 
 use crate::{
-    CpuAction,
+    CpuAction, Register,
+    barrel_shifter::ShiftType,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };
@@ -49,7 +50,7 @@ impl fmt::Display for ThumbInstruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "ThumbInstruction: kind: {:?}, bits: {} -> (0x{:08X}), executed_pc:{} -> (0x{:08X})",
+            "ThumbInstruction: kind: {:?}, bits: {} -> (0x{:04X}), executed_pc:{} -> (0x{:08X})",
             self.kind,
             self.bits.load::<u16>(),
             self.bits.load::<u16>(),
@@ -124,5 +125,21 @@ impl ThumbInstruction {
             bits: instruction.view_bits::<Lsb0>().to_bitvec(),
             executed_pc,
         }
+    }
+
+    pub fn opcode(&self) -> ShiftType {
+        self.bits[11..=12].load::<u16>().into()
+    }
+
+    pub fn offset5(&self) -> u16 {
+        self.bits[6..=10].load::<u16>().into()
+    }
+
+    pub fn rs(&self) -> Register {
+        self.bits[3..=5].load::<u16>().into()
+    }
+
+    pub fn rd(&self) -> Register {
+        self.bits[0..=2].load::<u16>().into()
     }
 }

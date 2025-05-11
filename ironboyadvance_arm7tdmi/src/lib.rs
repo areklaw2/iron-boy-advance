@@ -112,3 +112,19 @@ impl From<u32> for Register {
         }
     }
 }
+
+impl From<u16> for Register {
+    fn from(value: u16) -> Self {
+        use Register::*;
+        match value {
+            0b000 => R0,
+            0b001 => R1,
+            0b010 => R2,
+            0b011 => R3,
+            0b100 => R4,
+            0b101 => R5,
+            0b110 => R6,
+            _ => R7,
+        }
+    }
+}

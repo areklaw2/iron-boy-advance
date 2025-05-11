@@ -126,7 +126,7 @@ fn single_step_tests() {
         // "thumb_ldrh_strh_reg_offset.json",
         // "thumb_ldrsb_strb_reg_offset.json",
         // "thumb_ldrsh_ldrsb_reg_offset.json",
-        "thumb_lsl_lsr_asr.json",
+        // "thumb_lsl_lsr_asr.json", // Done
         // "thumb_mov_cmp_add_sub.json",
         // "thumb_push_pop.json",
         // "thumb_swi.json",

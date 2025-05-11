@@ -19,6 +19,18 @@ impl From<u32> for ShiftType {
     }
 }
 
+impl From<u16> for ShiftType {
+    fn from(value: u16) -> Self {
+        use ShiftType::*;
+        match value {
+            0b00 => LSL,
+            0b01 => LSR,
+            0b10 => ASR,
+            _ => unreachable!(),
+        }
+    }
+}
+
 pub enum ShiftBy {
     Immediate,
     Register,
