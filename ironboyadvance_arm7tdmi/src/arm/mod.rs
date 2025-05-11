@@ -104,7 +104,7 @@ impl fmt::Display for ArmInstruction {
 impl Instruction for ArmInstruction {
     type Size = u32;
 
-    fn disassamble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
         match self.kind {
             BranchAndExchange => disassemble_branch_exchange(self),
             BranchAndBranchWithLink => disassemble_branch_and_branch_link(self),

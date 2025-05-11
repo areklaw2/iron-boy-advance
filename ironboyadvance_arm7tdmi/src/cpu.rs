@@ -4,7 +4,7 @@ use crate::{
     CpuAction,
     arm::{ArmInstructionKind, Condition, lut::generate_arm_lut},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::{ThumbInstruction, ThumbInstructionKind},
+    thumb::{ThumbInstruction, ThumbInstructionKind, lut::generate_thumb_lut},
 };
 
 use super::{CpuMode, CpuState, arm::ArmInstruction, psr::ProgramStatusRegister};
@@ -16,7 +16,7 @@ pub const PC: usize = 15;
 pub trait Instruction {
     type Size;
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
-    fn disassamble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
     fn value(&self) -> Self::Size;
 }
 
@@ -85,6 +85,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         };
 
         cpu.arm_lut = generate_arm_lut();
+        cpu.thumb_lut = generate_thumb_lut();
 
         match skip_bios {
             true => {
@@ -153,7 +154,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = ThumbInstruction::new(self.thumb_lut[lut_index as usize], instruction as u16, pc - 4);
 
                 println!("{}", instruction);
-                println!("{}", instruction.disassamble(self));
+                println!("{}", instruction.disassemble(self));
 
                 match instruction.execute(self) {
                     CpuAction::Advance(memory_access) => {

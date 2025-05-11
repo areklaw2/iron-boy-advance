@@ -1,5 +1,7 @@
 use ThumbInstructionKind::*;
 use bitvec::{field::BitField, order::Lsb0, vec::BitVec, view::BitView};
+use disassembler::*;
+use execute::*;
 use std::fmt;
 
 use crate::{
@@ -18,7 +20,7 @@ pub enum ThumbInstructionKind {
     AddSubtract,
     MoveCompareAddSubtractImmediate,
     AluOperations,
-    HiRegisterOperationsOrBranchExchange,
+    HighRegisterOperationsOrBranchExchange,
     PcRelativeLoad,
     LoadStoreRegisterOffset,
     LoadStoreSignExtendedByteHalfword,
@@ -26,7 +28,7 @@ pub enum ThumbInstructionKind {
     LoadStoreHalfword,
     SpRelativeLoadStore,
     LoadAddress,
-    AddOffsetSp,
+    AddOffsetToSp,
     PushPopRegisters,
     MultipleLoadStore,
     ConditionalBranch,
@@ -60,13 +62,13 @@ impl fmt::Display for ThumbInstruction {
 impl Instruction for ThumbInstruction {
     type Size = u16;
 
-    fn disassamble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
         match self.kind {
-            MoveShiftedRegister => todo!(),
+            MoveShiftedRegister => disassemble_move_shifted_register(self),
             AddSubtract => todo!(),
             MoveCompareAddSubtractImmediate => todo!(),
             AluOperations => todo!(),
-            HiRegisterOperationsOrBranchExchange => todo!(),
+            HighRegisterOperationsOrBranchExchange => todo!(),
             PcRelativeLoad => todo!(),
             LoadStoreRegisterOffset => todo!(),
             LoadStoreSignExtendedByteHalfword => todo!(),
@@ -74,7 +76,7 @@ impl Instruction for ThumbInstruction {
             LoadStoreHalfword => todo!(),
             SpRelativeLoadStore => todo!(),
             LoadAddress => todo!(),
-            AddOffsetSp => todo!(),
+            AddOffsetToSp => todo!(),
             PushPopRegisters => todo!(),
             MultipleLoadStore => todo!(),
             ConditionalBranch => todo!(),
@@ -87,11 +89,11 @@ impl Instruction for ThumbInstruction {
 
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         match self.kind {
-            MoveShiftedRegister => todo!(),
+            MoveShiftedRegister => execute_move_shifted_register(cpu, self),
             AddSubtract => todo!(),
             MoveCompareAddSubtractImmediate => todo!(),
             AluOperations => todo!(),
-            HiRegisterOperationsOrBranchExchange => todo!(),
+            HighRegisterOperationsOrBranchExchange => todo!(),
             PcRelativeLoad => todo!(),
             LoadStoreRegisterOffset => todo!(),
             LoadStoreSignExtendedByteHalfword => todo!(),
@@ -99,7 +101,7 @@ impl Instruction for ThumbInstruction {
             LoadStoreHalfword => todo!(),
             SpRelativeLoadStore => todo!(),
             LoadAddress => todo!(),
-            AddOffsetSp => todo!(),
+            AddOffsetToSp => todo!(),
             PushPopRegisters => todo!(),
             MultipleLoadStore => todo!(),
             ConditionalBranch => todo!(),
