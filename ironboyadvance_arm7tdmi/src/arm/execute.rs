@@ -605,6 +605,12 @@ pub fn execute_software_interrupt<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, 
     CpuAction::PipelineFlush
 }
 
-pub fn execute_undefined<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
-    todo!()
+pub fn execute_undefined<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, _instruction: &ArmInstruction) -> CpuAction {
+    cpu.set_mode_spsr(CpuMode::Undefined, cpu.cpsr());
+    cpu.set_mode(CpuMode::Undefined);
+    cpu.set_irq_disable(true);
+    cpu.set_register(LR, cpu.pc() - 4);
+    cpu.set_pc(0x04);
+    cpu.pipeline_flush();
+    CpuAction::PipelineFlush
 }

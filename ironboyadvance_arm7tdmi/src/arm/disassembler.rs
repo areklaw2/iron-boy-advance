@@ -1,4 +1,4 @@
-use bitvec::{field::BitField, order::Lsb0, view::BitView};
+use bitvec::field::BitField;
 
 use crate::{CpuMode, Register, alu::AluInstruction, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
@@ -271,9 +271,9 @@ pub fn disassemble_single_data_swap(instruction: &ArmInstruction) -> String {
 pub fn disassemble_software_interrupt(instruction: &ArmInstruction) -> String {
     let cond = instruction.cond();
     let comment = instruction.comment();
-    format!("SWI{} {}", cond, comment)
+    format!("SWI{} 0x{:08X}", cond, comment)
 }
 
-pub fn disassemble_undefined(instruction: &ArmInstruction) -> String {
-    todo!()
+pub fn disassemble_undefined(_instruction: &ArmInstruction) -> String {
+    format!("Undefined")
 }
