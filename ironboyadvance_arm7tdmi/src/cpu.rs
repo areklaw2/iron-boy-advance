@@ -194,6 +194,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.cpsr.set_flags(value);
     }
 
+    pub fn set_irq_disable(&mut self, status: bool) {
+        self.cpsr.set_irq_disable(status);
+    }
+
     pub fn set_state(&mut self, state: CpuState) {
         self.cpsr.set_state(state);
     }
@@ -303,6 +307,18 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
 
     pub fn set_spsr(&mut self, spsr: ProgramStatusRegister) {
         match self.cpsr.mode() {
+            CpuMode::User | CpuMode::System => self.cpsr = spsr,
+            CpuMode::Fiq => self.spsrs[0] = spsr,
+            CpuMode::Supervisor => self.spsrs[1] = spsr,
+            CpuMode::Abort => self.spsrs[2] = spsr,
+            CpuMode::Irq => self.spsrs[3] = spsr,
+            CpuMode::Undefined => self.spsrs[4] = spsr,
+            CpuMode::Invalid => panic!("invalid mode"),
+        }
+    }
+
+    pub fn set_mode_spsr(&mut self, mode: CpuMode, spsr: ProgramStatusRegister) {
+        match mode {
             CpuMode::User | CpuMode::System => self.cpsr = spsr,
             CpuMode::Fiq => self.spsrs[0] = spsr,
             CpuMode::Supervisor => self.spsrs[1] = spsr,

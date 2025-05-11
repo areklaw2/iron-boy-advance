@@ -346,4 +346,8 @@ impl ArmInstruction {
             })
             .collect()
     }
+
+    pub fn comment(&self) -> u32 {
+        self.bits[0..=23].load()
+    }
 }

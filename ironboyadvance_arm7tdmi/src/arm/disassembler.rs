@@ -269,7 +269,9 @@ pub fn disassemble_single_data_swap(instruction: &ArmInstruction) -> String {
 }
 
 pub fn disassemble_software_interrupt(instruction: &ArmInstruction) -> String {
-    todo!()
+    let cond = instruction.cond();
+    let comment = instruction.comment();
+    format!("SWI{} {}", cond, comment)
 }
 
 pub fn disassemble_undefined(instruction: &ArmInstruction) -> String {
