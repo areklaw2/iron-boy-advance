@@ -1,7 +1,7 @@
 use bitvec::field::BitField;
 
 use crate::{
-    CpuAction, CpuMode, CpuState, Register,
+    CpuAction, CpuMode, CpuState,
     alu::{AluInstruction::*, *},
     barrel_shifter::{ShiftBy, ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, LR, PC},
@@ -562,7 +562,37 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
 }
 
 pub fn execute_single_data_swap<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
-    todo!()
+    let rd = instruction.rd() as usize;
+    let rn = instruction.rn() as usize;
+    let rm = instruction.rm() as usize;
+
+    let address = cpu.register(rn);
+    let mut source = cpu.register(rm);
+    if rm == PC {
+        source += 4;
+    }
+
+    let value: u32;
+    match instruction.byte() {
+        true => {
+            value = cpu.load_8(address, MemoryAccess::Nonsequential as u8);
+            cpu.store_8(address, source as u8, MemoryAccess::Nonsequential | MemoryAccess::Lock);
+        }
+        false => {
+            value = cpu.load_rotated_32(address, MemoryAccess::Nonsequential as u8);
+            cpu.store_32(address, source, MemoryAccess::Nonsequential | MemoryAccess::Lock);
+        }
+    };
+
+    cpu.idle_cycle();
+    cpu.set_register(rd, value);
+    match rd == PC {
+        true => {
+            cpu.pipeline_flush();
+            CpuAction::PipelineFlush
+        }
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+    }
 }
 
 pub fn execute_software_interrupt<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {

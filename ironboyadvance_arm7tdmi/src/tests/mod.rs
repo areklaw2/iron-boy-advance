@@ -86,26 +86,26 @@ fn single_step_tests() {
     // Will keep a list of the files I want to run until i complete all the instructions
     // completed
     let files = [
-        // "arm_b_bl.json", //Done
-        // "arm_bx.json",   //Done
+        // "arm_b_bl.json",                      //Done
+        // "arm_bx.json",                        //Done
         // "arm_cdp.json",                       //Skip
-        // "arm_data_proc_immediate.json", //Done
+        // "arm_data_proc_immediate.json",       //Done
         // "arm_data_proc_immediate_shift.json", //Done
         // "arm_data_proc_register_shift.json",  //Done
-        "arm_ldm_stm.json",
-        // "arm_ldr_str_immediate_offset.json", //Done
-        // "arm_ldr_str_register_offset.json", //Done
-        // "arm_ldrh_strh.json", //Done
-        // "arm_ldrsb_ldrsh.json", //Done
-        // "arm_mcr_mrc.json", //Skip
-        // "arm_mrs.json", //Done
-        // "arm_msr_imm.json", //Done
-        // "arm_msr_reg.json", //Done
-        // "arm_mul_mla.json", //Done
-        // "arm_mull_mlal.json", //Done
-        // "arm_stc_ldc.json", //Skip
+        // "arm_ldm_stm.json",                   //Done
+        // "arm_ldr_str_immediate_offset.json",  //Done
+        // "arm_ldr_str_register_offset.json",   //Done
+        // "arm_ldrh_strh.json",                 //Done
+        // "arm_ldrsb_ldrsh.json",               //Done
+        // "arm_mcr_mrc.json",                   //Skip
+        // "arm_mrs.json",                       //Done
+        // "arm_msr_imm.json",                   //Done
+        // "arm_msr_reg.json",                   //Done
+        // "arm_mul_mla.json",                   //Done
+        // "arm_mull_mlal.json",                 //Done
+        // "arm_stc_ldc.json",                   //Skip
         // "arm_swi.json",
-        // "arm_swp.json",
+        //"arm_swp.json", //Done
         // "thumb_add_cmp_mov_hi.json",
         // "thumb_add_sp_or_pc.json",
         // "thumb_add_sub.json",

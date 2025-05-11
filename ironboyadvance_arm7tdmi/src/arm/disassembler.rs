@@ -260,7 +260,12 @@ pub fn disassemble_block_data_transfer(instruction: &ArmInstruction) -> String {
 }
 
 pub fn disassemble_single_data_swap(instruction: &ArmInstruction) -> String {
-    todo!()
+    let cond = instruction.cond();
+    let byte = if instruction.byte() { "B" } else { "" };
+    let rd = instruction.rd();
+    let rm = instruction.rm();
+    let rn = instruction.rn();
+    format!("SWP{}{} {},{},[{}]", cond, byte, rd, rm, rn)
 }
 
 pub fn disassemble_software_interrupt(instruction: &ArmInstruction) -> String {

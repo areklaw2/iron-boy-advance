@@ -159,21 +159,21 @@ impl ArmInstruction {
     pub fn rn(&self) -> Register {
         match self.kind {
             BranchAndExchange => self.bits[0..=3].load::<u32>().into(),
-            DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => {
+            DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer | SingleDataSwap => {
                 self.bits[16..=19].load::<u32>().into()
             }
             Multiply => self.bits[12..=15].load::<u32>().into(),
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
     pub fn rd(&self) -> Register {
         match self.kind {
-            PsrTransfer | DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer => {
+            PsrTransfer | DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer | SingleDataSwap => {
                 self.bits[12..=15].load::<u32>().into()
             }
             Multiply => self.bits[16..=19].load::<u32>().into(),
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
@@ -187,17 +187,21 @@ impl ArmInstruction {
 
     pub fn rm(&self) -> Register {
         match self.kind {
-            PsrTransfer | DataProcessing | Multiply | MultiplyLong | SingleDataTransfer | HalfwordAndSignedDataTransfer => {
-                self.bits[0..=3].load::<u32>().into()
-            }
-            _ => todo!(),
+            PsrTransfer
+            | DataProcessing
+            | Multiply
+            | MultiplyLong
+            | SingleDataTransfer
+            | HalfwordAndSignedDataTransfer
+            | SingleDataSwap => self.bits[0..=3].load::<u32>().into(),
+            _ => unimplemented!(),
         }
     }
 
     pub fn rs(&self) -> Register {
         match self.kind {
             DataProcessing | Multiply | MultiplyLong | SingleDataTransfer => self.bits[8..=11].load::<u32>().into(),
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
@@ -208,7 +212,7 @@ impl ArmInstruction {
     pub fn offset(&self) -> i32 {
         match self.kind {
             BranchAndBranchWithLink => ((self.bits[0..=23].load::<u32>() << 8) as i32) >> 6,
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
@@ -217,7 +221,7 @@ impl ArmInstruction {
             PsrTransfer | DataProcessing => self.bits[25],
             SingleDataTransfer => !self.bits[25],
             HalfwordAndSignedDataTransfer => self.bits[22],
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
@@ -228,7 +232,7 @@ impl ArmInstruction {
     pub fn sets_flags(&self) -> bool {
         match self.kind {
             DataProcessing | Multiply | MultiplyLong => self.bits[20],
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
@@ -250,7 +254,7 @@ impl ArmInstruction {
     pub fn rotate(&self) -> u32 {
         match self.kind {
             PsrTransfer | DataProcessing => self.bits[8..=11].load(),
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
@@ -258,7 +262,7 @@ impl ArmInstruction {
         match self.kind {
             PsrTransfer | DataProcessing => self.bits[0..=7].load(),
             SingleDataTransfer => self.bits[0..=11].load(),
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
@@ -277,7 +281,7 @@ impl ArmInstruction {
     pub fn accumulate(&self) -> bool {
         match self.kind {
             Multiply | MultiplyLong => self.bits[21],
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
@@ -288,32 +292,35 @@ impl ArmInstruction {
     pub fn pre_index(&self) -> bool {
         match self.kind {
             SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[24],
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
     pub fn add(&self) -> bool {
         match self.kind {
             SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[23],
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
     pub fn byte(&self) -> bool {
-        self.bits[22]
+        match self.kind {
+            SingleDataTransfer | SingleDataSwap => self.bits[22],
+            _ => unimplemented!(),
+        }
     }
 
     pub fn write_back(&self) -> bool {
         match self.kind {
             SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[21],
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
     pub fn load(&self) -> bool {
         match self.kind {
             SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[20],
-            _ => todo!(),
+            _ => unimplemented!(),
         }
     }
 
