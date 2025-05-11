@@ -6,7 +6,6 @@ use std::fmt;
 
 use crate::{
     CpuAction, Register,
-    barrel_shifter::ShiftType,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };
@@ -66,7 +65,7 @@ impl Instruction for ThumbInstruction {
     fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
         match self.kind {
             MoveShiftedRegister => disassemble_move_shifted_register(self),
-            AddSubtract => todo!(),
+            AddSubtract => disassemble_add_subtract(self),
             MoveCompareAddSubtractImmediate => todo!(),
             AluOperations => todo!(),
             HighRegisterOperationsOrBranchExchange => todo!(),
@@ -91,7 +90,7 @@ impl Instruction for ThumbInstruction {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         match self.kind {
             MoveShiftedRegister => execute_move_shifted_register(cpu, self),
-            AddSubtract => todo!(),
+            AddSubtract => execute_add_subtract(cpu, self),
             MoveCompareAddSubtractImmediate => todo!(),
             AluOperations => todo!(),
             HighRegisterOperationsOrBranchExchange => todo!(),
@@ -127,19 +126,41 @@ impl ThumbInstruction {
         }
     }
 
-    pub fn opcode(&self) -> ShiftType {
-        self.bits[11..=12].load::<u16>().into()
+    pub fn opcode(&self) -> u16 {
+        match self.kind {
+            MoveShiftedRegister => self.bits[11..=12].load::<u16>(),
+            AddSubtract => self.bits[9] as u16,
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn offset3(&self) -> u16 {
+        self.bits[6..=8].load()
     }
 
     pub fn offset5(&self) -> u16 {
         self.bits[6..=10].load::<u16>().into()
     }
 
+    pub fn rn(&self) -> Register {
+        self.bits[6..=8].load::<u16>().into()
+    }
+
     pub fn rs(&self) -> Register {
-        self.bits[3..=5].load::<u16>().into()
+        match self.kind {
+            MoveShiftedRegister | AddSubtract => self.bits[3..=5].load::<u16>().into(),
+            _ => unimplemented!(),
+        }
     }
 
     pub fn rd(&self) -> Register {
-        self.bits[0..=2].load::<u16>().into()
+        match self.kind {
+            MoveShiftedRegister | AddSubtract => self.bits[0..=2].load::<u16>().into(),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn is_immediate(&self) -> bool {
+        self.bits[10]
     }
 }

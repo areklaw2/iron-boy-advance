@@ -108,7 +108,7 @@ fn single_step_tests() {
         // "arm_swp.json",                       //Done
         // "thumb_add_cmp_mov_hi.json",
         // "thumb_add_sp_or_pc.json",
-        // "thumb_add_sub.json",
+        // "thumb_add_sub.json", //Done
         // "thumb_add_sub_sp.json",
         // "thumb_b.json",
         // "thumb_bcc.json",
@@ -127,7 +127,7 @@ fn single_step_tests() {
         // "thumb_ldrsb_strb_reg_offset.json",
         // "thumb_ldrsh_ldrsb_reg_offset.json",
         // "thumb_lsl_lsr_asr.json", // Done
-        // "thumb_mov_cmp_add_sub.json",
+        "thumb_mov_cmp_add_sub.json",
         // "thumb_push_pop.json",
         // "thumb_swi.json",
         // "thumb_undefined_bcc.json",
