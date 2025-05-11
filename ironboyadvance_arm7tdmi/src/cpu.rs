@@ -4,6 +4,7 @@ use crate::{
     CpuAction,
     arm::{ArmInstructionKind, Condition, lut::generate_arm_lut},
     memory::{MemoryAccess, MemoryInterface},
+    thumb::{ThumbInstruction, ThumbInstructionKind},
 };
 
 use super::{CpuMode, CpuState, arm::ArmInstruction, psr::ProgramStatusRegister};
@@ -32,6 +33,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     bus: I, // May need to make this shared
     next_memory_access: u8,
     arm_lut: [ArmInstructionKind; 4096],
+    thumb_lut: [ThumbInstructionKind; 1024],
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
@@ -79,6 +81,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             bus,
             next_memory_access: MemoryAccess::Instruction | MemoryAccess::Nonsequential,
             arm_lut: [ArmInstructionKind::Undefined; 4096],
+            thumb_lut: [ThumbInstructionKind::Undefined; 1024],
         };
 
         cpu.arm_lut = generate_arm_lut();
@@ -125,8 +128,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
                 let instruction = ArmInstruction::new(self.arm_lut[lut_index as usize], instruction, pc - 8);
 
-                println!("{}", instruction);
-                println!("{}", instruction.disassamble(self));
+                // println!("{}", instruction);
+                // println!("{}", instruction.disassamble(self));
 
                 let condition = instruction.cond();
                 if condition != Condition::AL && !self.is_condition_met(condition) {
@@ -146,9 +149,19 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
-                self.advance_pc_thumb();
+                let lut_index = instruction >> 6;
+                let instruction = ThumbInstruction::new(self.thumb_lut[lut_index as usize], instruction as u16, pc - 4);
 
-                // TODO
+                println!("{}", instruction);
+                println!("{}", instruction.disassamble(self));
+
+                match instruction.execute(self) {
+                    CpuAction::Advance(memory_access) => {
+                        self.advance_pc_thumb();
+                        self.next_memory_access = memory_access;
+                    }
+                    CpuAction::PipelineFlush => {}
+                };
             }
         }
     }
