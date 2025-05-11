@@ -19,7 +19,7 @@ impl MemoryInterface for TestBus {
             if is_instruction_read && transaction.kind == TransactionKind::InstructionRead {
                 transaction_index = Some(i);
                 break;
-            } else if transaction.kind == TransactionKind::GeneralRead {
+            } else if !is_instruction_read && transaction.kind == TransactionKind::GeneralRead {
                 transaction_index = Some(i);
                 break;
             }
@@ -42,7 +42,7 @@ impl MemoryInterface for TestBus {
             if is_instruction_read && transaction.kind == TransactionKind::InstructionRead {
                 transaction_index = Some(i);
                 break;
-            } else if transaction.kind == TransactionKind::GeneralRead {
+            } else if !is_instruction_read && transaction.kind == TransactionKind::GeneralRead {
                 transaction_index = Some(i);
                 break;
             }
@@ -65,7 +65,7 @@ impl MemoryInterface for TestBus {
             if is_instruction_read && transaction.kind == TransactionKind::InstructionRead {
                 transaction_index = Some(i);
                 break;
-            } else if transaction.kind == TransactionKind::GeneralRead {
+            } else if !is_instruction_read && transaction.kind == TransactionKind::GeneralRead {
                 transaction_index = Some(i);
                 break;
             }

@@ -333,9 +333,8 @@ impl ArmInstruction {
         self.bits[0..=15]
             .iter()
             .enumerate()
-            .rev()
             .filter_map(|(i, b)| match b.as_ref() {
-                true => Some(15 - i),
+                true => Some(i),
                 false => None,
             })
             .collect()

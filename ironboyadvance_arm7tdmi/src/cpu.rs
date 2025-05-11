@@ -198,6 +198,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.cpsr.set_state(state);
     }
 
+    pub fn set_mode(&mut self, mode: CpuMode) {
+        self.cpsr.set_mode(mode);
+    }
+
     pub fn pc(&self) -> u32 {
         self.general_registers[PC]
     }

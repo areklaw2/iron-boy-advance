@@ -464,12 +464,9 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
     let mut register_list = instruction.register_list();
     let rn = instruction.rn() as usize;
     let mut address = cpu.register(rn);
-    // May need to add 4 if rn is pc
-
-    println!("{}", address);
 
     let mut transfer_pc = register_list.contains(&PC);
-    let bytes = if !register_list.is_empty() {
+    let transfer_bytes = if !register_list.is_empty() {
         register_list.len() as u32 * 4
     } else {
         register_list.push(PC);
@@ -479,16 +476,10 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
 
     let load = instruction.load();
     let load_psr_force_user = instruction.load_psr_force_user();
-    //println!("{}", load_psr_force_user);
     let mode = cpu.cpsr().mode();
-    println!("mode: {}", mode);
     let switch_mode = load_psr_force_user && (!load || !transfer_pc) && ![CpuMode::User, CpuMode::System].contains(&mode);
-
-    //not sure if i need to store the old spsr
-    //let old_spsr = cpu.spsr();
-
     if switch_mode {
-        cpu.cpsr().set_mode(CpuMode::User);
+        cpu.set_mode(CpuMode::User);
     }
 
     let add = instruction.add();
@@ -496,14 +487,11 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
     let mut base_address = address;
     if !add {
         pre_index = !pre_index;
-        address -= bytes;
-        base_address -= bytes;
+        address -= transfer_bytes;
+        base_address -= transfer_bytes;
     } else {
-        base_address += bytes
+        base_address += transfer_bytes
     }
-
-    println!("address: {}", address);
-    println!("base_address: {}", address);
 
     let write_back = instruction.write_back();
     let mut memory_access = MemoryAccess::Nonsequential;
@@ -516,14 +504,31 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
             true => {
                 let value = cpu.load_32(address, memory_access as u8);
                 if write_back && i == 0 {
+                    if rn == PC {
+                        base_address += 4;
+                        if !transfer_pc {
+                            cpu.pipeline_flush();
+                        }
+                    }
                     cpu.set_register(rn, base_address);
                 }
                 cpu.set_register(*register, value);
             }
             false => {
-                let value = cpu.register(*register);
+                let mut value = cpu.register(*register);
+                if *register == PC {
+                    match write_back && rn == PC {
+                        true => value -= 4,
+                        false => value += 4,
+                    }
+                }
+
                 cpu.store_32(address, value, memory_access as u8);
                 if write_back && i == 0 {
+                    if rn == PC {
+                        base_address += 4;
+                        cpu.pipeline_flush();
+                    }
                     cpu.set_register(rn, base_address);
                 }
             }
@@ -536,6 +541,7 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
         memory_access = MemoryAccess::Sequential;
     }
 
+    let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
     if load {
         cpu.idle_cycle();
         if transfer_pc {
@@ -544,14 +550,15 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
             }
 
             cpu.pipeline_flush();
+            action = CpuAction::PipelineFlush;
         }
     }
 
     if switch_mode {
-        cpu.cpsr().set_mode(mode);
+        cpu.set_mode(mode);
     }
 
-    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
+    action
 }
 
 pub fn execute_single_data_swap<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
