@@ -1,6 +1,8 @@
 use bitvec::field::BitField;
 
-use crate::{CpuMode, Register, alu::AluInstruction, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
+use crate::{
+    CpuMode, Register, alu::DataProcessingAluOpcode, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface,
+};
 
 use super::ArmInstruction;
 
@@ -18,7 +20,7 @@ pub fn disassemble_branch_and_branch_link(instruction: &ArmInstruction) -> Strin
 }
 
 pub fn disassemble_data_processing(instruction: &ArmInstruction) -> String {
-    use AluInstruction::*;
+    use DataProcessingAluOpcode::*;
     let cond = instruction.cond();
     let opcode = instruction.opcode();
     let s = if instruction.sets_flags() { "S" } else { "" };

@@ -66,7 +66,7 @@ impl Instruction for ThumbInstruction {
         match self.kind {
             MoveShiftedRegister => disassemble_move_shifted_register(self),
             AddSubtract => disassemble_add_subtract(self),
-            MoveCompareAddSubtractImmediate => todo!(),
+            MoveCompareAddSubtractImmediate => disassemble_move_compare_add_subtract_immediate(self),
             AluOperations => todo!(),
             HighRegisterOperationsOrBranchExchange => todo!(),
             PcRelativeLoad => todo!(),
@@ -91,7 +91,7 @@ impl Instruction for ThumbInstruction {
         match self.kind {
             MoveShiftedRegister => execute_move_shifted_register(cpu, self),
             AddSubtract => execute_add_subtract(cpu, self),
-            MoveCompareAddSubtractImmediate => todo!(),
+            MoveCompareAddSubtractImmediate => execute_move_compare_add_subtract_immediate(cpu, self),
             AluOperations => todo!(),
             HighRegisterOperationsOrBranchExchange => todo!(),
             PcRelativeLoad => todo!(),
@@ -128,18 +128,19 @@ impl ThumbInstruction {
 
     pub fn opcode(&self) -> u16 {
         match self.kind {
-            MoveShiftedRegister => self.bits[11..=12].load::<u16>(),
+            MoveShiftedRegister | MoveCompareAddSubtractImmediate => self.bits[11..=12].load::<u16>(),
             AddSubtract => self.bits[9] as u16,
             _ => unimplemented!(),
         }
     }
 
-    pub fn offset3(&self) -> u16 {
-        self.bits[6..=8].load()
-    }
-
-    pub fn offset5(&self) -> u16 {
-        self.bits[6..=10].load::<u16>().into()
+    pub fn offset(&self) -> u16 {
+        match self.kind {
+            MoveShiftedRegister => self.bits[6..=8].load(),
+            AddSubtract => self.bits[6..=10].load(),
+            MoveCompareAddSubtractImmediate => self.bits[0..=7].load(),
+            _ => unimplemented!(),
+        }
     }
 
     pub fn rn(&self) -> Register {
@@ -156,6 +157,7 @@ impl ThumbInstruction {
     pub fn rd(&self) -> Register {
         match self.kind {
             MoveShiftedRegister | AddSubtract => self.bits[0..=2].load::<u16>().into(),
+            MoveCompareAddSubtractImmediate => self.bits[8..=10].load::<u16>().into(),
             _ => unimplemented!(),
         }
     }

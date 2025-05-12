@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{CpuMode, CpuState, Register, alu::AluInstruction, arm::Condition, barrel_shifter::ShiftType};
+use crate::{CpuMode, CpuState, Register, alu::DataProcessingAluOpcode, arm::Condition, barrel_shifter::ShiftType};
 
 impl fmt::Display for CpuMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -76,9 +76,9 @@ impl fmt::Display for Condition {
     }
 }
 
-impl fmt::Display for AluInstruction {
+impl fmt::Display for DataProcessingAluOpcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use AluInstruction::*;
+        use DataProcessingAluOpcode::*;
         match self {
             AND => write!(f, "AND"),
             EOR => write!(f, "EOR"),

@@ -1,7 +1,7 @@
 use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum AluInstruction {
+pub enum DataProcessingAluOpcode {
     AND,
     EOR,
     SUB,
@@ -20,9 +20,9 @@ pub enum AluInstruction {
     MVN,
 }
 
-impl From<u32> for AluInstruction {
+impl From<u32> for DataProcessingAluOpcode {
     fn from(value: u32) -> Self {
-        use AluInstruction::*;
+        use DataProcessingAluOpcode::*;
         match value {
             0b0000 => AND,
             0b0001 => EOR,
@@ -45,7 +45,27 @@ impl From<u32> for AluInstruction {
     }
 }
 
-//AND, TST
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum MovCmpAddSubImmdiateOpcode {
+    MOV,
+    CMP,
+    ADD,
+    SUB,
+}
+
+impl From<u16> for MovCmpAddSubImmdiateOpcode {
+    fn from(value: u16) -> Self {
+        use MovCmpAddSubImmdiateOpcode::*;
+        match value {
+            0b00 => MOV,
+            0b01 => CMP,
+            0b10 => ADD,
+            0b11 => SUB,
+            _ => unreachable!(),
+        }
+    }
+}
+
 pub fn and<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
     let result = operand1 & operand2;
     if set_flags {
@@ -56,7 +76,6 @@ pub fn and<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
     result
 }
 
-//EOR, TEQ
 pub fn eor<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
     let result = operand1 ^ operand2;
     if set_flags {
@@ -67,7 +86,6 @@ pub fn eor<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
     result
 }
 
-//SUB, RSB, CMP
 pub fn sub<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
     let result = operand1.wrapping_sub(operand2);
     if set_flags {
@@ -79,7 +97,10 @@ pub fn sub<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
     result
 }
 
-//ADD, CMN
+pub fn rsb<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
+    sub(cpu, set_flags, operand1, operand2)
+}
+
 pub fn add<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
     let result = operand1.wrapping_add(operand2);
     if set_flags {
@@ -102,7 +123,6 @@ pub fn adc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
     result as u32
 }
 
-//SBC and RSC
 pub fn sbc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
     let operand3 = cpu.cpsr().carry() as u32 ^ 1;
     let result = operand1.wrapping_sub(operand2).wrapping_sub(operand3);
@@ -113,6 +133,26 @@ pub fn sbc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
         cpu.set_overflow(((operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
     }
     result
+}
+
+pub fn rsc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
+    sbc(cpu, set_flags, operand1, operand2)
+}
+
+pub fn tst<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
+    and(cpu, set_flags, operand1, operand2, carry)
+}
+
+pub fn teq<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
+    eor(cpu, set_flags, operand1, operand2, carry)
+}
+
+pub fn cmp<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
+    sub(cpu, set_flags, operand1, operand2)
+}
+
+pub fn cmn<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
+    add(cpu, set_flags, operand1, operand2)
 }
 
 pub fn orr<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
