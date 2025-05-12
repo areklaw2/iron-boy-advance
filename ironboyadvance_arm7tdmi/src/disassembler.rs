@@ -1,6 +1,11 @@
 use std::fmt;
 
-use crate::{CpuMode, CpuState, Register, alu::DataProcessingAluOpcode, arm::Condition, barrel_shifter::ShiftType};
+use crate::{
+    CpuMode, CpuState, Register,
+    alu::{AluOperationsOpcode, DataProcessingOpcode, MovCmpAddSubImmdiateOpcode},
+    arm::Condition,
+    barrel_shifter::ShiftType,
+};
 
 impl fmt::Display for CpuMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -76,9 +81,9 @@ impl fmt::Display for Condition {
     }
 }
 
-impl fmt::Display for DataProcessingAluOpcode {
+impl fmt::Display for DataProcessingOpcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use DataProcessingAluOpcode::*;
+        use DataProcessingOpcode::*;
         match self {
             AND => write!(f, "AND"),
             EOR => write!(f, "EOR"),
@@ -94,6 +99,42 @@ impl fmt::Display for DataProcessingAluOpcode {
             CMN => write!(f, "CMN"),
             ORR => write!(f, "ORR"),
             MOV => write!(f, "MOV"),
+            BIC => write!(f, "BIC"),
+            MVN => write!(f, "MVN"),
+        }
+    }
+}
+
+impl fmt::Display for MovCmpAddSubImmdiateOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use MovCmpAddSubImmdiateOpcode::*;
+        match self {
+            MOV => write!(f, "MOV"),
+            CMP => write!(f, "CMP"),
+            ADD => write!(f, "ADD"),
+            SUB => write!(f, "SUB"),
+        }
+    }
+}
+
+impl fmt::Display for AluOperationsOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use AluOperationsOpcode::*;
+        match self {
+            AND => write!(f, "AND"),
+            EOR => write!(f, "EOR"),
+            LSL => write!(f, "LSL"),
+            LSR => write!(f, "LSR"),
+            ASR => write!(f, "ASR"),
+            ADC => write!(f, "ADC"),
+            SBC => write!(f, "SBC"),
+            ROR => write!(f, "ROR"),
+            TST => write!(f, "TST"),
+            NEG => write!(f, "NEG"),
+            CMP => write!(f, "CMP"),
+            CMN => write!(f, "CMN"),
+            ORR => write!(f, "ORR"),
+            MUL => write!(f, "MUL"),
             BIC => write!(f, "BIC"),
             MVN => write!(f, "MVN"),
         }

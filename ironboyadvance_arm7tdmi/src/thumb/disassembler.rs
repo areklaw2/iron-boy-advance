@@ -1,4 +1,4 @@
-use crate::alu::MovCmpAddSubImmdiateOpcode;
+use crate::alu::{AluOperationsOpcode, MovCmpAddSubImmdiateOpcode};
 
 use super::ThumbInstruction;
 
@@ -26,14 +26,15 @@ pub fn disassemble_add_subtract(instruction: &ThumbInstruction) -> String {
 }
 
 pub fn disassemble_move_compare_add_subtract_immediate(instruction: &ThumbInstruction) -> String {
-    use MovCmpAddSubImmdiateOpcode::*;
     let rd = instruction.rd();
     let offset = instruction.offset();
-    let opcode = match instruction.opcode().into() {
-        MOV => "MOV",
-        CMP => "CMP",
-        ADD => "ADD",
-        SUB => "SUB",
-    };
+    let opcode = MovCmpAddSubImmdiateOpcode::from(instruction.opcode());
     format!("{} {},#{}", opcode, rd, offset)
+}
+
+pub fn disassemble_alu_operations(instruction: &ThumbInstruction) -> String {
+    let rd = instruction.rd();
+    let rs = instruction.rs();
+    let opcode = AluOperationsOpcode::from(instruction.opcode());
+    format!("{} {},{}", opcode, rd, rs)
 }

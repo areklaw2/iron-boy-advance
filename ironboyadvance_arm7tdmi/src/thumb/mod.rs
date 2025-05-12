@@ -67,7 +67,7 @@ impl Instruction for ThumbInstruction {
             MoveShiftedRegister => disassemble_move_shifted_register(self),
             AddSubtract => disassemble_add_subtract(self),
             MoveCompareAddSubtractImmediate => disassemble_move_compare_add_subtract_immediate(self),
-            AluOperations => todo!(),
+            AluOperations => disassemble_alu_operations(self),
             HighRegisterOperationsOrBranchExchange => todo!(),
             PcRelativeLoad => todo!(),
             LoadStoreRegisterOffset => todo!(),
@@ -92,7 +92,7 @@ impl Instruction for ThumbInstruction {
             MoveShiftedRegister => execute_move_shifted_register(cpu, self),
             AddSubtract => execute_add_subtract(cpu, self),
             MoveCompareAddSubtractImmediate => execute_move_compare_add_subtract_immediate(cpu, self),
-            AluOperations => todo!(),
+            AluOperations => execute_alu_operations(cpu, self),
             HighRegisterOperationsOrBranchExchange => todo!(),
             PcRelativeLoad => todo!(),
             LoadStoreRegisterOffset => todo!(),
@@ -130,6 +130,7 @@ impl ThumbInstruction {
         match self.kind {
             MoveShiftedRegister | MoveCompareAddSubtractImmediate => self.bits[11..=12].load::<u16>(),
             AddSubtract => self.bits[9] as u16,
+            AluOperations => self.bits[6..=9].load::<u16>(),
             _ => unimplemented!(),
         }
     }
@@ -149,14 +150,14 @@ impl ThumbInstruction {
 
     pub fn rs(&self) -> Register {
         match self.kind {
-            MoveShiftedRegister | AddSubtract => self.bits[3..=5].load::<u16>().into(),
+            MoveShiftedRegister | AddSubtract | AluOperations => self.bits[3..=5].load::<u16>().into(),
             _ => unimplemented!(),
         }
     }
 
     pub fn rd(&self) -> Register {
         match self.kind {
-            MoveShiftedRegister | AddSubtract => self.bits[0..=2].load::<u16>().into(),
+            MoveShiftedRegister | AddSubtract | AluOperations => self.bits[0..=2].load::<u16>().into(),
             MoveCompareAddSubtractImmediate => self.bits[8..=10].load::<u16>().into(),
             _ => unimplemented!(),
         }

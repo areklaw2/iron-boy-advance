@@ -2,7 +2,7 @@ use bitvec::field::BitField;
 
 use crate::{
     CpuAction, CpuMode, CpuState,
-    alu::{DataProcessingAluOpcode::*, *},
+    alu::{DataProcessingOpcode::*, *},
     barrel_shifter::{ShiftBy, ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, LR, PC},
     memory::{MemoryAccess, MemoryInterface},

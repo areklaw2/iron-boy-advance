@@ -1,6 +1,6 @@
 use crate::{
     CpuAction,
-    alu::{MovCmpAddSubImmdiateOpcode, add, cmp, mov, sub},
+    alu::{AluOperationsOpcode, MovCmpAddSubImmdiateOpcode, add, cmp, mov, sub},
     barrel_shifter::{ShiftType, asr, lsl, lsr},
     cpu::Arm7tdmiCpu,
     memory::{MemoryAccess, MemoryInterface},
@@ -75,6 +75,37 @@ pub fn execute_move_compare_add_subtract_immediate<I: MemoryInterface>(
             let result = sub(cpu, true, operand1, offset as u32);
             cpu.set_register(rd, result);
         }
+    };
+
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+}
+
+pub fn execute_alu_operations<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ThumbInstruction) -> CpuAction {
+    use AluOperationsOpcode::*;
+    let rd = instruction.rd() as usize;
+    let operand1 = cpu.register(rd);
+
+    let rs = instruction.rs() as usize;
+    let operand2 = cpu.register(rs);
+
+    let offset = instruction.offset();
+    match instruction.opcode().into() {
+        AND => todo!(),
+        EOR => todo!(),
+        LSL => todo!(),
+        LSR => todo!(),
+        ASR => todo!(),
+        ADC => todo!(),
+        SBC => todo!(),
+        ROR => todo!(),
+        TST => todo!(),
+        NEG => todo!(),
+        CMP => todo!(),
+        CMN => todo!(),
+        ORR => todo!(),
+        MUL => todo!(),
+        BIC => todo!(),
+        MVN => todo!(),
     };
 
     CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)

@@ -1,7 +1,8 @@
 use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
+//ARM
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum DataProcessingAluOpcode {
+pub enum DataProcessingOpcode {
     AND,
     EOR,
     SUB,
@@ -20,9 +21,9 @@ pub enum DataProcessingAluOpcode {
     MVN,
 }
 
-impl From<u32> for DataProcessingAluOpcode {
+impl From<u32> for DataProcessingOpcode {
     fn from(value: u32) -> Self {
-        use DataProcessingAluOpcode::*;
+        use DataProcessingOpcode::*;
         match value {
             0b0000 => AND,
             0b0001 => EOR,
@@ -45,6 +46,7 @@ impl From<u32> for DataProcessingAluOpcode {
     }
 }
 
+// THUMB
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MovCmpAddSubImmdiateOpcode {
     MOV,
@@ -61,6 +63,51 @@ impl From<u16> for MovCmpAddSubImmdiateOpcode {
             0b01 => CMP,
             0b10 => ADD,
             0b11 => SUB,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AluOperationsOpcode {
+    AND,
+    EOR,
+    LSL,
+    LSR,
+    ASR,
+    ADC,
+    SBC,
+    ROR,
+    TST,
+    NEG,
+    CMP,
+    CMN,
+    ORR,
+    MUL,
+    BIC,
+    MVN,
+}
+
+impl From<u16> for AluOperationsOpcode {
+    fn from(value: u16) -> Self {
+        use AluOperationsOpcode::*;
+        match value {
+            0b0000 => AND,
+            0b0001 => EOR,
+            0b0010 => LSL,
+            0b0011 => LSR,
+            0b0100 => ASR,
+            0b0101 => ADC,
+            0b0110 => SBC,
+            0b0111 => ROR,
+            0b1000 => TST,
+            0b1001 => NEG,
+            0b1010 => CMP,
+            0b1011 => CMN,
+            0b1100 => ORR,
+            0b1101 => MUL,
+            0b1110 => BIC,
+            0b1111 => MVN,
             _ => unreachable!(),
         }
     }

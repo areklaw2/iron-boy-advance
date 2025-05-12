@@ -115,7 +115,7 @@ fn single_step_tests() {
         // "thumb_bl_blx_prefix.json",
         // "thumb_bl_suffix.json",
         // "thumb_bx.json",
-        // "thumb_data_proc.json",
+        "thumb_data_proc.json",
         // "thumb_ldm_stm.json",
         // "thumb_ldr_pc_rel.json",
         // "thumb_ldr_str_imm_offset.json",
@@ -127,7 +127,7 @@ fn single_step_tests() {
         // "thumb_ldrsb_strb_reg_offset.json",
         // "thumb_ldrsh_ldrsb_reg_offset.json",
         // "thumb_lsl_lsr_asr.json", // Done
-        "thumb_mov_cmp_add_sub.json",
+        // "thumb_mov_cmp_add_sub.json", // Done
         // "thumb_push_pop.json",
         // "thumb_swi.json",
         // "thumb_undefined_bcc.json",

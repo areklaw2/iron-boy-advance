@@ -6,7 +6,7 @@ use execute::*;
 
 use crate::{
     CpuAction,
-    alu::DataProcessingAluOpcode,
+    alu::DataProcessingOpcode,
     barrel_shifter::{ShiftBy, ShiftType},
     cpu::Arm7tdmiCpu,
     memory::MemoryInterface,
@@ -225,7 +225,7 @@ impl ArmInstruction {
         }
     }
 
-    pub fn opcode(&self) -> DataProcessingAluOpcode {
+    pub fn opcode(&self) -> DataProcessingOpcode {
         self.bits[21..=24].load::<u32>().into()
     }
 
