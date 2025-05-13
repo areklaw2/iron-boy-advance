@@ -9,7 +9,6 @@ use serde_repr::Deserialize_repr;
 use crate::{CpuMode, cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
 use crate::{
     CpuState,
-    alu::AluOperationsOpcode,
     arm::{ArmInstruction, ArmInstructionKind},
     memory::MemoryInterface,
     thumb::{ThumbInstruction, ThumbInstructionKind},

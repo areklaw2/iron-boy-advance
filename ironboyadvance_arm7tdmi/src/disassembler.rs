@@ -1,10 +1,8 @@
 use std::fmt;
 
 use crate::{
-    alu::{AluOperationsOpcode, DataProcessingOpcode, MovCmpAddSubImmediateOpcode}, arm::Condition, barrel_shifter::ShiftType,
-    CpuMode,
-    CpuState,
-    Register,
+    AluOperationsOpcode, CpuMode, CpuState, DataProcessingOpcode, HiRegister, LoRegister, MovCmpAddSubImmediateOpcode,
+    Register, arm::Condition, barrel_shifter::ShiftType,
 };
 
 impl fmt::Display for CpuMode {
@@ -36,7 +34,6 @@ impl fmt::Display for CpuState {
 impl fmt::Display for Register {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Register::*;
-
         match self {
             R0 => write!(f, "r0"),
             R1 => write!(f, "r1"),
@@ -46,6 +43,38 @@ impl fmt::Display for Register {
             R5 => write!(f, "r5"),
             R6 => write!(f, "r6"),
             R7 => write!(f, "r7"),
+            R8 => write!(f, "r8"),
+            R9 => write!(f, "r9"),
+            R10 => write!(f, "r10"),
+            R11 => write!(f, "r11"),
+            R12 => write!(f, "r12"),
+            R13 => write!(f, "sp"),
+            R14 => write!(f, "lr"),
+            R15 => write!(f, "pc"),
+        }
+    }
+}
+
+impl fmt::Display for LoRegister {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use LoRegister::*;
+        match self {
+            R0 => write!(f, "r0"),
+            R1 => write!(f, "r1"),
+            R2 => write!(f, "r2"),
+            R3 => write!(f, "r3"),
+            R4 => write!(f, "r4"),
+            R5 => write!(f, "r5"),
+            R6 => write!(f, "r6"),
+            R7 => write!(f, "r7"),
+        }
+    }
+}
+
+impl fmt::Display for HiRegister {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use HiRegister::*;
+        match self {
             R8 => write!(f, "r8"),
             R9 => write!(f, "r9"),
             R10 => write!(f, "r10"),

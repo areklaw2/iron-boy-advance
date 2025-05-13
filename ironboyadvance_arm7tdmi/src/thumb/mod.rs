@@ -5,7 +5,7 @@ use execute::*;
 use std::fmt;
 
 use crate::{
-    CpuAction, Register,
+    CpuAction, LoRegister, Register,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };
@@ -144,18 +144,18 @@ impl ThumbInstruction {
         }
     }
 
-    pub fn rn(&self) -> Register {
+    pub fn rn(&self) -> LoRegister {
         self.bits[6..=8].load::<u16>().into()
     }
 
-    pub fn rs(&self) -> Register {
+    pub fn rs(&self) -> LoRegister {
         match self.kind {
             MoveShiftedRegister | AddSubtract | AluOperations => self.bits[3..=5].load::<u16>().into(),
             _ => unimplemented!(),
         }
     }
 
-    pub fn rd(&self) -> Register {
+    pub fn rd(&self) -> LoRegister {
         match self.kind {
             MoveShiftedRegister | AddSubtract | AluOperations => self.bits[0..=2].load::<u16>().into(),
             MoveCompareAddSubtractImmediate => self.bits[8..=10].load::<u16>().into(),

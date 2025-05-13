@@ -1,4 +1,4 @@
-use crate::alu::{AluOperationsOpcode, MovCmpAddSubImmediateOpcode};
+use crate::{AluOperationsOpcode, MovCmpAddSubImmediateOpcode};
 
 use super::ThumbInstruction;
 

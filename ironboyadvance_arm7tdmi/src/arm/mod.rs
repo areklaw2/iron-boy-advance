@@ -5,8 +5,7 @@ use disassembler::*;
 use execute::*;
 
 use crate::{
-    CpuAction,
-    alu::DataProcessingOpcode,
+    CpuAction, DataProcessingOpcode,
     barrel_shifter::{ShiftBy, ShiftType},
     cpu::Arm7tdmiCpu,
     memory::MemoryInterface,

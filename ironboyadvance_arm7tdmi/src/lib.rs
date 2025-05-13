@@ -113,9 +113,21 @@ impl From<u32> for Register {
     }
 }
 
-impl From<u16> for Register {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum LoRegister {
+    R0,
+    R1,
+    R2,
+    R3,
+    R4,
+    R5,
+    R6,
+    R7,
+}
+
+impl From<u16> for LoRegister {
     fn from(value: u16) -> Self {
-        use Register::*;
+        use LoRegister::*;
         match value {
             0b000 => R0,
             0b001 => R1,
@@ -125,6 +137,146 @@ impl From<u16> for Register {
             0b101 => R5,
             0b110 => R6,
             _ => R7,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum HiRegister {
+    R8,
+    R9,
+    R10,
+    R11,
+    R12,
+    R13,
+    R14,
+    R15,
+}
+
+impl From<u16> for HiRegister {
+    fn from(value: u16) -> Self {
+        use HiRegister::*;
+        match value {
+            0b000 => R8,
+            0b001 => R9,
+            0b010 => R10,
+            0b011 => R11,
+            0b100 => R12,
+            0b101 => R13,
+            0b110 => R14,
+            _ => R15,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum DataProcessingOpcode {
+    AND,
+    EOR,
+    SUB,
+    RSB,
+    ADD,
+    ADC,
+    SBC,
+    RSC,
+    TST,
+    TEQ,
+    CMP,
+    CMN,
+    ORR,
+    MOV,
+    BIC,
+    MVN,
+}
+
+impl From<u32> for DataProcessingOpcode {
+    fn from(value: u32) -> Self {
+        use DataProcessingOpcode::*;
+        match value {
+            0b0000 => AND,
+            0b0001 => EOR,
+            0b0010 => SUB,
+            0b0011 => RSB,
+            0b0100 => ADD,
+            0b0101 => ADC,
+            0b0110 => SBC,
+            0b0111 => RSC,
+            0b1000 => TST,
+            0b1001 => TEQ,
+            0b1010 => CMP,
+            0b1011 => CMN,
+            0b1100 => ORR,
+            0b1101 => MOV,
+            0b1110 => BIC,
+            0b1111 => MVN,
+            _ => unreachable!(),
+        }
+    }
+}
+
+// THUMB
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum MovCmpAddSubImmediateOpcode {
+    MOV,
+    CMP,
+    ADD,
+    SUB,
+}
+
+impl From<u16> for MovCmpAddSubImmediateOpcode {
+    fn from(value: u16) -> Self {
+        use MovCmpAddSubImmediateOpcode::*;
+        match value {
+            0b00 => MOV,
+            0b01 => CMP,
+            0b10 => ADD,
+            0b11 => SUB,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AluOperationsOpcode {
+    AND,
+    EOR,
+    LSL,
+    LSR,
+    ASR,
+    ADC,
+    SBC,
+    ROR,
+    TST,
+    NEG,
+    CMP,
+    CMN,
+    ORR,
+    MUL,
+    BIC,
+    MVN,
+}
+
+impl From<u16> for AluOperationsOpcode {
+    fn from(value: u16) -> Self {
+        use AluOperationsOpcode::*;
+        match value {
+            0b0000 => AND,
+            0b0001 => EOR,
+            0b0010 => LSL,
+            0b0011 => LSR,
+            0b0100 => ASR,
+            0b0101 => ADC,
+            0b0110 => SBC,
+            0b0111 => ROR,
+            0b1000 => TST,
+            0b1001 => NEG,
+            0b1010 => CMP,
+            0b1011 => CMN,
+            0b1100 => ORR,
+            0b1101 => MUL,
+            0b1110 => BIC,
+            0b1111 => MVN,
+            _ => unreachable!(),
         }
     }
 }

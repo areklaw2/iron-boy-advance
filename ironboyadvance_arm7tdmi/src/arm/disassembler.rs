@@ -1,8 +1,6 @@
 use bitvec::field::BitField;
 
-use crate::{
-    CpuMode, Register, alu::DataProcessingOpcode, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface,
-};
+use crate::{CpuMode, DataProcessingOpcode, Register, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
 use super::ArmInstruction;
 
