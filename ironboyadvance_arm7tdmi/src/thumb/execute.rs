@@ -1,7 +1,7 @@
 use crate::{
     CpuAction,
-    alu::{AluOperationsOpcode, MovCmpAddSubImmdiateOpcode, add, cmp, mov, sub},
-    barrel_shifter::{ShiftType, asr, lsl, lsr},
+    alu::*,
+    barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
     cpu::Arm7tdmiCpu,
     memory::{MemoryAccess, MemoryInterface},
 };
@@ -55,27 +55,21 @@ pub fn execute_move_compare_add_subtract_immediate<I: MemoryInterface>(
     cpu: &mut Arm7tdmiCpu<I>,
     instruction: &ThumbInstruction,
 ) -> CpuAction {
-    use MovCmpAddSubImmdiateOpcode::*;
+    use MovCmpAddSubImmediateOpcode::*;
     let rd = instruction.rd() as usize;
     let operand1 = cpu.register(rd);
     let offset = instruction.offset();
-    match instruction.opcode().into() {
-        MOV => {
-            let result = mov(cpu, true, offset as u32, cpu.cpsr().carry());
-            cpu.set_register(rd, result);
-        }
-        CMP => {
-            cmp(cpu, true, operand1, offset as u32);
-        }
-        ADD => {
-            let result = add(cpu, true, operand1, offset as u32);
-            cpu.set_register(rd, result);
-        }
-        SUB => {
-            let result = sub(cpu, true, operand1, offset as u32);
-            cpu.set_register(rd, result);
-        }
+    let opcode: MovCmpAddSubImmediateOpcode = instruction.opcode().into();
+    let result = match opcode {
+        MOV => mov(cpu, true, offset as u32, cpu.cpsr().carry()),
+        CMP => cmp(cpu, true, operand1, offset as u32),
+        ADD => add(cpu, true, operand1, offset as u32),
+        SUB => sub(cpu, true, operand1, offset as u32),
     };
+
+    if opcode != CMP {
+        cpu.set_register(rd, result);
+    }
 
     CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
 }
@@ -84,29 +78,84 @@ pub fn execute_alu_operations<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, inst
     use AluOperationsOpcode::*;
     let rd = instruction.rd() as usize;
     let operand1 = cpu.register(rd);
+    let mut operand2 = cpu.register(instruction.rs() as usize);
+    let mut carry = cpu.cpsr().carry();
+    let opcode: AluOperationsOpcode = instruction.opcode().into();
+    let mut access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
 
-    let rs = instruction.rs() as usize;
-    let operand2 = cpu.register(rs);
+    let result = match opcode {
+        AND => and(cpu, true, operand1, operand2, carry),
+        EOR => eor(cpu, true, operand1, operand2, carry),
+        LSL => {
+            operand2 &= 0xFF;
+            let result = lsl(operand1, operand2, &mut carry);
+            cpu.idle_cycle();
+            access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
 
-    let offset = instruction.offset();
-    match instruction.opcode().into() {
-        AND => todo!(),
-        EOR => todo!(),
-        LSL => todo!(),
-        LSR => todo!(),
-        ASR => todo!(),
-        ADC => todo!(),
-        SBC => todo!(),
-        ROR => todo!(),
-        TST => todo!(),
-        NEG => todo!(),
-        CMP => todo!(),
-        CMN => todo!(),
-        ORR => todo!(),
-        MUL => todo!(),
-        BIC => todo!(),
-        MVN => todo!(),
+            cpu.set_negative(result >> 31 != 0);
+            cpu.set_zero(result == 0);
+            cpu.set_carry(carry);
+            result
+        }
+        LSR => {
+            operand2 &= 0xFF;
+            let result = lsr(operand1, operand2, &mut carry, false);
+            cpu.idle_cycle();
+            access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
+
+            cpu.set_negative(result >> 31 != 0);
+            cpu.set_zero(result == 0);
+            cpu.set_carry(carry);
+            result
+        }
+        ASR => {
+            operand2 &= 0xFF;
+            let result = asr(operand1, operand2, &mut carry, false);
+            cpu.idle_cycle();
+            access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
+
+            cpu.set_negative(result >> 31 != 0);
+            cpu.set_zero(result == 0);
+            cpu.set_carry(carry);
+            result
+        }
+        ADC => adc(cpu, true, operand1, operand2),
+        SBC => sbc(cpu, true, operand1, operand2),
+        ROR => {
+            operand2 &= 0xFF;
+            let result = ror(operand1, operand2, &mut carry, false);
+            cpu.idle_cycle();
+            access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
+
+            cpu.set_negative(result >> 31 != 0);
+            cpu.set_zero(result == 0);
+            cpu.set_carry(carry);
+            result
+        }
+        TST => tst(cpu, true, operand1, operand2, carry),
+        NEG => sub(cpu, true, 0, operand2),
+        CMP => cmp(cpu, true, operand1, operand2),
+        CMN => cmn(cpu, true, operand1, operand2),
+        ORR => orr(cpu, true, operand1, operand2, carry),
+        MUL => {
+            let multiplier_cycles = multiplier_array_cycles(operand1);
+            for _ in 0..multiplier_cycles {
+                cpu.idle_cycle();
+            }
+            access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
+
+            let result = operand1.wrapping_mul(operand2);
+            cpu.set_negative(result >> 31 != 0);
+            cpu.set_zero(result == 0);
+            result
+        }
+        BIC => bic(cpu, true, operand1, operand2, carry),
+        MVN => mvn(cpu, true, operand2, carry),
     };
 
-    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+    if ![TST, CMP, CMN].contains(&opcode) {
+        cpu.set_register(rd, result);
+    }
+
+    access
 }

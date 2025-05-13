@@ -1,10 +1,10 @@
-use ArmInstructionKind::*;
 use bitvec::{field::BitField, order::Lsb0, view::BitView};
+use ArmInstructionKind::*;
 
 use super::ArmInstructionKind;
 
 pub fn generate_arm_lut() -> [ArmInstructionKind; 4096] {
-    let mut arm_lut = [ArmInstructionKind::Undefined; 4096];
+    let mut arm_lut = [Undefined; 4096];
     for i in 0..4096 {
         arm_lut[i] = decode_arm(((i as u32 & 0x0FF0) << 16) | ((i as u32 & 0x000F) << 4));
     }

@@ -34,6 +34,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     next_memory_access: u8,
     arm_lut: [ArmInstructionKind; 4096],
     thumb_lut: [ThumbInstructionKind; 1024],
+    pub(super) dissassembled_instruction: String,
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
@@ -82,6 +83,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             next_memory_access: MemoryAccess::Instruction | MemoryAccess::Nonsequential,
             arm_lut: [ArmInstructionKind::Undefined; 4096],
             thumb_lut: [ThumbInstructionKind::Undefined; 1024],
+            dissassembled_instruction: String::new(),
         };
 
         cpu.arm_lut = generate_arm_lut();
@@ -128,9 +130,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
                 let instruction = ArmInstruction::new(self.arm_lut[lut_index as usize], instruction, pc - 8);
+                self.dissassembled_instruction = instruction.disassemble(self);
 
                 // println!("{}", instruction);
-                // println!("{}", instruction.disassamble(self));
+                // println!("{}", self.dissassembled);
 
                 let condition = instruction.cond();
                 if condition != Condition::AL && !self.is_condition_met(condition) {
@@ -152,9 +155,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let lut_index = instruction >> 6;
                 let instruction = ThumbInstruction::new(self.thumb_lut[lut_index as usize], instruction as u16, pc - 4);
+                self.dissassembled_instruction = instruction.disassemble(self);
 
                 println!("{}", instruction);
-                println!("{}", instruction.disassemble(self));
+                println!("{}", self.dissassembled_instruction);
 
                 match instruction.execute(self) {
                     CpuAction::Advance(memory_access) => {

@@ -231,10 +231,10 @@ pub fn execute_multiply_long<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instr
         operand2 += 4
     }
 
-    let mut result = if instruction.unsigned() {
-        (operand1 as i32 as i64).wrapping_mul(operand2 as i32 as i64) as u64
-    } else {
-        (operand1 as u64).wrapping_mul(operand2 as u64)
+    let unsigned = instruction.unsigned();
+    let mut result = match unsigned {
+        true => (operand1 as i32 as i64).wrapping_mul(operand2 as i32 as i64) as u64,
+        false => (operand1 as u64).wrapping_mul(operand2 as u64),
     };
 
     let multiplier_cycles = multiplier_array_cycles(operand2);

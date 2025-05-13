@@ -1,10 +1,10 @@
 use std::fmt;
 
 use crate::{
-    CpuMode, CpuState, Register,
-    alu::{AluOperationsOpcode, DataProcessingOpcode, MovCmpAddSubImmdiateOpcode},
-    arm::Condition,
-    barrel_shifter::ShiftType,
+    alu::{AluOperationsOpcode, DataProcessingOpcode, MovCmpAddSubImmediateOpcode}, arm::Condition, barrel_shifter::ShiftType,
+    CpuMode,
+    CpuState,
+    Register,
 };
 
 impl fmt::Display for CpuMode {
@@ -105,9 +105,9 @@ impl fmt::Display for DataProcessingOpcode {
     }
 }
 
-impl fmt::Display for MovCmpAddSubImmdiateOpcode {
+impl fmt::Display for MovCmpAddSubImmediateOpcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use MovCmpAddSubImmdiateOpcode::*;
+        use MovCmpAddSubImmediateOpcode::*;
         match self {
             MOV => write!(f, "MOV"),
             CMP => write!(f, "CMP"),

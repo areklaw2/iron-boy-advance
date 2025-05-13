@@ -7,6 +7,13 @@ use serde_repr::Deserialize_repr;
 
 #[allow(unused)]
 use crate::{CpuMode, cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
+use crate::{
+    CpuState,
+    alu::AluOperationsOpcode,
+    arm::{ArmInstruction, ArmInstructionKind},
+    memory::MemoryInterface,
+    thumb::{ThumbInstruction, ThumbInstructionKind},
+};
 
 mod test_bus;
 
@@ -115,22 +122,22 @@ fn single_step_tests() {
         // "thumb_bl_blx_prefix.json",
         // "thumb_bl_suffix.json",
         // "thumb_bx.json",
-        "thumb_data_proc.json",
-        // "thumb_ldm_stm.json",
-        // "thumb_ldr_pc_rel.json",
-        // "thumb_ldr_str_imm_offset.json",
-        // "thumb_ldr_str_reg_offset.json",
-        // "thumb_ldr_str_sp_rel.json",
-        // "thumb_ldrb_strb_imm_offset.json",
-        // "thumb_ldrh_strh_imm_offset.json",
-        // "thumb_ldrh_strh_reg_offset.json",
-        // "thumb_ldrsb_strb_reg_offset.json",
-        // "thumb_ldrsh_ldrsb_reg_offset.json",
-        // "thumb_lsl_lsr_asr.json", // Done
-        // "thumb_mov_cmp_add_sub.json", // Done
-        // "thumb_push_pop.json",
-        // "thumb_swi.json",
-        // "thumb_undefined_bcc.json",
+        // "thumb_data_proc.json", //Done
+                                // "thumb_ldm_stm.json",
+                                // "thumb_ldr_pc_rel.json",
+                                // "thumb_ldr_str_imm_offset.json",
+                                // "thumb_ldr_str_reg_offset.json",
+                                // "thumb_ldr_str_sp_rel.json",
+                                // "thumb_ldrb_strb_imm_offset.json",
+                                // "thumb_ldrh_strh_imm_offset.json",
+                                // "thumb_ldrh_strh_reg_offset.json",
+                                // "thumb_ldrsb_strb_reg_offset.json",
+                                // "thumb_ldrsh_ldrsb_reg_offset.json",
+                                // "thumb_lsl_lsr_asr.json", // Done
+                                // "thumb_mov_cmp_add_sub.json", // Done
+                                // "thumb_push_pop.json",
+                                // "thumb_swi.json",
+                                // "thumb_undefined_bcc.json",
     ];
 
     // let directory = fs::read_dir("../external/arm7tdmi/v1").expect("Unable to access directory");
@@ -139,7 +146,6 @@ fn single_step_tests() {
     // }
 
     let skip = ["arm_cdp.json", "arm_mcr_mrc.json", "arm_stc_ldc.json"];
-    let multiplication = ["arm_mul_mla.json", "arm_mull_mlal.json"];
 
     let mut cpu = Arm7tdmiCpu::new(test_bus::TestBus::default(), true);
     for file in files {
@@ -153,18 +159,18 @@ fn single_step_tests() {
             let test_bus = test_bus::TestBus::new(test.base_addr[0], test.opcode, test.transactions.clone());
             cpu.set_bus(test_bus);
 
-            let intial_state = test.initial_state;
+            let initial_state = test.initial_state;
             let final_state = test.final_state;
 
-            cpu.set_general_registers(intial_state.r);
-            cpu.set_banked_registers_fiq(intial_state.r_fiq);
-            cpu.set_banked_registers_svc(intial_state.r_svc);
-            cpu.set_banked_registers_abt(intial_state.r_abt);
-            cpu.set_banked_registers_irq(intial_state.r_irq);
-            cpu.set_banked_registers_und(intial_state.r_und);
-            cpu.set_cpsr(ProgramStatusRegister::from_bits(intial_state.cpsr));
-            cpu.set_spsrs(intial_state.spsr.map(|x| ProgramStatusRegister::from_bits(x)));
-            cpu.set_pipeline(intial_state.pipeline);
+            cpu.set_general_registers(initial_state.r);
+            cpu.set_banked_registers_fiq(initial_state.r_fiq);
+            cpu.set_banked_registers_svc(initial_state.r_svc);
+            cpu.set_banked_registers_abt(initial_state.r_abt);
+            cpu.set_banked_registers_irq(initial_state.r_irq);
+            cpu.set_banked_registers_und(initial_state.r_und);
+            cpu.set_cpsr(ProgramStatusRegister::from_bits(initial_state.cpsr));
+            cpu.set_spsrs(initial_state.spsr.map(|x| ProgramStatusRegister::from_bits(x)));
+            cpu.set_pipeline(initial_state.pipeline);
 
             cpu.cycle();
 
@@ -181,9 +187,11 @@ fn single_step_tests() {
 
             let expected = ProgramStatusRegister::from_bits(final_state.cpsr);
             let mut actual = cpu.cpsr();
-
             // the booth multiplication sets the carry. data sheet says its set to a meaningless value. Will ignore result
-            if multiplication.contains(&file) {
+            if ["MUL", "MLA", "MULL", "MLAL"]
+                .iter()
+                .any(|s| cpu.dissassembled_instruction.contains(s))
+            {
                 actual.set_carry(expected.carry());
             }
             assert_eq!(expected.into_bits(), actual.into_bits());

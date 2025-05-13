@@ -48,16 +48,16 @@ impl From<u32> for DataProcessingOpcode {
 
 // THUMB
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum MovCmpAddSubImmdiateOpcode {
+pub enum MovCmpAddSubImmediateOpcode {
     MOV,
     CMP,
     ADD,
     SUB,
 }
 
-impl From<u16> for MovCmpAddSubImmdiateOpcode {
+impl From<u16> for MovCmpAddSubImmediateOpcode {
     fn from(value: u16) -> Self {
-        use MovCmpAddSubImmdiateOpcode::*;
+        use MovCmpAddSubImmediateOpcode::*;
         match value {
             0b00 => MOV,
             0b01 => CMP,
