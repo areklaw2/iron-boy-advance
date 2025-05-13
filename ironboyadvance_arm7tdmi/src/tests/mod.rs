@@ -113,7 +113,7 @@ fn single_step_tests() {
         // "arm_stc_ldc.json",                   //Skip
         // "arm_swi.json",                       //Done
         // "arm_swp.json",                       //Done
-        // "thumb_add_cmp_mov_hi.json",
+        "thumb_add_cmp_mov_hi.json",
         // "thumb_add_sp_or_pc.json",
         // "thumb_add_sub.json", //Done
         // "thumb_add_sub_sp.json",
@@ -121,23 +121,23 @@ fn single_step_tests() {
         // "thumb_bcc.json",
         // "thumb_bl_blx_prefix.json",
         // "thumb_bl_suffix.json",
-        // "thumb_bx.json",
+        "thumb_bx.json",
         // "thumb_data_proc.json", //Done
-                                // "thumb_ldm_stm.json",
-                                // "thumb_ldr_pc_rel.json",
-                                // "thumb_ldr_str_imm_offset.json",
-                                // "thumb_ldr_str_reg_offset.json",
-                                // "thumb_ldr_str_sp_rel.json",
-                                // "thumb_ldrb_strb_imm_offset.json",
-                                // "thumb_ldrh_strh_imm_offset.json",
-                                // "thumb_ldrh_strh_reg_offset.json",
-                                // "thumb_ldrsb_strb_reg_offset.json",
-                                // "thumb_ldrsh_ldrsb_reg_offset.json",
-                                // "thumb_lsl_lsr_asr.json", // Done
-                                // "thumb_mov_cmp_add_sub.json", // Done
-                                // "thumb_push_pop.json",
-                                // "thumb_swi.json",
-                                // "thumb_undefined_bcc.json",
+        // "thumb_ldm_stm.json",
+        // "thumb_ldr_pc_rel.json",
+        // "thumb_ldr_str_imm_offset.json",
+        // "thumb_ldr_str_reg_offset.json",
+        // "thumb_ldr_str_sp_rel.json",
+        // "thumb_ldrb_strb_imm_offset.json",
+        // "thumb_ldrh_strh_imm_offset.json",
+        // "thumb_ldrh_strh_reg_offset.json",
+        // "thumb_ldrsb_strb_reg_offset.json",
+        // "thumb_ldrsh_ldrsb_reg_offset.json",
+        // "thumb_lsl_lsr_asr.json", // Done
+        // "thumb_mov_cmp_add_sub.json", // Done
+        // "thumb_push_pop.json",
+        // "thumb_swi.json",
+        // "thumb_undefined_bcc.json",
     ];
 
     // let directory = fs::read_dir("../external/arm7tdmi/v1").expect("Unable to access directory");
