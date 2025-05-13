@@ -20,7 +20,7 @@ fn decode_thumb(instruction: u16) -> ThumbInstructionKind {
     } else if instruction & 0xFC00 == 0x4000 {
         AluOperations
     } else if instruction & 0xFC00 == 0x4400 {
-        HighRegisterOperationsOrBranchExchange
+        HiRegisterOperationsBranchExchange
     } else if instruction & 0xF800 == 0x4800 {
         PcRelativeLoad
     } else if instruction & 0xF200 == 0x5000 {

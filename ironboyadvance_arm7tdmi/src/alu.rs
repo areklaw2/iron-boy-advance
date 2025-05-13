@@ -1,7 +1,5 @@
 use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
-//ARM
-
 pub fn and<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
     let result = operand1 & operand2;
     if set_flags {

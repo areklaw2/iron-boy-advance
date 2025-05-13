@@ -280,3 +280,24 @@ impl From<u16> for AluOperationsOpcode {
         }
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum HiRegOpsBxOpcode {
+    ADD,
+    CMP,
+    MOV,
+    BX,
+}
+
+impl From<u16> for HiRegOpsBxOpcode {
+    fn from(value: u16) -> Self {
+        use HiRegOpsBxOpcode::*;
+        match value {
+            0b00 => ADD,
+            0b01 => CMP,
+            0b10 => MOV,
+            0b11 => BX,
+            _ => unreachable!(),
+        }
+    }
+}

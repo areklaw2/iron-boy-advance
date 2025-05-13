@@ -5,7 +5,7 @@ use execute::*;
 use std::fmt;
 
 use crate::{
-    CpuAction, LoRegister, Register,
+    CpuAction, HiRegister, LoRegister,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };
@@ -20,7 +20,7 @@ pub enum ThumbInstructionKind {
     AddSubtract,
     MoveCompareAddSubtractImmediate,
     AluOperations,
-    HighRegisterOperationsOrBranchExchange,
+    HiRegisterOperationsBranchExchange,
     PcRelativeLoad,
     LoadStoreRegisterOffset,
     LoadStoreSignExtendedByteHalfword,
@@ -68,7 +68,7 @@ impl Instruction for ThumbInstruction {
             AddSubtract => disassemble_add_subtract(self),
             MoveCompareAddSubtractImmediate => disassemble_move_compare_add_subtract_immediate(self),
             AluOperations => disassemble_alu_operations(self),
-            HighRegisterOperationsOrBranchExchange => todo!(),
+            HiRegisterOperationsBranchExchange => todo!(),
             PcRelativeLoad => todo!(),
             LoadStoreRegisterOffset => todo!(),
             LoadStoreSignExtendedByteHalfword => todo!(),
@@ -93,7 +93,7 @@ impl Instruction for ThumbInstruction {
             AddSubtract => execute_add_subtract(cpu, self),
             MoveCompareAddSubtractImmediate => execute_move_compare_add_subtract_immediate(cpu, self),
             AluOperations => execute_alu_operations(cpu, self),
-            HighRegisterOperationsOrBranchExchange => todo!(),
+            HiRegisterOperationsBranchExchange => todo!(),
             PcRelativeLoad => todo!(),
             LoadStoreRegisterOffset => todo!(),
             LoadStoreSignExtendedByteHalfword => todo!(),
@@ -128,9 +128,10 @@ impl ThumbInstruction {
 
     pub fn opcode(&self) -> u16 {
         match self.kind {
-            MoveShiftedRegister | MoveCompareAddSubtractImmediate => self.bits[11..=12].load::<u16>(),
+            MoveShiftedRegister | MoveCompareAddSubtractImmediate => self.bits[11..=12].load(),
             AddSubtract => self.bits[9] as u16,
-            AluOperations => self.bits[6..=9].load::<u16>(),
+            AluOperations => self.bits[6..=9].load(),
+            HiRegisterOperationsBranchExchange => self.bits[8..=9].load(),
             _ => unimplemented!(),
         }
     }
@@ -150,17 +151,43 @@ impl ThumbInstruction {
 
     pub fn rs(&self) -> LoRegister {
         match self.kind {
-            MoveShiftedRegister | AddSubtract | AluOperations => self.bits[3..=5].load::<u16>().into(),
+            MoveShiftedRegister | AddSubtract | AluOperations | HiRegisterOperationsBranchExchange => {
+                self.bits[3..=5].load::<u16>().into()
+            }
             _ => unimplemented!(),
         }
     }
 
     pub fn rd(&self) -> LoRegister {
         match self.kind {
-            MoveShiftedRegister | AddSubtract | AluOperations => self.bits[0..=2].load::<u16>().into(),
+            MoveShiftedRegister | AddSubtract | AluOperations | HiRegisterOperationsBranchExchange => {
+                self.bits[0..=2].load::<u16>().into()
+            }
             MoveCompareAddSubtractImmediate => self.bits[8..=10].load::<u16>().into(),
             _ => unimplemented!(),
         }
+    }
+
+    pub fn hs(&self) -> HiRegister {
+        match self.kind {
+            HiRegisterOperationsBranchExchange => self.bits[3..=5].load::<u16>().into(),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn hd(&self) -> HiRegister {
+        match self.kind {
+            HiRegisterOperationsBranchExchange => self.bits[0..=2].load::<u16>().into(),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn h1(&self) -> bool {
+        self.bits[7]
+    }
+
+    pub fn h2(&self) -> bool {
+        self.bits[6]
     }
 
     pub fn is_immediate(&self) -> bool {
