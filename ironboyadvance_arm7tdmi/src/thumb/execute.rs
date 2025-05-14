@@ -327,3 +327,26 @@ pub fn execute_load_store_immediate_offset<I: MemoryInterface>(
 
     CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
 }
+
+pub fn execute_load_store_halfword<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    let immediate = instruction.offset() * 2;
+    let rb_value = cpu.register(instruction.rb() as usize);
+    let address = rb_value.wrapping_add(immediate as u32);
+    let rd = instruction.rd() as usize;
+    match instruction.load() {
+        true => {
+            let value = cpu.load_rotated_16(address, MemoryAccess::Nonsequential as u8);
+            cpu.set_register(rd, value);
+            cpu.idle_cycle();
+        }
+        false => {
+            let value = cpu.register(rd as usize);
+            cpu.store_16(address, value as u16, MemoryAccess::Nonsequential as u8);
+        }
+    }
+
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
+}

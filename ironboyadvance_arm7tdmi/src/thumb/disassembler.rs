@@ -97,3 +97,13 @@ pub fn disassemble_load_store_immediate_offset(instruction: &ThumbInstruction) -
         false => format!("STR{} {}, [{},#{}]", byte, rd, rb, offset),
     }
 }
+
+pub fn disassemble_load_store_halfword(instruction: &ThumbInstruction) -> String {
+    let offset = instruction.offset();
+    let rb = instruction.rb();
+    let rd = instruction.rd();
+    match instruction.load() {
+        true => format!("LDRH {}, [{},#{}]", rd, rb, offset),
+        false => format!("STRH {}, [{},#{}]", rd, rb, offset),
+    }
+}
