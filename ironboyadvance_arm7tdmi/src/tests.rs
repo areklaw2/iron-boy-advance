@@ -290,9 +290,9 @@ mod tests {
             // "thumb_ldr_str_sp_rel.json",
             // "thumb_ldrb_strb_imm_offset.json",
             // "thumb_ldrh_strh_imm_offset.json",
-            // "thumb_ldrh_strh_reg_offset.json",
-            // "thumb_ldrsb_strb_reg_offset.json",
-            // "thumb_ldrsh_ldrsb_reg_offset.json",
+            // "thumb_ldrh_strh_reg_offset.json", //Done
+            // "thumb_ldrsb_strb_reg_offset.json", //Done
+            // "thumb_ldrsh_ldrsb_reg_offset.json", //Done
             // "thumb_lsl_lsr_asr.json", // Done
             // "thumb_mov_cmp_add_sub.json", // Done
             // "thumb_push_pop.json",

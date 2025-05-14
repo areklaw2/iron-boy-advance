@@ -71,7 +71,7 @@ impl Instruction for ThumbInstruction {
             HiRegisterOperationsBranchExchange => disassemble_hi_register_operations_branch_exchange(self),
             PcRelativeLoad => disassemble_pc_relative_load(self),
             LoadStoreRegisterOffset => disassemble_load_store_register_offset(self),
-            LoadStoreSignExtendedByteHalfword => todo!(),
+            LoadStoreSignExtendedByteHalfword => disassemble_load_store_sign_extended_byte_halfword(self),
             LoadStoreImmediateOffset => todo!(),
             LoadStoreHalfword => todo!(),
             SpRelativeLoadStore => todo!(),
@@ -96,7 +96,7 @@ impl Instruction for ThumbInstruction {
             HiRegisterOperationsBranchExchange => execute_hi_register_operations_branch_exchange(cpu, self),
             PcRelativeLoad => execute_pc_relative_load(cpu, self),
             LoadStoreRegisterOffset => execute_load_store_register_offset(cpu, self),
-            LoadStoreSignExtendedByteHalfword => todo!(),
+            LoadStoreSignExtendedByteHalfword => execute_load_store_sign_extended_byte_halfword(cpu, self),
             LoadStoreImmediateOffset => todo!(),
             LoadStoreHalfword => todo!(),
             SpRelativeLoadStore => todo!(),
@@ -168,7 +168,8 @@ impl ThumbInstruction {
             | AddSubtract
             | AluOperations
             | HiRegisterOperationsBranchExchange
-            | LoadStoreRegisterOffset => self.bits[0..=2].load::<u16>().into(),
+            | LoadStoreRegisterOffset
+            | LoadStoreSignExtendedByteHalfword => self.bits[0..=2].load::<u16>().into(),
             MoveCompareAddSubtractImmediate | PcRelativeLoad => self.bits[8..=10].load::<u16>().into(),
             _ => unimplemented!(),
         }
@@ -176,14 +177,14 @@ impl ThumbInstruction {
 
     pub fn rb(&self) -> LoRegister {
         match self.kind {
-            LoadStoreRegisterOffset => self.bits[3..=5].load::<u16>().into(),
+            LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword => self.bits[3..=5].load::<u16>().into(),
             _ => unimplemented!(),
         }
     }
 
     pub fn ro(&self) -> LoRegister {
         match self.kind {
-            LoadStoreRegisterOffset => self.bits[6..=8].load::<u16>().into(),
+            LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword => self.bits[6..=8].load::<u16>().into(),
             _ => unimplemented!(),
         }
     }
@@ -215,6 +216,14 @@ impl ThumbInstruction {
     }
 
     pub fn byte(&self) -> bool {
+        self.bits[10]
+    }
+
+    pub fn halfword(&self) -> bool {
+        self.bits[11]
+    }
+
+    pub fn signed(&self) -> bool {
         self.bits[10]
     }
 }

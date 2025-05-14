@@ -71,3 +71,17 @@ pub fn disassemble_load_store_register_offset(instruction: &ThumbInstruction) ->
         false => format!("STR{} {}, [{},{}]", byte, rd, rb, ro),
     }
 }
+
+pub fn disassemble_load_store_sign_extended_byte_halfword(instruction: &ThumbInstruction) -> String {
+    let ro = instruction.ro();
+    let rb = instruction.rb();
+    let rd = instruction.rd();
+    let signed = instruction.signed();
+    let halfword = instruction.halfword();
+    match (signed, halfword) {
+        (false, false) => format!("STRH {}, [{},{}]", rd, rb, ro),
+        (false, true) => format!("LDRH {}, [{},{}]", rd, rb, ro),
+        (true, false) => format!("LDSB {}, [{},{}]", rd, rb, ro),
+        (true, true) => format!("LDSH {}, [{},{}]", rd, rb, ro),
+    }
+}

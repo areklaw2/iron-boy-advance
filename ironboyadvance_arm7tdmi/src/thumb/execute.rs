@@ -233,7 +233,6 @@ pub fn execute_load_store_register_offset<I: MemoryInterface>(
     let rd = instruction.rd() as usize;
     let byte = instruction.byte();
     let load = instruction.load();
-
     match (load, byte) {
         (false, false) => {
             let value = cpu.register(rd as usize);
@@ -250,6 +249,42 @@ pub fn execute_load_store_register_offset<I: MemoryInterface>(
         }
         (true, true) => {
             let value = cpu.load_8(address, MemoryAccess::Nonsequential as u8);
+            cpu.set_register(rd, value);
+            cpu.idle_cycle();
+        }
+    }
+
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
+}
+
+pub fn execute_load_store_sign_extended_byte_halfword<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    let ro_value = cpu.register(instruction.ro() as usize);
+    let rb_value = cpu.register(instruction.rb() as usize);
+    let address = rb_value.wrapping_add(ro_value);
+
+    let rd = instruction.rd() as usize;
+    let signed = instruction.signed();
+    let halfword = instruction.halfword();
+    match (signed, halfword) {
+        (false, false) => {
+            let value = cpu.register(rd as usize);
+            cpu.store_16(address, value as u16, MemoryAccess::Nonsequential as u8);
+        }
+        (false, true) => {
+            let value = cpu.load_rotated_16(address, MemoryAccess::Nonsequential as u8);
+            cpu.set_register(rd, value);
+            cpu.idle_cycle();
+        }
+        (true, false) => {
+            let value = cpu.load_signed_8(address, MemoryAccess::Nonsequential as u8);
+            cpu.set_register(rd, value);
+            cpu.idle_cycle();
+        }
+        (true, true) => {
+            let value = cpu.load_signed_16(address, MemoryAccess::Nonsequential as u8);
             cpu.set_register(rd, value);
             cpu.idle_cycle();
         }
