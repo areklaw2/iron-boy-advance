@@ -2,7 +2,7 @@ use crate::{
     AluOperationsOpcode, CpuAction, CpuState, HiRegOpsBxOpcode, MovCmpAddSubImmediateOpcode,
     alu::*,
     barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
-    cpu::{Arm7tdmiCpu, PC},
+    cpu::{Arm7tdmiCpu, PC, SP},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -345,6 +345,29 @@ pub fn execute_load_store_halfword<I: MemoryInterface>(
         false => {
             let value = cpu.register(rd as usize);
             cpu.store_16(address, value as u16, MemoryAccess::Nonsequential as u8);
+        }
+    }
+
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
+}
+
+pub fn execute_sp_relative_load_store<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    let immediate = instruction.offset() * 4;
+    let sp_value = cpu.register(SP);
+    let address = sp_value.wrapping_add(immediate as u32);
+    let rd = instruction.rd() as usize;
+    match instruction.load() {
+        true => {
+            let value = cpu.load_rotated_32(address, MemoryAccess::Nonsequential as u8);
+            cpu.set_register(rd, value);
+            cpu.idle_cycle();
+        }
+        false => {
+            let value = cpu.register(rd as usize);
+            cpu.store_32(address, value, MemoryAccess::Nonsequential as u8);
         }
     }
 

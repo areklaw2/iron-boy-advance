@@ -107,3 +107,12 @@ pub fn disassemble_load_store_halfword(instruction: &ThumbInstruction) -> String
         false => format!("STRH {}, [{},#{}]", rd, rb, offset),
     }
 }
+
+pub fn disassemble_sp_relative_load_store(instruction: &ThumbInstruction) -> String {
+    let offset = instruction.offset();
+    let rd = instruction.rd();
+    match instruction.load() {
+        true => format!("LDR {}, [sp,#{}]", rd, offset),
+        false => format!("STRH {}, [sp,#{}]", rd, offset),
+    }
+}

@@ -74,7 +74,7 @@ impl Instruction for ThumbInstruction {
             LoadStoreSignExtendedByteHalfword => disassemble_load_store_sign_extended_byte_halfword(self),
             LoadStoreImmediateOffset => disassemble_load_store_immediate_offset(self),
             LoadStoreHalfword => disassemble_load_store_halfword(self),
-            SpRelativeLoadStore => todo!(),
+            SpRelativeLoadStore => disassemble_sp_relative_load_store(self),
             LoadAddress => todo!(),
             AddOffsetToSp => todo!(),
             PushPopRegisters => todo!(),
@@ -99,7 +99,7 @@ impl Instruction for ThumbInstruction {
             LoadStoreSignExtendedByteHalfword => execute_load_store_sign_extended_byte_halfword(cpu, self),
             LoadStoreImmediateOffset => execute_load_store_immediate_offset(cpu, self),
             LoadStoreHalfword => execute_load_store_halfword(cpu, self),
-            SpRelativeLoadStore => todo!(),
+            SpRelativeLoadStore => execute_sp_relative_load_store(cpu, self),
             LoadAddress => todo!(),
             AddOffsetToSp => todo!(),
             PushPopRegisters => todo!(),
@@ -140,7 +140,7 @@ impl ThumbInstruction {
         match self.kind {
             MoveShiftedRegister | LoadStoreImmediateOffset | LoadStoreHalfword => self.bits[6..=10].load(),
             AddSubtract => self.bits[6..=8].load(),
-            MoveCompareAddSubtractImmediate | PcRelativeLoad => self.bits[0..=7].load(),
+            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore => self.bits[0..=7].load(),
             _ => unimplemented!(),
         }
     }
@@ -172,7 +172,7 @@ impl ThumbInstruction {
             | LoadStoreSignExtendedByteHalfword
             | LoadStoreImmediateOffset
             | LoadStoreHalfword => self.bits[0..=2].load::<u16>().into(),
-            MoveCompareAddSubtractImmediate | PcRelativeLoad => self.bits[8..=10].load::<u16>().into(),
+            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore => self.bits[8..=10].load::<u16>().into(),
             _ => unimplemented!(),
         }
     }

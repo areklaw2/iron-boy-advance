@@ -1,5 +1,3 @@
-use std::result;
-
 use ironboyadvance_utils::get_set;
 
 use crate::{
@@ -134,8 +132,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = ArmInstruction::new(self.arm_lut[lut_index as usize], instruction, pc - 8);
                 self.dissassembled_instruction = instruction.disassemble(self);
 
-                // println!("{}", instruction);
-                // println!("{}", self.dissassembled);
+                println!("{}", instruction);
+                println!("{}", self.dissassembled_instruction);
 
                 let condition = instruction.cond();
                 if condition != Condition::AL && !self.is_condition_met(condition) {
