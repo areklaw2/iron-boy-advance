@@ -41,8 +41,7 @@ pub fn execute_add_subtract<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instru
         false => cpu.register(instruction.rn() as usize),
     };
 
-    let subtract = instruction.opcode() != 0;
-    let result = match subtract {
+    let result = match instruction.opcode() != 0 {
         true => sub(cpu, true, operand1, operand2),
         false => add(cpu, true, operand1, operand2),
     };

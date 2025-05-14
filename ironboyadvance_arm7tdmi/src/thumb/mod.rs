@@ -138,8 +138,8 @@ impl ThumbInstruction {
 
     pub fn offset(&self) -> u16 {
         match self.kind {
-            MoveShiftedRegister => self.bits[6..=8].load(),
-            AddSubtract => self.bits[6..=10].load(),
+            MoveShiftedRegister => self.bits[6..=10].load(),
+            AddSubtract => self.bits[6..=8].load(),
             MoveCompareAddSubtractImmediate | PcRelativeLoad => self.bits[0..=7].load(),
             _ => unimplemented!(),
         }
