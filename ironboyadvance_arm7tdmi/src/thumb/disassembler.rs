@@ -59,3 +59,15 @@ pub fn disassemble_pc_relative_load(instruction: &ThumbInstruction) -> String {
     let offset = instruction.offset();
     format!("LDR {},[PC, #{}]", rd, offset)
 }
+
+pub fn disassemble_load_store_register_offset(instruction: &ThumbInstruction) -> String {
+    let byte = if instruction.byte() { "B" } else { "" };
+    let ro = instruction.ro();
+    let rb = instruction.rb();
+    let rd = instruction.rd();
+
+    match instruction.load() {
+        true => format!("LDR{} {}, [{},{}]", byte, rd, rb, ro),
+        false => format!("STR{} {}, [{},{}]", byte, rd, rb, ro),
+    }
+}

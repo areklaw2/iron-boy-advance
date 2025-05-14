@@ -219,5 +219,41 @@ pub fn execute_pc_relative_load<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
     let value = cpu.load_32(address, MemoryAccess::Nonsequential as u8);
     cpu.set_register(instruction.rd() as usize, value);
     cpu.idle_cycle();
-    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
+}
+
+pub fn execute_load_store_register_offset<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    let ro_value = cpu.register(instruction.ro() as usize);
+    let rb_value = cpu.register(instruction.rb() as usize);
+    let address = rb_value.wrapping_add(ro_value);
+
+    let rd = instruction.rd() as usize;
+    let byte = instruction.byte();
+    let load = instruction.load();
+
+    match (load, byte) {
+        (false, false) => {
+            let value = cpu.register(rd as usize);
+            cpu.store_32(address, value, MemoryAccess::Nonsequential as u8);
+        }
+        (false, true) => {
+            let value = cpu.register(rd as usize);
+            cpu.store_8(address, value as u8, MemoryAccess::Nonsequential as u8);
+        }
+        (true, false) => {
+            let value = cpu.load_rotated_32(address, MemoryAccess::Nonsequential as u8);
+            cpu.set_register(rd, value);
+            cpu.idle_cycle();
+        }
+        (true, true) => {
+            let value = cpu.load_8(address, MemoryAccess::Nonsequential as u8);
+            cpu.set_register(rd, value);
+            cpu.idle_cycle();
+        }
+    }
+
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
 }
