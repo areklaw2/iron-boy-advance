@@ -112,7 +112,7 @@ fn single_step_tests() {
         // "arm_stc_ldc.json",                   //Skip
         // "arm_swi.json",                       //Done
         // "arm_swp.json",                       //Done
-        "thumb_add_cmp_mov_hi.json",
+        // "thumb_add_cmp_mov_hi.json", //Done
         // "thumb_add_sp_or_pc.json",
         // "thumb_add_sub.json", //Done
         // "thumb_add_sub_sp.json",
@@ -120,7 +120,7 @@ fn single_step_tests() {
         // "thumb_bcc.json",
         // "thumb_bl_blx_prefix.json",
         // "thumb_bl_suffix.json",
-        "thumb_bx.json",
+        // "thumb_bx.json", // Done
         // "thumb_data_proc.json", //Done
         // "thumb_ldm_stm.json",
         // "thumb_ldr_pc_rel.json",

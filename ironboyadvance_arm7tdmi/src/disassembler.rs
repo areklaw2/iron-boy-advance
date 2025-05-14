@@ -1,8 +1,8 @@
 use std::fmt;
 
 use crate::{
-    AluOperationsOpcode, CpuMode, CpuState, DataProcessingOpcode, HiRegister, LoRegister, MovCmpAddSubImmediateOpcode,
-    Register, arm::Condition, barrel_shifter::ShiftType,
+    AluOperationsOpcode, CpuMode, CpuState, DataProcessingOpcode, HiRegOpsBxOpcode, HiRegister, LoRegister,
+    MovCmpAddSubImmediateOpcode, Register, arm::Condition, barrel_shifter::ShiftType,
 };
 
 impl fmt::Display for CpuMode {
@@ -166,6 +166,18 @@ impl fmt::Display for AluOperationsOpcode {
             MUL => write!(f, "MUL"),
             BIC => write!(f, "BIC"),
             MVN => write!(f, "MVN"),
+        }
+    }
+}
+
+impl fmt::Display for HiRegOpsBxOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use HiRegOpsBxOpcode::*;
+        match self {
+            ADD => write!(f, "ADD"),
+            CMP => write!(f, "CMP"),
+            MOV => write!(f, "MOV"),
+            BX => write!(f, "BX"),
         }
     }
 }

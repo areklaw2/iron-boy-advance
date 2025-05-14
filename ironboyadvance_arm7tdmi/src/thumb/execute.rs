@@ -1,8 +1,8 @@
 use crate::{
-    AluOperationsOpcode, CpuAction, MovCmpAddSubImmediateOpcode,
+    AluOperationsOpcode, CpuAction, CpuState, HiRegOpsBxOpcode, MovCmpAddSubImmediateOpcode,
     alu::*,
     barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
-    cpu::Arm7tdmiCpu,
+    cpu::{Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -156,6 +156,60 @@ pub fn execute_alu_operations<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, inst
     if ![TST, CMP, CMN].contains(&opcode) {
         cpu.set_register(rd, result);
     }
+
+    access
+}
+
+pub fn execute_hi_register_operations_branch_exchange<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    use HiRegOpsBxOpcode::*;
+    let mut access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
+    let destination = match instruction.h1() {
+        true => instruction.hd() as usize + 8,
+        false => instruction.rd() as usize,
+    };
+    let operand1 = cpu.register(destination);
+
+    let source = match instruction.h2() {
+        true => instruction.hs() as usize + 8,
+        false => instruction.rs() as usize,
+    };
+    let mut operand2 = cpu.register(source);
+    if source == PC {
+        operand2 &= !0x1
+    }
+
+    match instruction.opcode().into() {
+        CMP => {
+            cmp(cpu, true, operand1, operand2);
+        }
+        ADD => {
+            let result = add(cpu, false, operand1, operand2);
+            cpu.set_register(destination, result);
+            if destination == PC {
+                cpu.set_pc(cpu.pc() & !0x1);
+                cpu.pipeline_flush();
+                access = CpuAction::PipelineFlush;
+            }
+        }
+        MOV => {
+            let result = mov(cpu, false, operand2, cpu.cpsr().carry());
+            cpu.set_register(destination, result);
+            if destination == PC {
+                cpu.set_pc(cpu.pc() & !0x1);
+                cpu.pipeline_flush();
+                access = CpuAction::PipelineFlush;
+            }
+        }
+        BX => {
+            cpu.set_state(CpuState::from_bits((operand2 & 0x1) as u8));
+            cpu.set_pc(operand2 & !0x1);
+            cpu.pipeline_flush();
+            access = CpuAction::PipelineFlush;
+        }
+    };
 
     access
 }
