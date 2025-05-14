@@ -213,3 +213,12 @@ pub fn execute_hi_register_operations_branch_exchange<I: MemoryInterface>(
 
     access
 }
+
+pub fn execute_pc_relative_load<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ThumbInstruction) -> CpuAction {
+    let offset = instruction.offset();
+    let address = (cpu.register(PC) & !0x2).wrapping_add((offset << 2) as u32);
+    let value = cpu.load_32(address, MemoryAccess::Nonsequential as u8);
+    cpu.set_register(instruction.rd() as usize, value);
+    cpu.idle_cycle();
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+}

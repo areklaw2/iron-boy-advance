@@ -117,9 +117,9 @@ fn single_step_tests() {
         // "thumb_bx.json", // Done
         // "thumb_data_proc.json", //Done
         // "thumb_ldm_stm.json",
-        // "thumb_ldr_pc_rel.json",
+        // "thumb_ldr_pc_rel.json", //Done
         // "thumb_ldr_str_imm_offset.json",
-        // "thumb_ldr_str_reg_offset.json",
+        "thumb_ldr_str_reg_offset.json",
         // "thumb_ldr_str_sp_rel.json",
         // "thumb_ldrb_strb_imm_offset.json",
         // "thumb_ldrh_strh_imm_offset.json",

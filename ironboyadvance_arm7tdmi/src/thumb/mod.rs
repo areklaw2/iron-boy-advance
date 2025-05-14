@@ -69,7 +69,7 @@ impl Instruction for ThumbInstruction {
             MoveCompareAddSubtractImmediate => disassemble_move_compare_add_subtract_immediate(self),
             AluOperations => disassemble_alu_operations(self),
             HiRegisterOperationsBranchExchange => disassemble_hi_register_operations_branch_exchange(self),
-            PcRelativeLoad => todo!(),
+            PcRelativeLoad => disassemble_pc_relative_load(self),
             LoadStoreRegisterOffset => todo!(),
             LoadStoreSignExtendedByteHalfword => todo!(),
             LoadStoreImmediateOffset => todo!(),
@@ -94,7 +94,7 @@ impl Instruction for ThumbInstruction {
             MoveCompareAddSubtractImmediate => execute_move_compare_add_subtract_immediate(cpu, self),
             AluOperations => execute_alu_operations(cpu, self),
             HiRegisterOperationsBranchExchange => execute_hi_register_operations_branch_exchange(cpu, self),
-            PcRelativeLoad => todo!(),
+            PcRelativeLoad => execute_pc_relative_load(cpu, self),
             LoadStoreRegisterOffset => todo!(),
             LoadStoreSignExtendedByteHalfword => todo!(),
             LoadStoreImmediateOffset => todo!(),
@@ -140,9 +140,13 @@ impl ThumbInstruction {
         match self.kind {
             MoveShiftedRegister => self.bits[6..=8].load(),
             AddSubtract => self.bits[6..=10].load(),
-            MoveCompareAddSubtractImmediate => self.bits[0..=7].load(),
+            MoveCompareAddSubtractImmediate | PcRelativeLoad => self.bits[0..=7].load(),
             _ => unimplemented!(),
         }
+    }
+
+    pub fn is_immediate(&self) -> bool {
+        self.bits[10]
     }
 
     pub fn rn(&self) -> LoRegister {
@@ -163,7 +167,7 @@ impl ThumbInstruction {
             MoveShiftedRegister | AddSubtract | AluOperations | HiRegisterOperationsBranchExchange => {
                 self.bits[0..=2].load::<u16>().into()
             }
-            MoveCompareAddSubtractImmediate => self.bits[8..=10].load::<u16>().into(),
+            MoveCompareAddSubtractImmediate | PcRelativeLoad => self.bits[8..=10].load::<u16>().into(),
             _ => unimplemented!(),
         }
     }
@@ -188,9 +192,5 @@ impl ThumbInstruction {
 
     pub fn h2(&self) -> bool {
         self.bits[6]
-    }
-
-    pub fn is_immediate(&self) -> bool {
-        self.bits[10]
     }
 }

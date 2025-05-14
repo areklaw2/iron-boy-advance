@@ -53,3 +53,9 @@ pub fn disassemble_hi_register_operations_branch_exchange(instruction: &ThumbIns
     let opcode = HiRegOpsBxOpcode::from(instruction.opcode());
     format!("{} {},{}", opcode, destination, source)
 }
+
+pub fn disassemble_pc_relative_load(instruction: &ThumbInstruction) -> String {
+    let rd = instruction.rd();
+    let offset = instruction.offset();
+    format!("LDR {},[PC, #{}]", rd, offset)
+}
