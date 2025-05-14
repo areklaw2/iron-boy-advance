@@ -7,12 +7,6 @@ use serde_repr::Deserialize_repr;
 
 #[allow(unused)]
 use crate::{CpuMode, cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
-use crate::{
-    CpuState,
-    arm::{ArmInstruction, ArmInstructionKind},
-    memory::MemoryInterface,
-    thumb::{ThumbInstruction, ThumbInstructionKind},
-};
 
 mod test_bus;
 
