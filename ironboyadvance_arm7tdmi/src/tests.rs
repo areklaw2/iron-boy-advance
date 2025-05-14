@@ -285,7 +285,7 @@ mod tests {
             // "thumb_data_proc.json", //Done
             // "thumb_ldm_stm.json",
             // "thumb_ldr_pc_rel.json", //Done
-            // "thumb_ldr_str_imm_offset.json",
+            // "thumb_ldr_str_imm_offset.json", //Done
             // "thumb_ldr_str_reg_offset.json", //Done
             // "thumb_ldr_str_sp_rel.json",
             // "thumb_ldrb_strb_imm_offset.json",

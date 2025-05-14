@@ -62,7 +62,7 @@ impl fmt::Display for ThumbInstruction {
 impl Instruction for ThumbInstruction {
     type Size = u16;
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         match self.kind {
             MoveShiftedRegister => disassemble_move_shifted_register(self),
             AddSubtract => disassemble_add_subtract(self),
@@ -72,7 +72,7 @@ impl Instruction for ThumbInstruction {
             PcRelativeLoad => disassemble_pc_relative_load(self),
             LoadStoreRegisterOffset => disassemble_load_store_register_offset(self),
             LoadStoreSignExtendedByteHalfword => disassemble_load_store_sign_extended_byte_halfword(self),
-            LoadStoreImmediateOffset => todo!(),
+            LoadStoreImmediateOffset => disassemble_load_store_immediate_offset(self),
             LoadStoreHalfword => todo!(),
             SpRelativeLoadStore => todo!(),
             LoadAddress => todo!(),
@@ -97,7 +97,7 @@ impl Instruction for ThumbInstruction {
             PcRelativeLoad => execute_pc_relative_load(cpu, self),
             LoadStoreRegisterOffset => execute_load_store_register_offset(cpu, self),
             LoadStoreSignExtendedByteHalfword => execute_load_store_sign_extended_byte_halfword(cpu, self),
-            LoadStoreImmediateOffset => todo!(),
+            LoadStoreImmediateOffset => execute_load_store_immediate_offset(cpu, self),
             LoadStoreHalfword => todo!(),
             SpRelativeLoadStore => todo!(),
             LoadAddress => todo!(),
@@ -138,7 +138,7 @@ impl ThumbInstruction {
 
     pub fn offset(&self) -> u16 {
         match self.kind {
-            MoveShiftedRegister => self.bits[6..=10].load(),
+            MoveShiftedRegister | LoadStoreImmediateOffset => self.bits[6..=10].load(),
             AddSubtract => self.bits[6..=8].load(),
             MoveCompareAddSubtractImmediate | PcRelativeLoad => self.bits[0..=7].load(),
             _ => unimplemented!(),
@@ -169,7 +169,8 @@ impl ThumbInstruction {
             | AluOperations
             | HiRegisterOperationsBranchExchange
             | LoadStoreRegisterOffset
-            | LoadStoreSignExtendedByteHalfword => self.bits[0..=2].load::<u16>().into(),
+            | LoadStoreSignExtendedByteHalfword
+            | LoadStoreImmediateOffset => self.bits[0..=2].load::<u16>().into(),
             MoveCompareAddSubtractImmediate | PcRelativeLoad => self.bits[8..=10].load::<u16>().into(),
             _ => unimplemented!(),
         }
@@ -177,7 +178,9 @@ impl ThumbInstruction {
 
     pub fn rb(&self) -> LoRegister {
         match self.kind {
-            LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword => self.bits[3..=5].load::<u16>().into(),
+            LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword | LoadStoreImmediateOffset => {
+                self.bits[3..=5].load::<u16>().into()
+            }
             _ => unimplemented!(),
         }
     }
@@ -216,7 +219,11 @@ impl ThumbInstruction {
     }
 
     pub fn byte(&self) -> bool {
-        self.bits[10]
+        match self.kind {
+            LoadStoreRegisterOffset => self.bits[10],
+            LoadStoreImmediateOffset => self.bits[12],
+            _ => unimplemented!(),
+        }
     }
 
     pub fn halfword(&self) -> bool {

@@ -85,3 +85,15 @@ pub fn disassemble_load_store_sign_extended_byte_halfword(instruction: &ThumbIns
         (true, true) => format!("LDSH {}, [{},{}]", rd, rb, ro),
     }
 }
+
+pub fn disassemble_load_store_immediate_offset(instruction: &ThumbInstruction) -> String {
+    let byte = if instruction.byte() { "B" } else { "" };
+    let offset = instruction.offset();
+    let rb = instruction.rb();
+    let rd = instruction.rd();
+
+    match instruction.load() {
+        true => format!("LDR{} {}, [{},#{}]", byte, rd, rb, offset),
+        false => format!("STR{} {}, [{},#{}]", byte, rd, rb, offset),
+    }
+}
