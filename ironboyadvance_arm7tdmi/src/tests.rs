@@ -274,7 +274,7 @@ mod tests {
             // "arm_swi.json",                       //Done
             // "arm_swp.json",                       //Done
             // "thumb_add_cmp_mov_hi.json", //Done
-            // "thumb_add_sp_or_pc.json",
+            // "thumb_add_sp_or_pc.json", //Done
             // "thumb_add_sub.json", //Done
             // "thumb_add_sub_sp.json",
             // "thumb_b.json",

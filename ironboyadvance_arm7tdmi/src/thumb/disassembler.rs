@@ -116,3 +116,10 @@ pub fn disassemble_sp_relative_load_store(instruction: &ThumbInstruction) -> Str
         false => format!("STRH {}, [sp,#{}]", rd, offset),
     }
 }
+
+pub fn disassemble_load_address(instruction: &ThumbInstruction) -> String {
+    let offset = instruction.offset();
+    let rd = instruction.rd();
+    let sp = if instruction.sp() { "sp" } else { "pc" };
+    format!("ADD {},{},{}", rd, sp, offset)
+}

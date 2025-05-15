@@ -373,3 +373,14 @@ pub fn execute_sp_relative_load_store<I: MemoryInterface>(
 
     CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
 }
+
+pub fn execute_load_address<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ThumbInstruction) -> CpuAction {
+    let rd = instruction.rd() as usize;
+    let offset = instruction.offset() * 4;
+    let value = match instruction.sp() {
+        true => cpu.register(SP).wrapping_add(offset as u32),
+        false => (cpu.pc() & !0b10).wrapping_add(offset as u32),
+    };
+    cpu.set_register(rd, value);
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+}

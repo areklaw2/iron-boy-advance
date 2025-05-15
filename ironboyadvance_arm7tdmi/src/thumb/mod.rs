@@ -75,7 +75,7 @@ impl Instruction for ThumbInstruction {
             LoadStoreImmediateOffset => disassemble_load_store_immediate_offset(self),
             LoadStoreHalfword => disassemble_load_store_halfword(self),
             SpRelativeLoadStore => disassemble_sp_relative_load_store(self),
-            LoadAddress => todo!(),
+            LoadAddress => disassemble_load_address(self),
             AddOffsetToSp => todo!(),
             PushPopRegisters => todo!(),
             MultipleLoadStore => todo!(),
@@ -100,7 +100,7 @@ impl Instruction for ThumbInstruction {
             LoadStoreImmediateOffset => execute_load_store_immediate_offset(cpu, self),
             LoadStoreHalfword => execute_load_store_halfword(cpu, self),
             SpRelativeLoadStore => execute_sp_relative_load_store(cpu, self),
-            LoadAddress => todo!(),
+            LoadAddress => execute_load_address(cpu, self),
             AddOffsetToSp => todo!(),
             PushPopRegisters => todo!(),
             MultipleLoadStore => todo!(),
@@ -140,7 +140,7 @@ impl ThumbInstruction {
         match self.kind {
             MoveShiftedRegister | LoadStoreImmediateOffset | LoadStoreHalfword => self.bits[6..=10].load(),
             AddSubtract => self.bits[6..=8].load(),
-            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore => self.bits[0..=7].load(),
+            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore | LoadAddress => self.bits[0..=7].load(),
             _ => unimplemented!(),
         }
     }
@@ -172,7 +172,9 @@ impl ThumbInstruction {
             | LoadStoreSignExtendedByteHalfword
             | LoadStoreImmediateOffset
             | LoadStoreHalfword => self.bits[0..=2].load::<u16>().into(),
-            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore => self.bits[8..=10].load::<u16>().into(),
+            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore | LoadAddress => {
+                self.bits[8..=10].load::<u16>().into()
+            }
             _ => unimplemented!(),
         }
     }
@@ -233,5 +235,9 @@ impl ThumbInstruction {
 
     pub fn signed(&self) -> bool {
         self.bits[10]
+    }
+
+    pub fn sp(&self) -> bool {
+        self.bits[11]
     }
 }
