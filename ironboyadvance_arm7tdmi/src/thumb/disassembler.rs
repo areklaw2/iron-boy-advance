@@ -123,3 +123,9 @@ pub fn disassemble_load_address(instruction: &ThumbInstruction) -> String {
     let sp = if instruction.sp() { "sp" } else { "pc" };
     format!("ADD {},{},{}", rd, sp, offset)
 }
+
+pub fn disassemble_add_offset_to_sp(instruction: &ThumbInstruction) -> String {
+    let offset = instruction.offset();
+    let signed = if instruction.signed() { "-" } else { "" };
+    format!("ADD sp, {}{}", signed, offset)
+}

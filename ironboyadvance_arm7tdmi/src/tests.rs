@@ -273,28 +273,28 @@ mod tests {
             // "arm_stc_ldc.json",                   //Skip
             // "arm_swi.json",                       //Done
             // "arm_swp.json",                       //Done
-            // "thumb_add_cmp_mov_hi.json", //Done
-            // "thumb_add_sp_or_pc.json", //Done
-            // "thumb_add_sub.json", //Done
-            // "thumb_add_sub_sp.json",
+            // "thumb_add_cmp_mov_hi.json",          //Done
+            // "thumb_add_sp_or_pc.json",            //Done
+            // "thumb_add_sub.json",                 //Done
+            // "thumb_add_sub_sp.json", //Done
             // "thumb_b.json",
             // "thumb_bcc.json",
             // "thumb_bl_blx_prefix.json",
             // "thumb_bl_suffix.json",
-            // "thumb_bx.json", // Done
+            // "thumb_bx.json",        //Done
             // "thumb_data_proc.json", //Done
             // "thumb_ldm_stm.json",
-            // "thumb_ldr_pc_rel.json", //Done
-            // "thumb_ldr_str_imm_offset.json", //Done
-            // "thumb_ldr_str_reg_offset.json", //Done
-            // "thumb_ldr_str_sp_rel.json", // Done
-            // "thumb_ldrb_strb_imm_offset.json", //Done
-            // "thumb_ldrh_strh_imm_offset.json", //Done
-            // "thumb_ldrh_strh_reg_offset.json", //Done
-            // "thumb_ldrsb_strb_reg_offset.json", //Done
+            // "thumb_ldr_pc_rel.json",             //Done
+            // "thumb_ldr_str_imm_offset.json",     //Done
+            // "thumb_ldr_str_reg_offset.json",     //Done
+            // "thumb_ldr_str_sp_rel.json",         //Done
+            // "thumb_ldrb_strb_imm_offset.json",   //Done
+            // "thumb_ldrh_strh_imm_offset.json",   //Done
+            // "thumb_ldrh_strh_reg_offset.json",   //Done
+            // "thumb_ldrsb_strb_reg_offset.json",  //Done
             // "thumb_ldrsh_ldrsb_reg_offset.json", //Done
-            // "thumb_lsl_lsr_asr.json", // Done
-            // "thumb_mov_cmp_add_sub.json", // Done
+            // "thumb_lsl_lsr_asr.json",            //Done
+            // "thumb_mov_cmp_add_sub.json",        //Done
             // "thumb_push_pop.json",
             // "thumb_swi.json",
             // "thumb_undefined_bcc.json",

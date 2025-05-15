@@ -76,7 +76,7 @@ impl Instruction for ThumbInstruction {
             LoadStoreHalfword => disassemble_load_store_halfword(self),
             SpRelativeLoadStore => disassemble_sp_relative_load_store(self),
             LoadAddress => disassemble_load_address(self),
-            AddOffsetToSp => todo!(),
+            AddOffsetToSp => disassemble_add_offset_to_sp(self),
             PushPopRegisters => todo!(),
             MultipleLoadStore => todo!(),
             ConditionalBranch => todo!(),
@@ -101,7 +101,7 @@ impl Instruction for ThumbInstruction {
             LoadStoreHalfword => execute_load_store_halfword(cpu, self),
             SpRelativeLoadStore => execute_sp_relative_load_store(cpu, self),
             LoadAddress => execute_load_address(cpu, self),
-            AddOffsetToSp => todo!(),
+            AddOffsetToSp => execute_add_offset_to_sp(cpu, self),
             PushPopRegisters => todo!(),
             MultipleLoadStore => todo!(),
             ConditionalBranch => todo!(),
@@ -141,6 +141,7 @@ impl ThumbInstruction {
             MoveShiftedRegister | LoadStoreImmediateOffset | LoadStoreHalfword => self.bits[6..=10].load(),
             AddSubtract => self.bits[6..=8].load(),
             MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore | LoadAddress => self.bits[0..=7].load(),
+            AddOffsetToSp => self.bits[0..=6].load(),
             _ => unimplemented!(),
         }
     }
@@ -234,7 +235,11 @@ impl ThumbInstruction {
     }
 
     pub fn signed(&self) -> bool {
-        self.bits[10]
+        match self.kind {
+            LoadStoreSignExtendedByteHalfword => self.bits[10],
+            AddOffsetToSp => self.bits[7],
+            _ => unimplemented!(),
+        }
     }
 
     pub fn sp(&self) -> bool {

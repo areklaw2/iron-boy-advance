@@ -384,3 +384,14 @@ pub fn execute_load_address<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instru
     cpu.set_register(rd, value);
     CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
 }
+
+pub fn execute_add_offset_to_sp<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ThumbInstruction) -> CpuAction {
+    let offset = instruction.offset() * 4;
+    let sp_value = cpu.register(SP);
+    let value = match instruction.signed() {
+        true => sp_value.wrapping_sub(offset as u32),
+        false => sp_value.wrapping_add(offset as u32),
+    };
+    cpu.set_register(SP, value);
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+}
