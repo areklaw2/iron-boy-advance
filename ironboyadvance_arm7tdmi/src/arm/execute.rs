@@ -496,13 +496,14 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
 
     let write_back = instruction.write_back();
     let mut memory_access = MemoryAccess::Nonsequential;
-    for (i, register) in register_list.iter().enumerate() {
-        if pre_index {
-            address += 4
-        }
+    let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
+    match load {
+        true => {
+            for (i, register) in register_list.iter().enumerate() {
+                if pre_index {
+                    address += 4
+                }
 
-        match load {
-            true => {
                 let value = cpu.load_32(address, memory_access as u8);
                 if write_back && i == 0 {
                     if rn == PC {
@@ -514,8 +515,30 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
                     cpu.set_register(rn, base_address);
                 }
                 cpu.set_register(*register, value);
+
+                if !pre_index {
+                    address += 4
+                }
+
+                memory_access = MemoryAccess::Sequential;
             }
-            false => {
+
+            cpu.idle_cycle();
+            if transfer_pc {
+                if load_psr_force_user {
+                    cpu.set_cpsr(cpu.spsr());
+                }
+
+                cpu.pipeline_flush();
+                action = CpuAction::PipelineFlush;
+            }
+        }
+        false => {
+            for (i, register) in register_list.iter().enumerate() {
+                if pre_index {
+                    address += 4
+                }
+
                 let mut value = cpu.register(*register);
                 if *register == PC {
                     match write_back && rn == PC {
@@ -532,26 +555,13 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
                     }
                     cpu.set_register(rn, base_address);
                 }
+
+                if !pre_index {
+                    address += 4
+                }
+
+                memory_access = MemoryAccess::Sequential;
             }
-        }
-
-        if !pre_index {
-            address += 4
-        }
-
-        memory_access = MemoryAccess::Sequential;
-    }
-
-    let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
-    if load {
-        cpu.idle_cycle();
-        if transfer_pc {
-            if load_psr_force_user {
-                cpu.set_cpsr(cpu.spsr());
-            }
-
-            cpu.pipeline_flush();
-            action = CpuAction::PipelineFlush;
         }
     }
 
