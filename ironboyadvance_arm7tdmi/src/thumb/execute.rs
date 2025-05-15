@@ -2,7 +2,7 @@ use crate::{
     AluOperationsOpcode, CpuAction, CpuState, HiRegOpsBxOpcode, MovCmpAddSubImmediateOpcode,
     alu::*,
     barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
-    cpu::{Arm7tdmiCpu, PC, SP},
+    cpu::{Arm7tdmiCpu, LR, PC, SP},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -164,7 +164,7 @@ pub fn execute_hi_register_operations_branch_exchange<I: MemoryInterface>(
     instruction: &ThumbInstruction,
 ) -> CpuAction {
     use HiRegOpsBxOpcode::*;
-    let mut access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
+    let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
     let destination = match instruction.h1() {
         true => instruction.hd() as usize + 8,
         false => instruction.rd() as usize,
@@ -190,7 +190,7 @@ pub fn execute_hi_register_operations_branch_exchange<I: MemoryInterface>(
             if destination == PC {
                 cpu.set_pc(cpu.pc() & !0x1);
                 cpu.pipeline_flush();
-                access = CpuAction::PipelineFlush;
+                action = CpuAction::PipelineFlush;
             }
         }
         MOV => {
@@ -199,18 +199,18 @@ pub fn execute_hi_register_operations_branch_exchange<I: MemoryInterface>(
             if destination == PC {
                 cpu.set_pc(cpu.pc() & !0x1);
                 cpu.pipeline_flush();
-                access = CpuAction::PipelineFlush;
+                action = CpuAction::PipelineFlush;
             }
         }
         BX => {
             cpu.set_state(CpuState::from_bits((operand2 & 0x1) as u8));
             cpu.set_pc(operand2 & !0x1);
             cpu.pipeline_flush();
-            access = CpuAction::PipelineFlush;
+            action = CpuAction::PipelineFlush;
         }
     };
 
-    access
+    action
 }
 
 pub fn execute_pc_relative_load<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ThumbInstruction) -> CpuAction {
@@ -394,4 +394,74 @@ pub fn execute_add_offset_to_sp<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
     };
     cpu.set_register(SP, value);
     CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+}
+
+pub fn execute_push_pop_registers<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    let mut address = cpu.register(SP);
+    let register_list = instruction.register_list();
+    let store_lr_load_pc = instruction.store_lr_load_pc();
+
+    let mut memory_access = MemoryAccess::Nonsequential;
+    match instruction.load() {
+        true => {
+            if register_list.is_empty() && !store_lr_load_pc {
+                let value = cpu.load_32(address, memory_access as u8);
+                cpu.set_pc(value);
+                cpu.set_register(SP, address + 64);
+                cpu.pipeline_flush();
+                return CpuAction::PipelineFlush;
+            }
+
+            for register in register_list.iter() {
+                let value = cpu.load_32(address, memory_access as u8);
+                cpu.set_register(*register, value);
+                memory_access = MemoryAccess::Sequential;
+                address += 4
+            }
+
+            if store_lr_load_pc {
+                let value = cpu.load_32(address, memory_access as u8);
+                cpu.set_register(PC, value & !0b1);
+                cpu.set_register(SP, address + 4);
+                cpu.idle_cycle();
+                cpu.pipeline_flush();
+                return CpuAction::PipelineFlush;
+            }
+
+            cpu.idle_cycle();
+            cpu.set_register(SP, address);
+        }
+        false => {
+            if register_list.is_empty() && !store_lr_load_pc {
+                address -= 64;
+                cpu.set_register(SP, address);
+                let value = cpu.pc() + 2;
+                cpu.store_32(address, value, memory_access as u8);
+                return CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
+            }
+
+            address -= register_list.len() as u32 * 4;
+            if store_lr_load_pc {
+                address -= 4
+            }
+            cpu.set_register(SP, address);
+
+            for register in register_list.iter() {
+                let value = cpu.register(*register);
+                cpu.store_32(address, value, memory_access as u8);
+                memory_access = MemoryAccess::Sequential;
+                address += 4
+            }
+
+            if store_lr_load_pc {
+                let value = cpu.register(LR);
+                cpu.store_32(address, value, memory_access as u8);
+            }
+        }
+    }
+
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
 }

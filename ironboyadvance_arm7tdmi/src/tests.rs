@@ -295,7 +295,7 @@ mod tests {
             // "thumb_ldrsh_ldrsb_reg_offset.json", //Done
             // "thumb_lsl_lsr_asr.json",            //Done
             // "thumb_mov_cmp_add_sub.json",        //Done
-            // "thumb_push_pop.json",
+            //  "thumb_push_pop.json", //Done
             // "thumb_swi.json",
             // "thumb_undefined_bcc.json",
         ];

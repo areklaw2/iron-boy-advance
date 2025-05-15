@@ -77,7 +77,7 @@ impl Instruction for ThumbInstruction {
             SpRelativeLoadStore => disassemble_sp_relative_load_store(self),
             LoadAddress => disassemble_load_address(self),
             AddOffsetToSp => disassemble_add_offset_to_sp(self),
-            PushPopRegisters => todo!(),
+            PushPopRegisters => disassemble_push_pop_registers(self),
             MultipleLoadStore => todo!(),
             ConditionalBranch => todo!(),
             SoftwareInterrupt => todo!(),
@@ -102,7 +102,7 @@ impl Instruction for ThumbInstruction {
             SpRelativeLoadStore => execute_sp_relative_load_store(cpu, self),
             LoadAddress => execute_load_address(cpu, self),
             AddOffsetToSp => execute_add_offset_to_sp(cpu, self),
-            PushPopRegisters => todo!(),
+            PushPopRegisters => execute_push_pop_registers(cpu, self),
             MultipleLoadStore => todo!(),
             ConditionalBranch => todo!(),
             SoftwareInterrupt => todo!(),
@@ -244,5 +244,20 @@ impl ThumbInstruction {
 
     pub fn sp(&self) -> bool {
         self.bits[11]
+    }
+
+    pub fn store_lr_load_pc(&self) -> bool {
+        self.bits[8]
+    }
+
+    pub fn register_list(&self) -> Vec<usize> {
+        self.bits[0..=7]
+            .iter()
+            .enumerate()
+            .filter_map(|(i, b)| match b.as_ref() {
+                true => Some(i),
+                false => None,
+            })
+            .collect()
     }
 }
