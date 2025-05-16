@@ -78,7 +78,7 @@ impl Instruction for ThumbInstruction {
             LoadAddress => disassemble_load_address(self),
             AddOffsetToSp => disassemble_add_offset_to_sp(self),
             PushPopRegisters => disassemble_push_pop_registers(self),
-            MultipleLoadStore => todo!(),
+            MultipleLoadStore => disassemble_multiple_load_store(self),
             ConditionalBranch => todo!(),
             SoftwareInterrupt => todo!(),
             UnconditionalBranch => todo!(),
@@ -103,7 +103,7 @@ impl Instruction for ThumbInstruction {
             LoadAddress => execute_load_address(cpu, self),
             AddOffsetToSp => execute_add_offset_to_sp(cpu, self),
             PushPopRegisters => execute_push_pop_registers(cpu, self),
-            MultipleLoadStore => todo!(),
+            MultipleLoadStore => execute_multiple_load_store(cpu, self),
             ConditionalBranch => todo!(),
             SoftwareInterrupt => todo!(),
             UnconditionalBranch => todo!(),
@@ -185,6 +185,7 @@ impl ThumbInstruction {
             LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword | LoadStoreImmediateOffset | LoadStoreHalfword => {
                 self.bits[3..=5].load::<u16>().into()
             }
+            MultipleLoadStore => self.bits[8..=10].load::<u16>().into(),
             _ => unimplemented!(),
         }
     }

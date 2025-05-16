@@ -465,3 +465,59 @@ pub fn execute_push_pop_registers<I: MemoryInterface>(
 
     CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
 }
+
+pub fn execute_multiple_load_store<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    let rb = instruction.rb() as usize;
+    let mut address = cpu.register(rb);
+    let register_list = instruction.register_list();
+
+    let mut memory_access = MemoryAccess::Nonsequential;
+    match instruction.load() {
+        true => {
+            if register_list.is_empty() {
+                let value = cpu.load_32(address, memory_access as u8);
+                cpu.set_pc(value);
+                cpu.set_register(rb, address + 64);
+                cpu.pipeline_flush();
+                return CpuAction::PipelineFlush;
+            }
+
+            for register in register_list.iter() {
+                let value = cpu.load_32(address, memory_access as u8);
+                cpu.set_register(*register, value);
+                memory_access = MemoryAccess::Sequential;
+                address += 4
+            }
+
+            cpu.idle_cycle();
+            if !register_list.contains(&rb) {
+                cpu.set_register(rb, address);
+            }
+        }
+        false => {
+            if register_list.is_empty() {
+                let value = cpu.pc() + 2;
+                cpu.store_32(address, value, memory_access as u8);
+                cpu.set_register(rb, address + 64);
+                return CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
+            }
+
+            for (i, register) in register_list.iter().enumerate() {
+                let value = cpu.register(*register);
+                cpu.store_32(address, value, memory_access as u8);
+
+                if i == 0 {
+                    cpu.set_register(rb, address + register_list.len() as u32 * 4);
+                }
+
+                memory_access = MemoryAccess::Sequential;
+                address += 4
+            }
+        }
+    }
+
+    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
+}

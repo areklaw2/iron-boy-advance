@@ -147,3 +147,19 @@ pub fn disassemble_push_pop_registers(instruction: &ThumbInstruction) -> String 
         (true, true) => format!("POP {{{},pc}}", register_list),
     }
 }
+
+pub fn disassemble_multiple_load_store(instruction: &ThumbInstruction) -> String {
+    let rb = instruction.rb();
+    let load = instruction.load();
+    let register_list = instruction
+        .register_list()
+        .iter()
+        .map(|register| LoRegister::from(*register as u16).to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+
+    match load {
+        true => format!("LDMIA {}!,{{{}}}", rb, register_list),
+        false => format!("STMIA {}!,{{{}}}", rb, register_list),
+    }
+}
