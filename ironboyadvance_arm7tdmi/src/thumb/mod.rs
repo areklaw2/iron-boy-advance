@@ -80,7 +80,7 @@ impl Instruction for ThumbInstruction {
             PushPopRegisters => disassemble_push_pop_registers(self),
             MultipleLoadStore => disassemble_multiple_load_store(self),
             ConditionalBranch => disassemble_conditional_branch(self),
-            SoftwareInterrupt => todo!(),
+            SoftwareInterrupt => disassemble_software_interrupt(self),
             UnconditionalBranch => todo!(),
             LongBranchWithLink => todo!(),
             Undefined => unimplemented!(),
@@ -105,7 +105,7 @@ impl Instruction for ThumbInstruction {
             PushPopRegisters => execute_push_pop_registers(cpu, self),
             MultipleLoadStore => execute_multiple_load_store(cpu, self),
             ConditionalBranch => execute_conditional_branch(cpu, self),
-            SoftwareInterrupt => todo!(),
+            SoftwareInterrupt => execute_software_interrupt(cpu, self),
             UnconditionalBranch => todo!(),
             LongBranchWithLink => todo!(),
             Undefined => unimplemented!(),
@@ -140,10 +140,14 @@ impl ThumbInstruction {
         match self.kind {
             MoveShiftedRegister | LoadStoreImmediateOffset | LoadStoreHalfword => self.bits[6..=10].load(),
             AddSubtract => self.bits[6..=8].load(),
-            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore | LoadAddress | ConditionalBranch => {
-                self.bits[0..=7].load()
-            }
+            MoveCompareAddSubtractImmediate
+            | PcRelativeLoad
+            | SpRelativeLoadStore
+            | LoadAddress
+            | ConditionalBranch
+            | SoftwareInterrupt => self.bits[0..=7].load(),
             AddOffsetToSp => self.bits[0..=6].load(),
+            UnconditionalBranch | LongBranchWithLink => self.bits[0..=10].load(),
             _ => unimplemented!(),
         }
     }
@@ -266,5 +270,9 @@ impl ThumbInstruction {
 
     pub fn cond(&self) -> Condition {
         self.bits[8..=11].load::<u32>().into()
+    }
+
+    pub fn high(&self) -> bool {
+        self.bits[11]
     }
 }

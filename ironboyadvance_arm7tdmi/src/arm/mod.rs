@@ -165,9 +165,9 @@ impl ArmInstruction {
         self.bits[24]
     }
 
-    pub fn offset(&self) -> i32 {
+    pub fn offset(&self) -> u32 {
         match self.kind {
-            BranchAndBranchWithLink => ((self.bits[0..=23].load::<u32>() << 8) as i32) >> 6,
+            BranchAndBranchWithLink => self.bits[0..=23].load(),
             _ => unimplemented!(),
         }
     }

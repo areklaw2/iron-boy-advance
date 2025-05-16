@@ -276,7 +276,7 @@ mod tests {
             // "thumb_add_cmp_mov_hi.json",          //Done
             // "thumb_add_sp_or_pc.json",            //Done
             // "thumb_add_sub.json",                 //Done
-            // "thumb_add_sub_sp.json", //Done
+            // "thumb_add_sub_sp.json",              //Done
             // "thumb_b.json",
             // "thumb_bcc.json", //Done
             // "thumb_bl_blx_prefix.json",
@@ -296,8 +296,8 @@ mod tests {
             // "thumb_lsl_lsr_asr.json",            //Done
             // "thumb_mov_cmp_add_sub.json",        //Done
             // "thumb_push_pop.json",               //Done
-            // "thumb_swi.json",
-            // "thumb_undefined_bcc.json", //Done
+            // "thumb_swi.json",                    //Done
+            // "thumb_undefined_bcc.json",          //Done
         ];
 
         // let directory = fs::read_dir("../external/arm7tdmi/v1").expect("Unable to access directory");

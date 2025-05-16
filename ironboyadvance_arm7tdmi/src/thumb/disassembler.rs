@@ -169,3 +169,8 @@ pub fn disassemble_conditional_branch(instruction: &ThumbInstruction) -> String 
     let offset = instruction.offset();
     format!("B{} #{}", cond, offset)
 }
+
+pub fn disassemble_software_interrupt(instruction: &ThumbInstruction) -> String {
+    let offset = instruction.offset();
+    format!("SWI #{}", offset)
+}

@@ -27,7 +27,9 @@ pub fn execute_branch_and_branch_link<I: MemoryInterface>(
     if instruction.link() {
         cpu.set_register(LR, cpu.pc() - 4)
     }
-    cpu.set_pc((cpu.pc() as i32).wrapping_add(instruction.offset()) as u32);
+
+    let offset = (((instruction.offset() as u32) << 8) as i32) >> 6;
+    cpu.set_pc((cpu.pc() as i32).wrapping_add(offset) as u32);
     cpu.pipeline_flush();
     CpuAction::PipelineFlush
 }
