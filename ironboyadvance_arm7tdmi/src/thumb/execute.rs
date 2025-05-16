@@ -560,3 +560,25 @@ pub fn execute_unconditional_branch<I: MemoryInterface>(
     cpu.pipeline_flush();
     CpuAction::PipelineFlush
 }
+
+pub fn execute_long_branch_with_link<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    let mut offset = instruction.offset() as i32;
+    match instruction.high() {
+        true => {
+            offset <<= 1;
+            let temp = (cpu.pc() - 2) | 0b1;
+            cpu.set_pc((cpu.register(LR) & !0b1).wrapping_add(offset as u32));
+            cpu.set_register(LR, temp);
+            cpu.pipeline_flush();
+            CpuAction::PipelineFlush
+        }
+        false => {
+            offset = (offset << 21) >> 9;
+            cpu.set_register(LR, cpu.pc().wrapping_add(offset as u32));
+            CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+        }
+    }
+}

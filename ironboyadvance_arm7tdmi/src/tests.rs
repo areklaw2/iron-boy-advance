@@ -253,51 +253,51 @@ mod tests {
         // Will keep a list of the files I want to run until i complete all the instructions
         // completed
         let files = [
-            // "arm_b_bl.json",                      //Done
-            // "arm_bx.json",                        //Done
-            // "arm_cdp.json",                       //Skip
-            // "arm_data_proc_immediate.json",       //Done
-            // "arm_data_proc_immediate_shift.json", //Done
-            // "arm_data_proc_register_shift.json",  //Done
-            // "arm_ldm_stm.json",                   //Done
-            // "arm_ldr_str_immediate_offset.json",  //Done
-            // "arm_ldr_str_register_offset.json",   //Done
-            // "arm_ldrh_strh.json",                 //Done
-            // "arm_ldrsb_ldrsh.json",               //Done
-            // "arm_mcr_mrc.json",                   //Skip
-            // "arm_mrs.json",                       //Done
-            // "arm_msr_imm.json",                   //Done
-            // "arm_msr_reg.json",                   //Done
-            // "arm_mul_mla.json",                   //Done
-            // "arm_mull_mlal.json",                 //Done
-            // "arm_stc_ldc.json",                   //Skip
-            // "arm_swi.json",                       //Done
-            // "arm_swp.json",                       //Done
-            // "thumb_add_cmp_mov_hi.json",          //Done
-            // "thumb_add_sp_or_pc.json",            //Done
-            // "thumb_add_sub.json",                 //Done
-            // "thumb_add_sub_sp.json",              //Done
-            // "thumb_b.json", //Done
-            // "thumb_bcc.json", //Done
-            // "thumb_bl_blx_prefix.json",
-            // "thumb_bl_suffix.json",
-            // "thumb_bx.json",                     //Done
-            // "thumb_data_proc.json",              //Done
-            // "thumb_ldm_stm.json",                //Done
-            // "thumb_ldr_pc_rel.json",             //Done
-            // "thumb_ldr_str_imm_offset.json",     //Done
-            // "thumb_ldr_str_reg_offset.json",     //Done
-            // "thumb_ldr_str_sp_rel.json",         //Done
-            // "thumb_ldrb_strb_imm_offset.json",   //Done
-            // "thumb_ldrh_strh_imm_offset.json",   //Done
-            // "thumb_ldrh_strh_reg_offset.json",   //Done
-            // "thumb_ldrsb_strb_reg_offset.json",  //Done
-            // "thumb_ldrsh_ldrsb_reg_offset.json", //Done
-            // "thumb_lsl_lsr_asr.json",            //Done
-            // "thumb_mov_cmp_add_sub.json",        //Done
-            // "thumb_push_pop.json",               //Done
-            // "thumb_swi.json",                    //Done
-            // "thumb_undefined_bcc.json",          //Done
+            "arm_b_bl.json",                      //Done
+            "arm_bx.json",                        //Done
+            "arm_cdp.json",                       //Skip
+            "arm_data_proc_immediate.json",       //Done
+            "arm_data_proc_immediate_shift.json", //Done
+            "arm_data_proc_register_shift.json",  //Done
+            "arm_ldm_stm.json",                   //Done
+            "arm_ldr_str_immediate_offset.json",  //Done
+            "arm_ldr_str_register_offset.json",   //Done
+            "arm_ldrh_strh.json",                 //Done
+            "arm_ldrsb_ldrsh.json",               //Done
+            "arm_mcr_mrc.json",                   //Skip
+            "arm_mrs.json",                       //Done
+            "arm_msr_imm.json",                   //Done
+            "arm_msr_reg.json",                   //Done
+            "arm_mul_mla.json",                   //Done
+            "arm_mull_mlal.json",                 //Done
+            "arm_stc_ldc.json",                   //Skip
+            "arm_swi.json",                       //Done
+            "arm_swp.json",                       //Done
+            "thumb_add_cmp_mov_hi.json",          //Done
+            "thumb_add_sp_or_pc.json",            //Done
+            "thumb_add_sub.json",                 //Done
+            "thumb_add_sub_sp.json",              //Done
+            "thumb_b.json",                       //Done
+            "thumb_bcc.json",                     //Done
+            "thumb_bl_blx_prefix.json",           //Done
+            "thumb_bl_suffix.json",               //Done
+            "thumb_bx.json",                      //Done
+            "thumb_data_proc.json",               //Done
+            "thumb_ldm_stm.json",                 //Done
+            "thumb_ldr_pc_rel.json",              //Done
+            "thumb_ldr_str_imm_offset.json",      //Done
+            "thumb_ldr_str_reg_offset.json",      //Done
+            "thumb_ldr_str_sp_rel.json",          //Done
+            "thumb_ldrb_strb_imm_offset.json",    //Done
+            "thumb_ldrh_strh_imm_offset.json",    //Done
+            "thumb_ldrh_strh_reg_offset.json",    //Done
+            "thumb_ldrsb_strb_reg_offset.json",   //Done
+            "thumb_ldrsh_ldrsb_reg_offset.json",  //Done
+            "thumb_lsl_lsr_asr.json",             //Done
+            "thumb_mov_cmp_add_sub.json",         //Done
+            "thumb_push_pop.json",                //Done
+            "thumb_swi.json",                     //Done
+            "thumb_undefined_bcc.json",           //Done
         ];
 
         // let directory = fs::read_dir("../external/arm7tdmi/v1").expect("Unable to access directory");

@@ -179,3 +179,9 @@ pub fn disassemble_unconditional_branch(instruction: &ThumbInstruction) -> Strin
     let offset = instruction.offset();
     format!("B #{}", offset)
 }
+
+pub fn disassemble_long_branch_with_link(instruction: &ThumbInstruction) -> String {
+    let offset = instruction.offset();
+    let high = if instruction.high() { "hi" } else { "lo" };
+    format!("BL #{}({})", offset, high)
+}

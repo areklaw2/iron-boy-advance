@@ -82,7 +82,7 @@ impl Instruction for ThumbInstruction {
             ConditionalBranch => disassemble_conditional_branch(self),
             SoftwareInterrupt => disassemble_software_interrupt(self),
             UnconditionalBranch => disassemble_unconditional_branch(self),
-            LongBranchWithLink => todo!(),
+            LongBranchWithLink => disassemble_long_branch_with_link(self),
             Undefined => unimplemented!(),
         }
     }
@@ -107,7 +107,7 @@ impl Instruction for ThumbInstruction {
             ConditionalBranch => execute_conditional_branch(cpu, self),
             SoftwareInterrupt => execute_software_interrupt(cpu, self),
             UnconditionalBranch => execute_unconditional_branch(cpu, self),
-            LongBranchWithLink => todo!(),
+            LongBranchWithLink => execute_long_branch_with_link(cpu, self),
             Undefined => unimplemented!(),
         }
     }
