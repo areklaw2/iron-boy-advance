@@ -1,8 +1,8 @@
 use std::fmt;
 
 use crate::{
-    AluOperationsOpcode, CpuMode, CpuState, DataProcessingOpcode, HiRegOpsBxOpcode, HiRegister, LoRegister,
-    MovCmpAddSubImmediateOpcode, Register, arm::Condition, barrel_shifter::ShiftType,
+    AluOperationsOpcode, Condition, CpuMode, CpuState, DataProcessingOpcode, HiRegOpsBxOpcode, HiRegister, LoRegister,
+    MovCmpAddSubImmediateOpcode, Register, barrel_shifter::ShiftType,
 };
 
 impl fmt::Display for CpuMode {

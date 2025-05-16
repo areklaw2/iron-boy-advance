@@ -1,8 +1,8 @@
 use ironboyadvance_utils::get_set;
 
 use crate::{
-    CpuAction,
-    arm::{ArmInstructionKind, Condition, lut::generate_arm_lut},
+    Condition, CpuAction,
+    arm::{ArmInstructionKind, lut::generate_arm_lut},
     memory::{MemoryAccess, MemoryInterface},
     thumb::{ThumbInstruction, ThumbInstructionKind, lut::generate_thumb_lut},
 };

@@ -170,6 +170,49 @@ impl From<u16> for HiRegister {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Condition {
+    EQ,
+    NE,
+    CS,
+    CC,
+    MI,
+    PL,
+    VS,
+    VC,
+    HI,
+    LS,
+    GE,
+    LT,
+    GT,
+    LE,
+    AL,
+}
+
+impl From<u32> for Condition {
+    fn from(value: u32) -> Self {
+        use Condition::*;
+        match value {
+            0b0000 => EQ,
+            0b0001 => NE,
+            0b0010 => CS,
+            0b0011 => CC,
+            0b0100 => MI,
+            0b0101 => PL,
+            0b0110 => VS,
+            0b0111 => VC,
+            0b1000 => HI,
+            0b1001 => LS,
+            0b1010 => GE,
+            0b1011 => LT,
+            0b1100 => GT,
+            0b1101 => LE,
+            0b1110 => AL,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DataProcessingOpcode {
     AND,
     EOR,
