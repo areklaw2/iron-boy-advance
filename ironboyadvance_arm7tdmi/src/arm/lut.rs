@@ -1,5 +1,5 @@
-use bitvec::{field::BitField, order::Lsb0, view::BitView};
 use ArmInstructionKind::*;
+use bitvec::{field::BitField, order::Lsb0, view::BitView};
 
 use super::ArmInstructionKind;
 
