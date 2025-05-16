@@ -5,7 +5,7 @@ use execute::*;
 use std::fmt;
 
 use crate::{
-    CpuAction, HiRegister, LoRegister,
+    Condition, CpuAction, HiRegister, LoRegister,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };
@@ -79,7 +79,7 @@ impl Instruction for ThumbInstruction {
             AddOffsetToSp => disassemble_add_offset_to_sp(self),
             PushPopRegisters => disassemble_push_pop_registers(self),
             MultipleLoadStore => disassemble_multiple_load_store(self),
-            ConditionalBranch => todo!(),
+            ConditionalBranch => disassemble_conditional_branch(self),
             SoftwareInterrupt => todo!(),
             UnconditionalBranch => todo!(),
             LongBranchWithLink => todo!(),
@@ -104,7 +104,7 @@ impl Instruction for ThumbInstruction {
             AddOffsetToSp => execute_add_offset_to_sp(cpu, self),
             PushPopRegisters => execute_push_pop_registers(cpu, self),
             MultipleLoadStore => execute_multiple_load_store(cpu, self),
-            ConditionalBranch => todo!(),
+            ConditionalBranch => execute_conditional_branch(cpu, self),
             SoftwareInterrupt => todo!(),
             UnconditionalBranch => todo!(),
             LongBranchWithLink => todo!(),
@@ -140,7 +140,9 @@ impl ThumbInstruction {
         match self.kind {
             MoveShiftedRegister | LoadStoreImmediateOffset | LoadStoreHalfword => self.bits[6..=10].load(),
             AddSubtract => self.bits[6..=8].load(),
-            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore | LoadAddress => self.bits[0..=7].load(),
+            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore | LoadAddress | ConditionalBranch => {
+                self.bits[0..=7].load()
+            }
             AddOffsetToSp => self.bits[0..=6].load(),
             _ => unimplemented!(),
         }
@@ -260,5 +262,9 @@ impl ThumbInstruction {
                 false => None,
             })
             .collect()
+    }
+
+    pub fn cond(&self) -> Condition {
+        self.bits[8..=11].load::<u32>().into()
     }
 }

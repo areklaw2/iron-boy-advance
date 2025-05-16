@@ -171,7 +171,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    fn is_condition_met(&self, condition: Condition) -> bool {
+    pub fn is_condition_met(&self, condition: Condition) -> bool {
         use Condition::*;
         match condition {
             EQ => self.cpsr.zero(),

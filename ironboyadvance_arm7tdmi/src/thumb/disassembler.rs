@@ -163,3 +163,9 @@ pub fn disassemble_multiple_load_store(instruction: &ThumbInstruction) -> String
         false => format!("STMIA {}!,{{{}}}", rb, register_list),
     }
 }
+
+pub fn disassemble_conditional_branch(instruction: &ThumbInstruction) -> String {
+    let cond = instruction.cond();
+    let offset = instruction.offset();
+    format!("B{} #{}", cond, offset)
+}

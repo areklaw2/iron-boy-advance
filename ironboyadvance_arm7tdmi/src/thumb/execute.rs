@@ -521,3 +521,18 @@ pub fn execute_multiple_load_store<I: MemoryInterface>(
 
     CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential)
 }
+
+pub fn execute_conditional_branch<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    let condition = instruction.cond();
+    if !cpu.is_condition_met(condition) {
+        CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
+    } else {
+        let offset = (((instruction.offset() as u32) << 24) as i32) >> 23;
+        cpu.set_pc(cpu.pc().wrapping_add(offset as u32));
+        cpu.pipeline_flush();
+        CpuAction::PipelineFlush
+    }
+}
