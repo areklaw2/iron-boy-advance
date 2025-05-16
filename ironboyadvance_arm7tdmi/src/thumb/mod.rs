@@ -81,7 +81,7 @@ impl Instruction for ThumbInstruction {
             MultipleLoadStore => disassemble_multiple_load_store(self),
             ConditionalBranch => disassemble_conditional_branch(self),
             SoftwareInterrupt => disassemble_software_interrupt(self),
-            UnconditionalBranch => todo!(),
+            UnconditionalBranch => disassemble_unconditional_branch(self),
             LongBranchWithLink => todo!(),
             Undefined => unimplemented!(),
         }
@@ -106,7 +106,7 @@ impl Instruction for ThumbInstruction {
             MultipleLoadStore => execute_multiple_load_store(cpu, self),
             ConditionalBranch => execute_conditional_branch(cpu, self),
             SoftwareInterrupt => execute_software_interrupt(cpu, self),
-            UnconditionalBranch => todo!(),
+            UnconditionalBranch => execute_unconditional_branch(cpu, self),
             LongBranchWithLink => todo!(),
             Undefined => unimplemented!(),
         }

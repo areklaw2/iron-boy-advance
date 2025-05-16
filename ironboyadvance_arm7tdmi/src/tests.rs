@@ -277,7 +277,7 @@ mod tests {
             // "thumb_add_sp_or_pc.json",            //Done
             // "thumb_add_sub.json",                 //Done
             // "thumb_add_sub_sp.json",              //Done
-            // "thumb_b.json",
+            // "thumb_b.json", //Done
             // "thumb_bcc.json", //Done
             // "thumb_bl_blx_prefix.json",
             // "thumb_bl_suffix.json",

@@ -550,3 +550,13 @@ pub fn execute_software_interrupt<I: MemoryInterface>(
     cpu.pipeline_flush();
     CpuAction::PipelineFlush
 }
+
+pub fn execute_unconditional_branch<I: MemoryInterface>(
+    cpu: &mut Arm7tdmiCpu<I>,
+    instruction: &ThumbInstruction,
+) -> CpuAction {
+    let offset = (((instruction.offset() as u32) << 21) as i32) >> 20;
+    cpu.set_pc(cpu.pc().wrapping_add(offset as u32));
+    cpu.pipeline_flush();
+    CpuAction::PipelineFlush
+}
