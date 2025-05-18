@@ -1,1 +1,3 @@
-pub enum Exception {}
+pub enum Exception {
+    // THis is a test
+}
