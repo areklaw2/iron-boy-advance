@@ -3,6 +3,7 @@ mod arm;
 mod barrel_shifter;
 pub mod cpu;
 mod disassembler;
+mod exception;
 pub mod memory;
 mod psr;
 mod tests;

@@ -308,8 +308,6 @@ mod tests {
                 assert_eq!(expected.into_bits(), actual.into_bits());
 
                 assert_eq!(cpu.pipeline(), final_state.pipeline);
-
-                cpu.reset(true)
             }
         }
     }

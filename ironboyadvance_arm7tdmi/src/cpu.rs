@@ -351,7 +351,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.bus = bus
     }
 
-    pub fn reset(&mut self, skip_bios: bool) {
+    pub fn reset(&mut self) {
         self.general_registers = [0; 16];
         self.banked_registers_fiq = [0; 7]; //r8 to r14
         self.banked_registers_svc = [0; 2]; //r13 to r14
@@ -363,20 +363,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.pipeline = [0; 2];
         self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Nonsequential;
 
-        match skip_bios {
-            true => {
-                self.general_registers[SP] = 0x03007F00;
-                self.general_registers[LR] = 0x08000000;
-                self.general_registers[PC] = 0x08000000;
-                self.banked_registers_svc[0] = 0x3007FE0;
-                self.banked_registers_irq[0] = 0x3007FA0;
-                self.cpsr.set_mode(CpuMode::System);
-                self.cpsr.set_irq_disable(false);
-            }
-            false => {
-                self.cpsr.set_mode(CpuMode::Supervisor);
-                self.cpsr.set_irq_disable(true);
-            }
-        }
+        self.cpsr.set_mode(CpuMode::Supervisor);
+        self.cpsr.set_irq_disable(true);
+        self.cpsr.set_fiq_disable(true);
     }
 }
