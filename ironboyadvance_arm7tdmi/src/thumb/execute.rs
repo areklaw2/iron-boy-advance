@@ -1,5 +1,5 @@
 use crate::{
-    AluOperationsOpcode, CpuAction, CpuMode, CpuState, Exception, HiRegOpsBxOpcode, MovCmpAddSubImmediateOpcode,
+    AluOperationsOpcode, CpuAction, CpuState, Exception, HiRegOpsBxOpcode, MovCmpAddSubImmediateOpcode,
     alu::*,
     barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, LR, PC, SP},
