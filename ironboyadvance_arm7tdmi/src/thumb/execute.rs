@@ -1,5 +1,5 @@
 use crate::{
-    AluOperationsOpcode, CpuAction, CpuMode, CpuState, HiRegOpsBxOpcode, MovCmpAddSubImmediateOpcode,
+    AluOperationsOpcode, CpuAction, CpuMode, CpuState, Exception, HiRegOpsBxOpcode, MovCmpAddSubImmediateOpcode,
     alu::*,
     barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, LR, PC, SP},
@@ -541,13 +541,7 @@ pub fn execute_software_interrupt<I: MemoryInterface>(
     cpu: &mut Arm7tdmiCpu<I>,
     _instruction: &ThumbInstruction,
 ) -> CpuAction {
-    cpu.set_mode_spsr(CpuMode::Supervisor, cpu.cpsr());
-    cpu.set_mode(CpuMode::Supervisor);
-    cpu.set_irq_disable(true);
-    cpu.set_state(CpuState::Arm);
-    cpu.set_register(LR, cpu.pc() - 2);
-    cpu.set_pc(0x08);
-    cpu.pipeline_flush();
+    cpu.exeception(Exception::SoftwareInterrupt);
     CpuAction::PipelineFlush
 }
 

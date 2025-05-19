@@ -1,7 +1,7 @@
 use ironboyadvance_utils::get_set;
 
 use crate::{
-    Condition, CpuAction,
+    Condition, CpuAction, Exception,
     arm::{ArmInstructionKind, lut::generate_arm_lut},
     memory::{MemoryAccess, MemoryInterface},
     thumb::{ThumbInstruction, ThumbInstructionKind, lut::generate_thumb_lut},
@@ -351,20 +351,35 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.bus = bus
     }
 
-    pub fn reset(&mut self) {
-        self.general_registers = [0; 16];
-        self.banked_registers_fiq = [0; 7]; //r8 to r14
-        self.banked_registers_svc = [0; 2]; //r13 to r14
-        self.banked_registers_abt = [0; 2]; //r13 to r14
-        self.banked_registers_irq = [0; 2]; //r13 to r14
-        self.banked_registers_und = [0; 2]; //r13 to r14
-        self.spsrs = [ProgramStatusRegister::from_bits(0x13); 5];
-        self.cpsr = ProgramStatusRegister::from_bits(0x13);
-        self.pipeline = [0; 2];
-        self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Nonsequential;
+    pub fn exeception(&mut self, exception: Exception) {
+        let (mode, disable_irq, disable_fiq) = match exception {
+            Exception::Reset => (CpuMode::Supervisor, true, true),
+            Exception::Undefined => (CpuMode::Undefined, true, false),
+            Exception::SoftwareInterrupt => (CpuMode::Supervisor, true, false),
+            Exception::Irq => (CpuMode::Irq, true, false),
+            Exception::Fiq => (CpuMode::Fiq, true, true),
+        };
 
-        self.cpsr.set_mode(CpuMode::Supervisor);
-        self.cpsr.set_irq_disable(true);
-        self.cpsr.set_fiq_disable(true);
+        self.set_mode_spsr(mode, self.cpsr());
+        self.set_mode(mode);
+        if disable_irq {
+            self.cpsr.set_irq_disable(true);
+        }
+        if disable_fiq {
+            self.cpsr.set_fiq_disable(true);
+        }
+
+        let return_pc = match self.cpsr.state() {
+            CpuState::Arm => self.pc() - 4,
+            CpuState::Thumb => self.pc() - 2,
+        };
+        self.set_register(LR, return_pc);
+        self.set_state(CpuState::Arm);
+        self.set_pc(exception as u32);
+        self.pipeline_flush();
+    }
+
+    pub fn reset(&mut self) {
+        self.exeception(Exception::Reset);
     }
 }

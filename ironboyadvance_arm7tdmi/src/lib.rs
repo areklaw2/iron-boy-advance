@@ -3,7 +3,6 @@ mod arm;
 mod barrel_shifter;
 pub mod cpu;
 mod disassembler;
-mod exception;
 pub mod memory;
 mod psr;
 mod tests;
@@ -344,4 +343,15 @@ impl From<u16> for HiRegOpsBxOpcode {
             _ => unreachable!(),
         }
     }
+}
+
+pub enum Exception {
+    Reset = 0x00,
+    Undefined = 0x04,
+    SoftwareInterrupt = 0x08,
+    // AbortPrefetch = 0x0C,
+    // AbortData = 0x10,
+    // Reserved = 0x14,
+    Irq = 0x18,
+    Fiq = 0x1C,
 }
