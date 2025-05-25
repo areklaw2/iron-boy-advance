@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use ironboyadvance_arm7tdmi::memory::{IoMemoryAccess, MemoryAccessWidth, MemoryInterface, decompose_access_pattern};
 
-use crate::{bios::Bios, cartridge::Cartridge, scheduler::Scheduler};
+use crate::{bios::Bios, cartridge::Cartridge, io_registers::IoRegisters, scheduler::Scheduler};
 
 pub const BIOS_START: u32 = 0x0000_0000;
 pub const BIOS_END: u32 = 0x0000_3FFF;
@@ -28,9 +28,15 @@ pub const SRAM_START: u32 = 0x0E00_0000;
 pub const SRAM_END: u32 = 0x0FFF_FFFF;
 
 pub struct SystemBus {
-    data: Vec<u8>,
-    cartridge: Cartridge,
     bios: Bios,
+    wram_board: Vec<u8>,
+    wram_chip: Vec<u8>,
+    io_registers: IoRegisters,
+    // TODO: Probably need to add this to ppu
+    pallete_ram: Vec<u8>,
+    vram: Vec<u8>,
+    oam: Vec<u8>,
+    cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler>>,
 }
 
@@ -66,42 +72,44 @@ impl MemoryInterface for SystemBus {
     }
 
     fn idle_cycle(&mut self) {
-        //update the scheduler
+        self.scheduler.borrow_mut().update(1);
     }
 }
 
 impl IoMemoryAccess for SystemBus {
     fn read_8(&self, address: u32) -> u8 {
         match address {
-            BIOS_START..=BIOS_END => self.bios.read_8(address),
-            WRAM_BOARD_START..=WRAM_BOARD_END => self.data[address as usize],
-            WRAM_CHIP_START..=WRAM_CHIP_END => self.data[address as usize],
-            IO_REGISTER_START..=IO_REGISTER_END => self.data[address as usize], // theres mirrors for this see GBATEK
-            PALETTE_RAM_START..=PALETTE_RAM_END => self.data[address as usize],
-            VRAM_START..=VRAM_END => self.data[address as usize],
-            OAM_START..=OAM_END => self.data[address as usize],
-            ROM_WAIT_STATE_0_START..=ROM_WAIT_STATE_0_END => self.cartridge.read_8(address),
-            ROM_WAIT_STATE_1_START..=ROM_WAIT_STATE_1_END => self.cartridge.read_8(address),
-            ROM_WAIT_STATE_2_START..=ROM_WAIT_STATE_2_END => self.cartridge.read_8(address),
-            SRAM_START..=SRAM_END => self.cartridge.read_8(address),
-            _ => self.data[address as usize],
+            BIOS_START..=BIOS_END => self.bios.read_8(address - BIOS_START),
+            WRAM_BOARD_START..=WRAM_BOARD_END => self.wram_board[(address - WRAM_BOARD_START) as usize],
+            WRAM_CHIP_START..=WRAM_CHIP_END => self.wram_chip[(address - WRAM_CHIP_START) as usize],
+            IO_REGISTER_START..=IO_REGISTER_END => self.io_registers.read_8(address - IO_REGISTER_START), // theres mirrors for this see GBATEK
+            PALETTE_RAM_START..=PALETTE_RAM_END => self.pallete_ram[(address - PALETTE_RAM_START) as usize],
+            VRAM_START..=VRAM_END => self.vram[(address - VRAM_START) as usize],
+            OAM_START..=OAM_END => self.oam[(address - OAM_START) as usize],
+            //TODO: move into cart read
+            ROM_WAIT_STATE_0_START..=ROM_WAIT_STATE_0_END => self.cartridge.read_8(address - ROM_WAIT_STATE_0_START),
+            ROM_WAIT_STATE_1_START..=ROM_WAIT_STATE_1_END => self.cartridge.read_8(address - ROM_WAIT_STATE_1_START),
+            ROM_WAIT_STATE_2_START..=ROM_WAIT_STATE_2_END => self.cartridge.read_8(address - ROM_WAIT_STATE_2_START),
+            SRAM_START..=SRAM_END => self.cartridge.read_8(address - SRAM_START),
+            _ => panic!("Unused: {:08X}", address),
         }
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
-            BIOS_START..=BIOS_END => self.bios.write_8(address, value),
-            WRAM_BOARD_START..=WRAM_BOARD_END => self.data[address as usize] = value,
-            WRAM_CHIP_START..=WRAM_CHIP_END => self.data[address as usize] = value,
-            IO_REGISTER_START..=IO_REGISTER_END => self.data[address as usize] = value, // theres mirrors for this see GBATEK
-            PALETTE_RAM_START..=PALETTE_RAM_END => self.data[address as usize] = value,
-            VRAM_START..=VRAM_END => self.data[address as usize] = value,
-            OAM_START..=OAM_END => self.data[address as usize] = value,
-            ROM_WAIT_STATE_0_START..=ROM_WAIT_STATE_0_END => self.cartridge.write_8(address, value),
-            ROM_WAIT_STATE_1_START..=ROM_WAIT_STATE_1_END => self.cartridge.write_8(address, value),
-            ROM_WAIT_STATE_2_START..=ROM_WAIT_STATE_2_END => self.cartridge.write_8(address, value),
-            SRAM_START..=SRAM_END => self.cartridge.write_8(address, value),
-            _ => self.data[address as usize] = value,
+            BIOS_START..=BIOS_END => self.bios.write_8(address - BIOS_START, value),
+            WRAM_BOARD_START..=WRAM_BOARD_END => self.wram_board[(address - WRAM_BOARD_START) as usize] = value,
+            WRAM_CHIP_START..=WRAM_CHIP_END => self.wram_chip[(address - WRAM_CHIP_START) as usize] = value,
+            IO_REGISTER_START..=IO_REGISTER_END => self.io_registers.write_8(address - IO_REGISTER_START, value), // theres mirrors for this see GBATEK
+            PALETTE_RAM_START..=PALETTE_RAM_END => self.pallete_ram[(address - PALETTE_RAM_START) as usize] = value,
+            VRAM_START..=VRAM_END => self.vram[(address - VRAM_START) as usize] = value,
+            OAM_START..=OAM_END => self.oam[(address - OAM_START) as usize] = value,
+            //TODO: move into cart read
+            ROM_WAIT_STATE_0_START..=ROM_WAIT_STATE_0_END => self.cartridge.write_8(address - ROM_WAIT_STATE_0_START, value),
+            ROM_WAIT_STATE_1_START..=ROM_WAIT_STATE_1_END => self.cartridge.write_8(address - ROM_WAIT_STATE_1_START, value),
+            ROM_WAIT_STATE_2_START..=ROM_WAIT_STATE_2_END => self.cartridge.write_8(address - ROM_WAIT_STATE_2_START, value),
+            SRAM_START..=SRAM_END => self.cartridge.write_8(address - SRAM_START, value),
+            _ => panic!("Unused: {:08X}", address),
         }
     }
 }
@@ -109,9 +117,14 @@ impl IoMemoryAccess for SystemBus {
 impl SystemBus {
     pub fn new(cartridge: Cartridge, bios: Bios, scheduler: Rc<RefCell<Scheduler>>) -> Self {
         SystemBus {
-            data: vec![0; 0xFFFFFFFF],
-            cartridge,
             bios,
+            wram_board: vec![0; 0x40000],
+            wram_chip: vec![0; 0x8000],
+            io_registers: IoRegisters::new(),
+            pallete_ram: vec![0; 0x400],
+            vram: vec![0; 0x18000],
+            oam: vec![0; 0x400],
+            cartridge,
             scheduler,
         }
     }

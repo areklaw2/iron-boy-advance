@@ -5,6 +5,7 @@ use thiserror::Error;
 mod bios;
 mod cartridge;
 pub mod gba;
+mod io_registers;
 pub mod ppu;
 mod scheduler;
 mod system_bus;
