@@ -3,7 +3,7 @@ use bitvec::field::BitField;
 use crate::{
     CpuAction, CpuMode, CpuState, DataProcessingOpcode, Exception,
     alu::*,
-    barrel_shifter::{ShiftBy, ShiftType, asr, lsl, lsr, ror},
+    barrel_shifter::*,
     cpu::{Arm7tdmiCpu, LR, PC},
     memory::{MemoryAccess, MemoryInterface},
     psr::ProgramStatusRegister,
