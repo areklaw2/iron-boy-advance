@@ -7,8 +7,8 @@ use ironboyadvance_utils::read_file;
 use crate::{
     GbaError,
     system_bus::{
-        ROM_WAIT_STATE_0_END, ROM_WAIT_STATE_0_START, ROM_WAIT_STATE_1_END, ROM_WAIT_STATE_1_START, ROM_WAIT_STATE_2_END,
-        ROM_WAIT_STATE_2_START, SRAM_END, SRAM_START,
+        ROM_WAIT_STATE_0_HI, ROM_WAIT_STATE_0_LO, ROM_WAIT_STATE_1_HI, ROM_WAIT_STATE_1_LO, ROM_WAIT_STATE_2_HI,
+        ROM_WAIT_STATE_2_LO, SRAM_HI, SRAM_LO,
     },
 };
 
@@ -41,21 +41,21 @@ impl Cartridge {
 
 impl IoMemoryAccess for Cartridge {
     fn read_8(&self, address: u32) -> u8 {
-        match address {
-            ROM_WAIT_STATE_0_START..=ROM_WAIT_STATE_0_END => self.data[(address - ROM_WAIT_STATE_0_START) as usize],
-            ROM_WAIT_STATE_1_START..=ROM_WAIT_STATE_1_END => self.data[(address - ROM_WAIT_STATE_1_START) as usize],
-            ROM_WAIT_STATE_2_START..=ROM_WAIT_STATE_2_END => self.data[(address - ROM_WAIT_STATE_2_START) as usize],
-            SRAM_START..=SRAM_END => self.data[(address - SRAM_START) as usize],
+        match address & 0xFF000000 {
+            ROM_WAIT_STATE_0_LO | ROM_WAIT_STATE_0_HI => self.data[(address - ROM_WAIT_STATE_0_LO) as usize],
+            ROM_WAIT_STATE_1_LO | ROM_WAIT_STATE_1_HI => self.data[(address - ROM_WAIT_STATE_1_LO) as usize],
+            ROM_WAIT_STATE_2_LO | ROM_WAIT_STATE_2_HI => self.data[(address - ROM_WAIT_STATE_2_LO) as usize],
+            SRAM_LO | SRAM_HI => self.data[(address - SRAM_LO) as usize],
             _ => panic!("Read to address {:08X} invalid", address),
         }
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
-        match address {
-            ROM_WAIT_STATE_0_START..=ROM_WAIT_STATE_0_END => self.data[(address - ROM_WAIT_STATE_0_START) as usize] = value,
-            ROM_WAIT_STATE_1_START..=ROM_WAIT_STATE_1_END => self.data[(address - ROM_WAIT_STATE_1_START) as usize] = value,
-            ROM_WAIT_STATE_2_START..=ROM_WAIT_STATE_2_END => self.data[(address - ROM_WAIT_STATE_2_START) as usize] = value,
-            SRAM_START..=SRAM_END => self.data[(address - SRAM_START) as usize] = value,
+        match address & 0xFF000000 {
+            ROM_WAIT_STATE_0_LO | ROM_WAIT_STATE_0_HI => self.data[(address - ROM_WAIT_STATE_0_LO) as usize] = value,
+            ROM_WAIT_STATE_1_LO | ROM_WAIT_STATE_1_HI => self.data[(address - ROM_WAIT_STATE_1_LO) as usize] = value,
+            ROM_WAIT_STATE_2_LO | ROM_WAIT_STATE_2_HI => self.data[(address - ROM_WAIT_STATE_2_LO) as usize] = value,
+            SRAM_LO | SRAM_HI => self.data[(address - SRAM_LO) as usize] = value,
             _ => panic!("Write to address {:08X} invalid", address),
         }
     }
