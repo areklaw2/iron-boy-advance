@@ -34,6 +34,31 @@ pub const INDEX_ROM_WAIT_STATE_2: usize = (ROM_WAIT_STATE_2_LO >> 24) as usize;
 pub const INDEX_SRAM_LO: usize = (SRAM_LO >> 24) as usize;
 pub const INDEX_SRAM_HI: usize = (SRAM_HI >> 24) as usize;
 
+pub struct ClockCycleLuts {
+    n_cycles_16_lut: [u8; 16],
+    n_cycles_32_lut: [u8; 16],
+    s_cycles_16_lut: [u8; 16],
+    s_cycles_32_lut: [u8; 16],
+}
+
+impl ClockCycleLuts {
+    pub fn new() -> Self {
+        let mut n_cycles_16_lut = [1; 16];
+        let mut n_cycles_32_lut = [1; 16];
+        let mut s_cycles_16_lut = [1; 16];
+        let mut s_cycles_32_lut = [1; 16];
+
+        //TODO: fill in cycles
+
+        ClockCycleLuts {
+            n_cycles_16_lut,
+            n_cycles_32_lut,
+            s_cycles_16_lut,
+            s_cycles_32_lut,
+        }
+    }
+}
+
 pub struct SystemBus {
     bios: Bios,
     wram_board: Vec<u8>,
@@ -45,7 +70,7 @@ pub struct SystemBus {
     oam: Vec<u8>,
     cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler>>,
-    // TODO: Add luts for cycles
+    cycle_luts: Rc<RefCell<ClockCycleLuts>>,
 }
 
 impl MemoryInterface for SystemBus {
@@ -124,16 +149,18 @@ impl IoMemoryAccess for SystemBus {
 
 impl SystemBus {
     pub fn new(cartridge: Cartridge, bios: Bios, scheduler: Rc<RefCell<Scheduler>>) -> Self {
+        let cycle_luts = Rc::new(RefCell::new(ClockCycleLuts::new()));
         SystemBus {
             bios,
             wram_board: vec![0; 0x40000],
             wram_chip: vec![0; 0x8000],
-            io_registers: IoRegisters::new(),
+            io_registers: IoRegisters::new(scheduler.clone(), cycle_luts.clone()), // pass scheduler
             pallete_ram: vec![0; 0x400],
             vram: vec![0; 0x18000],
             oam: vec![0; 0x400],
             cartridge,
             scheduler,
+            cycle_luts: cycle_luts,
         }
     }
 
