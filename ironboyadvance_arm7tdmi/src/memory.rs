@@ -4,7 +4,7 @@ use crate::cpu::Arm7tdmiCpu;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MemoryAccess {
-    Nonsequential = 0b0,
+    NonSequential = 0b0,
     Sequential = 0b1,
     Instruction = 0b10,
     Dma = 0b100,
@@ -23,7 +23,7 @@ pub fn decompose_access_pattern(access_pattern: u8) -> Vec<MemoryAccess> {
     let mut decomposition = Vec::new();
     match access_pattern & MemoryAccess::Sequential as u8 != 0 {
         true => decomposition.push(MemoryAccess::Sequential),
-        false => decomposition.push(MemoryAccess::Nonsequential),
+        false => decomposition.push(MemoryAccess::NonSequential),
     };
 
     if access_pattern & MemoryAccess::Instruction as u8 != 0 {

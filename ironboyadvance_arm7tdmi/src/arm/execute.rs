@@ -59,7 +59,7 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
                     if rm == PC {
                         rm_value += 4;
                     }
-                    cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
+                    cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential);
                     cpu.idle_cycle();
                     cpu.register(instruction.rs() as usize) & 0xFF
                 }
@@ -215,7 +215,7 @@ pub fn execute_multiply<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instructio
             cpu.pipeline_flush();
             CpuAction::PipelineFlush
         }
-        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
     }
 }
 
@@ -272,7 +272,7 @@ pub fn execute_multiply_long<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instr
             cpu.pipeline_flush();
             CpuAction::PipelineFlush
         }
-        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
     }
 }
 
@@ -314,8 +314,8 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(
     match load {
         true => {
             let value = match byte {
-                true => cpu.load_8(address, MemoryAccess::Nonsequential as u8),
-                false => cpu.load_rotated_32(address, MemoryAccess::Nonsequential as u8),
+                true => cpu.load_8(address, MemoryAccess::NonSequential as u8),
+                false => cpu.load_rotated_32(address, MemoryAccess::NonSequential as u8),
             };
             if write_back || !pre_index {
                 if rn != rd && rn == PC {
@@ -332,8 +332,8 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(
                 value += 4;
             }
             match byte {
-                true => cpu.store_8(address, value as u8, MemoryAccess::Nonsequential as u8),
-                false => cpu.store_32(address, value, MemoryAccess::Nonsequential as u8),
+                true => cpu.store_8(address, value as u8, MemoryAccess::NonSequential as u8),
+                false => cpu.store_32(address, value, MemoryAccess::NonSequential as u8),
             };
             if write_back || !pre_index {
                 if rn == PC {
@@ -349,7 +349,7 @@ pub fn execute_single_data_transfer<I: MemoryInterface>(
             cpu.pipeline_flush();
             CpuAction::PipelineFlush
         }
-        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
     }
 }
 
@@ -383,7 +383,7 @@ pub fn execute_halfword_and_signed_data_transfer<I: MemoryInterface>(
         true => match (s, h) {
             (false, false) => {}
             (false, true) => {
-                let value = cpu.load_rotated_16(address, MemoryAccess::Nonsequential as u8);
+                let value = cpu.load_rotated_16(address, MemoryAccess::NonSequential as u8);
                 if write_back || !pre_index {
                     if rn != rd && rn == PC {
                         cpu.pipeline_flush();
@@ -394,7 +394,7 @@ pub fn execute_halfword_and_signed_data_transfer<I: MemoryInterface>(
                 cpu.set_register(rd, value);
             }
             (true, false) => {
-                let value = cpu.load_signed_8(address, MemoryAccess::Nonsequential as u8);
+                let value = cpu.load_signed_8(address, MemoryAccess::NonSequential as u8);
                 if write_back || !pre_index {
                     if rn != rd && rn == PC {
                         cpu.pipeline_flush();
@@ -405,7 +405,7 @@ pub fn execute_halfword_and_signed_data_transfer<I: MemoryInterface>(
                 cpu.set_register(rd, value);
             }
             (true, true) => {
-                let value = cpu.load_signed_16(address, MemoryAccess::Nonsequential as u8);
+                let value = cpu.load_signed_16(address, MemoryAccess::NonSequential as u8);
                 if write_back || !pre_index {
                     if rn != rd && rn == PC {
                         cpu.pipeline_flush();
@@ -424,7 +424,7 @@ pub fn execute_halfword_and_signed_data_transfer<I: MemoryInterface>(
             match (s, h) {
                 (false, false) => {}
                 (false, true) => {
-                    cpu.store_16(address, value as u16, MemoryAccess::Nonsequential as u8);
+                    cpu.store_16(address, value as u16, MemoryAccess::NonSequential as u8);
                     if write_back || !pre_index {
                         if rn == PC {
                             cpu.pipeline_flush();
@@ -459,7 +459,7 @@ pub fn execute_halfword_and_signed_data_transfer<I: MemoryInterface>(
             cpu.pipeline_flush();
             CpuAction::PipelineFlush
         }
-        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
     }
 }
 
@@ -497,8 +497,8 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
     }
 
     let write_back = instruction.write_back();
-    let mut memory_access = MemoryAccess::Nonsequential;
-    let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential);
+    let mut memory_access = MemoryAccess::NonSequential;
+    let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential);
     match load {
         true => {
             for (i, register) in register_list.iter().enumerate() {
@@ -588,12 +588,12 @@ pub fn execute_single_data_swap<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
     let value: u32;
     match instruction.byte() {
         true => {
-            value = cpu.load_8(address, MemoryAccess::Nonsequential as u8);
-            cpu.store_8(address, source as u8, MemoryAccess::Nonsequential | MemoryAccess::Lock);
+            value = cpu.load_8(address, MemoryAccess::NonSequential as u8);
+            cpu.store_8(address, source as u8, MemoryAccess::NonSequential | MemoryAccess::Lock);
         }
         false => {
-            value = cpu.load_rotated_32(address, MemoryAccess::Nonsequential as u8);
-            cpu.store_32(address, source, MemoryAccess::Nonsequential | MemoryAccess::Lock);
+            value = cpu.load_rotated_32(address, MemoryAccess::NonSequential as u8);
+            cpu.store_32(address, source, MemoryAccess::NonSequential | MemoryAccess::Lock);
         }
     };
 
@@ -604,7 +604,7 @@ pub fn execute_single_data_swap<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
             cpu.pipeline_flush();
             CpuAction::PipelineFlush
         }
-        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Nonsequential),
+        false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
     }
 }
 

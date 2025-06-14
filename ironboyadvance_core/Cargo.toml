@@ -8,6 +8,7 @@ ironboyadvance_arm7tdmi = { path = "../ironboyadvance_arm7tdmi" }
 ironboyadvance_sharp_sm83 = { path = "../ironboyadvance_sharp_sm83" }
 ironboyadvance_utils = { path = "../ironboyadvance_utils" }
 thiserror = "2.0.11"
+bitfields = "0.13.2"
 
 
 [lib]

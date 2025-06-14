@@ -80,7 +80,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             cpsr: ProgramStatusRegister::from_bits(0x13),
             pipeline: [0; 2],
             bus,
-            next_memory_access: MemoryAccess::Instruction | MemoryAccess::Nonsequential,
+            next_memory_access: MemoryAccess::Instruction | MemoryAccess::NonSequential,
             arm_lut: [ArmInstructionKind::Undefined; 4096],
             thumb_lut: [ThumbInstructionKind::Undefined; 1024],
             dissassembled_instruction: String::new(),
@@ -129,7 +129,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
-                let instruction = ArmInstruction::new(self.arm_lut[lut_index as usize], instruction, pc - 8);
+                let instruction = ArmInstruction::new(self.arm_lut[lut_index as usize], instruction, pc.saturating_sub(8));
                 self.dissassembled_instruction = instruction.disassemble(self);
 
                 println!("{}", instruction);
@@ -154,7 +154,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let lut_index = instruction >> 6;
-                let instruction = ThumbInstruction::new(self.thumb_lut[lut_index as usize], instruction as u16, pc - 4);
+                let instruction =
+                    ThumbInstruction::new(self.thumb_lut[lut_index as usize], instruction as u16, pc.saturating_sub(4));
                 self.dissassembled_instruction = instruction.disassemble(self);
 
                 println!("{}", instruction);
@@ -245,7 +246,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             CpuState::Arm => {
                 self.pipeline[0] = self.load_32(
                     self.general_registers[PC],
-                    MemoryAccess::Instruction | MemoryAccess::Nonsequential,
+                    MemoryAccess::Instruction | MemoryAccess::NonSequential,
                 );
                 self.advance_pc_arm();
                 self.pipeline[1] = self.load_32(
