@@ -5,7 +5,11 @@ use ironboyadvance_arm7tdmi::memory::{
 };
 
 use crate::{
-    bios::Bios, cartridge::Cartridge, io_registers::IoRegisters, scheduler::Scheduler, system_control::WaitStateControl,
+    bios::Bios,
+    cartridge::Cartridge,
+    io_registers::IoRegisters,
+    scheduler::Scheduler,
+    system_control::{HaltMode, WaitStateControl},
 };
 
 pub const BIOS_BASE: u32 = 0x0000_0000;
@@ -141,7 +145,7 @@ pub struct SystemBus {
     bios: Bios,
     wram_board: Vec<u8>,
     wram_chip: Vec<u8>,
-    pub io_registers: IoRegisters, //TODO: make getter
+    io_registers: IoRegisters, //TODO: make getter
     // TODO: Probably need to add this to ppu
     pallete_ram: Vec<u8>,
     vram: Vec<u8>,
@@ -257,6 +261,18 @@ impl SystemBus {
         };
 
         self.scheduler.borrow_mut().update(cycles);
+    }
+
+    pub fn interrupt_pending(&self) -> bool {
+        self.io_registers.interrupt_pending()
+    }
+
+    pub fn halt_mode(&self) -> HaltMode {
+        self.io_registers.halt_mode()
+    }
+
+    pub fn un_halt(&mut self) {
+        self.io_registers.un_halt();
     }
 }
 

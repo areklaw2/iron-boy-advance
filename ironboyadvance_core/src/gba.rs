@@ -9,6 +9,7 @@ use crate::{
     ppu::CYCLES_PER_FRAME,
     scheduler::{self, Scheduler, event::EventType},
     system_bus::SystemBus,
+    system_control::HaltMode,
 };
 
 pub struct GameBoyAdvance {
@@ -33,12 +34,23 @@ impl GameBoyAdvance {
         Ok(gba)
     }
 
-    pub fn machine_cycle(&mut self) {
-        if self.arm7tdmi.bus.io_registers.interrupt_pending() {
-            self.arm7tdmi.irq();
-            //self.io_devs.haltcnt = HaltState::Running;
-        } else {
-            self.scheduler.borrow_mut().update_to_next_event()
+    pub fn cycle(&mut self) {
+        match self.arm7tdmi.bus().halt_mode() {
+            HaltMode::Stopped => todo!(),
+            HaltMode::Halted => {
+                if self.arm7tdmi.bus().interrupt_pending() {
+                    self.arm7tdmi.irq();
+                    self.arm7tdmi.bus().un_halt();
+                } else {
+                    self.scheduler.borrow_mut().update_to_next_event()
+                }
+            }
+            HaltMode::Running => {
+                if self.arm7tdmi.bus().interrupt_pending() {
+                    self.arm7tdmi.irq();
+                }
+                self.arm7tdmi.cycle();
+            }
         }
     }
 
@@ -52,7 +64,7 @@ impl GameBoyAdvance {
 
         'events: loop {
             while self.scheduler.borrow().timestamp() <= self.scheduler.borrow().timestamp_of_next_event() {
-                self.arm7tdmi.cycle();
+                self.cycle();
             }
 
             if self.handle_events() {

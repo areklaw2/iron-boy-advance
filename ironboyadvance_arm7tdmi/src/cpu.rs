@@ -30,7 +30,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     spsrs: [ProgramStatusRegister; 5],
     cpsr: ProgramStatusRegister,
     pipeline: [u32; 2],
-    pub bus: I, // May need to make this shared TODO:make getter
+    bus: I, // May need to make this shared TODO:make getter
     next_memory_access: u8,
     arm_lut: [ArmInstructionKind; 4096],
     thumb_lut: [ThumbInstructionKind; 1024],
@@ -346,6 +346,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             CpuMode::Undefined => self.spsrs[4] = spsr,
             CpuMode::Invalid => panic!("invalid mode"),
         }
+    }
+
+    pub fn bus(&mut self) -> &mut I {
+        &mut self.bus
     }
 
     pub fn set_bus(&mut self, bus: I) {

@@ -1,19 +1,19 @@
 use std::{cell::RefCell, rc::Rc};
 
-use bitfields::bitfield;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
 use crate::{
     interrupt_control::{Interrupt, InterruptControl},
     scheduler::Scheduler,
     system_bus::ClockCycleLuts,
-    system_control::SystemControl,
+    system_control::{HaltMode, SystemControl},
 };
 
 const IE: u32 = 0x04000200;
 const IF: u32 = 0x04000202;
 const WAITCNT: u32 = 0x04000204;
 const IME: u32 = 0x04000208;
+const HALTCNT: u32 = 0x04000301;
 
 pub struct IoRegisters {
     scheduler: Rc<RefCell<Scheduler>>,
@@ -38,6 +38,14 @@ impl IoRegisters {
     pub fn interrupt_pending(&self) -> bool {
         self.interrupt_control.interrupt_pending()
     }
+
+    pub fn halt_mode(&self) -> HaltMode {
+        self.system_control.halt_mode()
+    }
+
+    pub fn un_halt(&mut self) {
+        self.system_control.set_halt_mode(HaltMode::Running);
+    }
 }
 
 //TODO: Work on WaitControl
@@ -60,6 +68,10 @@ impl SystemMemoryAccess for IoRegisters {
 
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
+            HALTCNT => match value != 0 {
+                true => todo!("Figure out whuy Stopped is ignored"),
+                false => self.system_control.set_halt_mode(HaltMode::Halted),
+            },
             _ => {} //TODO: add tracing for this
         }
     }

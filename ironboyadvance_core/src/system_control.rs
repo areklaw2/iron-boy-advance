@@ -24,14 +24,23 @@ pub struct WaitStateControl {
     game_pak_type_flag: bool,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum HaltMode {
+    Running,
+    Halted,
+    Stopped,
+}
+
 pub struct SystemControl {
     waitstate_control: WaitStateControl,
+    halt_mode: HaltMode,
 }
 
 impl SystemControl {
     pub fn new() -> Self {
         SystemControl {
             waitstate_control: WaitStateControl::from_bits(0),
+            halt_mode: HaltMode::Running,
         }
     }
 
@@ -41,5 +50,13 @@ impl SystemControl {
 
     pub fn waitstate_control(&self) -> WaitStateControl {
         self.waitstate_control
+    }
+
+    pub fn set_halt_mode(&mut self, halt_mode: HaltMode) {
+        self.halt_mode = halt_mode
+    }
+
+    pub fn halt_mode(&self) -> HaltMode {
+        self.halt_mode
     }
 }
