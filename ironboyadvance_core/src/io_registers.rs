@@ -3,47 +3,34 @@ use std::{cell::RefCell, rc::Rc};
 use bitfields::bitfield;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
-use crate::{scheduler::Scheduler, system_bus::ClockCycleLuts};
+use crate::{
+    interrupt_control::{Interrupt, InterruptControl},
+    scheduler::Scheduler,
+    system_bus::ClockCycleLuts,
+    system_control::SystemControl,
+};
 
+const IE: u32 = 0x04000200;
+const IF: u32 = 0x04000202;
 const WAITCNT: u32 = 0x04000204;
-
-#[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct WaitStateControl {
-    #[bits(2)]
-    sram_wait_control: u8,
-    #[bits(2)]
-    ws0_first_access: u8,
-    #[bits(1)]
-    ws0_second_access: u8,
-    #[bits(2)]
-    ws1_first_access: u8,
-    #[bits(1)]
-    ws1_second_access: u8,
-    #[bits(2)]
-    ws2_first_access: u8,
-    #[bits(1)]
-    ws2_second_access: u8,
-    #[bits(2)]
-    phi_terminal_output: u8,
-    _reserved: bool,
-    game_pak_prefetch_buffer_enable: bool,
-    game_pak_type_flag: bool,
-}
+const IME: u32 = 0x04000208;
 
 pub struct IoRegisters {
     scheduler: Rc<RefCell<Scheduler>>,
     cycle_luts: Rc<RefCell<ClockCycleLuts>>,
-    waitcnt: WaitStateControl,
+    interrupt_control: InterruptControl,
+    system_control: SystemControl,
     data: Vec<u8>,
 }
 
 impl IoRegisters {
     pub fn new(scheduler: Rc<RefCell<Scheduler>>, cycle_luts: Rc<RefCell<ClockCycleLuts>>) -> Self {
+        let interrupt_flags = Rc::new(RefCell::new(Interrupt::from_bits(0)));
         IoRegisters {
             scheduler,
             cycle_luts,
-            waitcnt: WaitStateControl::from_bits(0),
+            interrupt_control: InterruptControl::new(interrupt_flags.clone()),
+            system_control: SystemControl::new(),
             data: vec![0; 0x400],
         }
     }
@@ -59,7 +46,10 @@ impl SystemMemoryAccess for IoRegisters {
 
     fn read_16(&self, address: u32) -> u16 {
         match address {
-            WAITCNT => self.waitcnt.into_bits(),
+            IE => self.interrupt_control.interrupt_enable(),
+            IF => self.interrupt_control.interrupt_flags(),
+            WAITCNT => self.system_control.waitstate_control().into_bits(),
+            IME => self.interrupt_control.interrupt_master_enable() as u16,
             _ => 0, //TODO: add tracing for this
         }
     }
@@ -72,10 +62,15 @@ impl SystemMemoryAccess for IoRegisters {
 
     fn write_16(&mut self, address: u32, value: u16) {
         match address {
+            IE => self.interrupt_control.set_interrupt_enable(value),
+            IF => self.interrupt_control.set_interrupt_flags(value),
             WAITCNT => {
-                self.waitcnt = WaitStateControl::from_bits(value);
-                self.cycle_luts.borrow_mut().update_wait_states(&self.waitcnt);
+                self.system_control.set_waitstate_control(value);
+                self.cycle_luts
+                    .borrow_mut()
+                    .update_wait_states(&self.system_control.waitstate_control());
             }
+            IME => self.interrupt_control.set_interrupt_master_enable(value != 0),
             _ => {} //TODO: add tracing for this
         }
     }

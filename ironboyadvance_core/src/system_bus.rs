@@ -5,10 +5,7 @@ use ironboyadvance_arm7tdmi::memory::{
 };
 
 use crate::{
-    bios::Bios,
-    cartridge::Cartridge,
-    io_registers::{IoRegisters, WaitStateControl},
-    scheduler::Scheduler,
+    bios::Bios, cartridge::Cartridge, io_registers::IoRegisters, scheduler::Scheduler, system_control::WaitStateControl,
 };
 
 pub const BIOS_BASE: u32 = 0x0000_0000;
@@ -265,7 +262,7 @@ impl SystemBus {
 
 #[cfg(test)]
 mod tests {
-    use crate::{io_registers::WaitStateControl, system_bus::ClockCycleLuts};
+    use crate::{system_bus::ClockCycleLuts, system_control::WaitStateControl};
 
     #[test]
     fn clock_cycles() {
