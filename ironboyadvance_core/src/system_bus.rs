@@ -141,7 +141,7 @@ pub struct SystemBus {
     bios: Bios,
     wram_board: Vec<u8>,
     wram_chip: Vec<u8>,
-    io_registers: IoRegisters,
+    pub io_registers: IoRegisters, //TODO: make getter
     // TODO: Probably need to add this to ppu
     pallete_ram: Vec<u8>,
     vram: Vec<u8>,

@@ -7,7 +7,7 @@ use crate::{
     bios::Bios,
     cartridge::Cartridge,
     ppu::CYCLES_PER_FRAME,
-    scheduler::{Scheduler, event::EventType},
+    scheduler::{self, Scheduler, event::EventType},
     system_bus::SystemBus,
 };
 
@@ -31,6 +31,15 @@ impl GameBoyAdvance {
             rom_name,
         };
         Ok(gba)
+    }
+
+    pub fn machine_cycle(&mut self) {
+        if self.arm7tdmi.bus.io_registers.interrupt_pending() {
+            self.arm7tdmi.irq();
+            //self.io_devs.haltcnt = HaltState::Running;
+        } else {
+            self.scheduler.borrow_mut().update_to_next_event()
+        }
     }
 
     pub fn run(&mut self, overshoot: usize) -> usize {

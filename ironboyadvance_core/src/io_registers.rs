@@ -34,6 +34,10 @@ impl IoRegisters {
             data: vec![0; 0x400],
         }
     }
+
+    pub fn interrupt_pending(&self) -> bool {
+        self.interrupt_control.interrupt_pending()
+    }
 }
 
 //TODO: Work on WaitControl

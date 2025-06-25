@@ -6,7 +6,7 @@ mod tests {
     use serde_repr::Deserialize_repr;
     use std::fs;
 
-    use crate::memory::{SystemMemoryAccess, MemoryAccess, MemoryInterface, decompose_access_pattern};
+    use crate::memory::{MemoryAccess, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
     use crate::{cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
 
     #[derive(Debug, Deserialize_repr, Clone, Copy, PartialEq, Eq)]

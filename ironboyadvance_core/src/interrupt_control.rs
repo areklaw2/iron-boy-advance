@@ -4,7 +4,24 @@ use bitfields::bitfield;
 
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct Interrupt {}
+pub struct Interrupt {
+    lcd_v_blank: bool,
+    lcd_h_blank: bool,
+    lcd_v_counter_match: bool,
+    timer_0_overflow: bool,
+    timer_1_overflow: bool,
+    timer_2_overflow: bool,
+    timer_3_overflow: bool,
+    serial_communication: bool,
+    dma_0_overflow: bool,
+    dma_1_overflow: bool,
+    dma_2_overflow: bool,
+    dma_3_overflow: bool,
+    keypad: bool,
+    gamepak: bool,
+    #[bits(2)]
+    _reserved: u8,
+}
 
 pub struct InterruptControl {
     interrupt_master_enable: bool,
@@ -43,5 +60,10 @@ impl InterruptControl {
 
     pub fn interrupt_flags(&self) -> u16 {
         self.interrupt_flags.borrow().into_bits()
+    }
+
+    pub fn interrupt_pending(&self) -> bool {
+        self.interrupt_master_enable
+            && ((self.interrupt_flags.borrow().into_bits() & self.interrupt_enable.into_bits()) != 0)
     }
 }

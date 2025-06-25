@@ -30,7 +30,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     spsrs: [ProgramStatusRegister; 5],
     cpsr: ProgramStatusRegister,
     pipeline: [u32; 2],
-    bus: I, // May need to make this shared
+    pub bus: I, // May need to make this shared TODO:make getter
     next_memory_access: u8,
     arm_lut: [ArmInstructionKind; 4096],
     thumb_lut: [ThumbInstructionKind; 1024],
@@ -153,7 +153,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
-                let lut_index = instruction >> 6;
+                let lut_index = (instruction) as u16 >> 6;
                 let instruction =
                     ThumbInstruction::new(self.thumb_lut[lut_index as usize], instruction as u16, pc.saturating_sub(4));
                 self.dissassembled_instruction = instruction.disassemble(self);
@@ -382,5 +382,11 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
 
     pub fn reset(&mut self) {
         self.exeception(Exception::Reset);
+    }
+
+    pub fn irq(&mut self) {
+        if !self.cpsr.irq_disable() {
+            self.exeception(Exception::Irq);
+        }
     }
 }
