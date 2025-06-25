@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use ironboyadvance_arm7tdmi::memory::{
-    IoMemoryAccess, MemoryAccess, MemoryAccessWidth, MemoryInterface, decompose_access_pattern,
+    MemoryAccess, MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern,
 };
 
 use crate::{
@@ -39,7 +39,7 @@ pub const INDEX_SRAM_LO: usize = (SRAM_LO >> 24) as usize;
 pub const GAMEPAK_NON_SEQUENTIAL_CYCLES: [usize; 4] = [4, 3, 2, 8];
 pub const GAMEPAK_WS0_SEQUENTIAL_CYCLES: [usize; 2] = [2, 1];
 pub const GAMEPAK_WS1_SEQUENTIAL_CYCLES: [usize; 2] = [4, 1];
-pub const GAMEPAK_WS2_SEQUENTIAL_CYCLES: [usize; 2] = [4, 1];
+pub const GAMEPAK_WS2_SEQUENTIAL_CYCLES: [usize; 2] = [8, 1];
 
 pub struct ClockCycleLuts {
     n_cycles_32_lut: [usize; 16],
@@ -107,6 +107,7 @@ impl ClockCycleLuts {
         let ws0_second_access = waitcnt.ws0_second_access() as usize;
         let ws1_second_access = waitcnt.ws1_second_access() as usize;
         let ws2_second_access = waitcnt.ws2_second_access() as usize;
+        let sram_wait_control = waitcnt.sram_wait_control() as usize;
 
         for i in 0..2 {
             self.n_cycles_16_lut[INDEX_ROM_WS0 + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[ws0_first_access];
@@ -131,10 +132,10 @@ impl ClockCycleLuts {
             self.s_cycles_32_lut[INDEX_ROM_WS2 + i] = 2 * self.s_cycles_16_lut[INDEX_ROM_WS2 + i];
 
             // SRAM
-            self.n_cycles_16_lut[INDEX_SRAM_LO + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[0];
-            self.n_cycles_32_lut[INDEX_SRAM_LO + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[0];
-            self.s_cycles_16_lut[INDEX_SRAM_LO + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[0];
-            self.s_cycles_32_lut[INDEX_SRAM_LO + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[0];
+            self.n_cycles_16_lut[INDEX_SRAM_LO + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[sram_wait_control];
+            self.n_cycles_32_lut[INDEX_SRAM_LO + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[sram_wait_control];
+            self.s_cycles_16_lut[INDEX_SRAM_LO + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[sram_wait_control];
+            self.s_cycles_32_lut[INDEX_SRAM_LO + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[sram_wait_control];
         }
     }
 }
@@ -189,39 +190,37 @@ impl MemoryInterface for SystemBus {
     }
 }
 
-impl IoMemoryAccess for SystemBus {
+impl SystemMemoryAccess for SystemBus {
     fn read_8(&self, address: u32) -> u8 {
         match address & 0xFF000000 {
-            BIOS_BASE => self.bios.read_8(address - BIOS_BASE),
-            WRAM_BOARD_BASE => self.wram_board[(address - WRAM_BOARD_BASE) as usize],
-            WRAM_CHIP_BASE => self.wram_chip[(address - WRAM_CHIP_BASE) as usize],
+            BIOS_BASE => self.bios.read_8(address),
+            WRAM_BOARD_BASE => self.wram_board[(address & 0x3FFFF) as usize],
+            WRAM_CHIP_BASE => self.wram_chip[(address & 0x7FFF) as usize],
             IO_REGISTERS_BASE => self.io_registers.read_8(address), // theres mirrors for this see GBATEK
-            PALETTE_RAM_BASE => self.pallete_ram[(address - PALETTE_RAM_BASE) as usize],
-            VRAM_BASE => self.vram[(address - VRAM_BASE) as usize],
-            OAM_BASE => self.oam[(address - OAM_BASE) as usize],
-            //TODO: move into cart read
-            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.read_8(address - ROM_WS0_LO),
-            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.read_8(address - ROM_WS1_LO),
-            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_8(address - ROM_WS2_LO),
-            SRAM_LO | SRAM_HI => self.cartridge.read_8(address - SRAM_LO),
+            PALETTE_RAM_BASE => self.pallete_ram[(address & 0x3FF) as usize],
+            VRAM_BASE => self.vram[(address & 0x17FFF) as usize],
+            OAM_BASE => self.oam[(address & 0x3FF) as usize],
+            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.read_8(address),
+            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.read_8(address),
+            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_8(address),
+            SRAM_LO | SRAM_HI => self.cartridge.read_8(address),
             _ => panic!("Unused: {:08X}", address),
         }
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
         match address & 0xFF000000 {
-            BIOS_BASE => self.bios.write_8(address - BIOS_BASE, value),
-            WRAM_BOARD_BASE => self.wram_board[(address - WRAM_BOARD_BASE) as usize] = value,
-            WRAM_CHIP_BASE => self.wram_chip[(address - WRAM_CHIP_BASE) as usize] = value,
+            BIOS_BASE => self.bios.write_8(address, value),
+            WRAM_BOARD_BASE => self.wram_board[(address & 0x3FFFF) as usize] = value,
+            WRAM_CHIP_BASE => self.wram_chip[(address & 0x7FFF) as usize] = value,
             IO_REGISTERS_BASE => self.io_registers.write_8(address, value), // theres mirrors for this see GBATEK
-            PALETTE_RAM_BASE => self.pallete_ram[(address - PALETTE_RAM_BASE) as usize] = value,
-            VRAM_BASE => self.vram[(address - VRAM_BASE) as usize] = value,
-            OAM_BASE => self.oam[(address - OAM_BASE) as usize] = value,
-            //TODO: move into cart read
-            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.write_8(address - ROM_WS0_LO, value),
-            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_8(address - ROM_WS1_LO, value),
-            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_8(address - ROM_WS2_LO, value),
-            SRAM_LO | SRAM_HI => self.cartridge.write_8(address - SRAM_LO, value),
+            PALETTE_RAM_BASE => self.pallete_ram[(address & 0x3FF) as usize] = value,
+            VRAM_BASE => self.vram[(address & 0x17FFF) as usize] = value,
+            OAM_BASE => self.oam[(address & 0x3FF) as usize] = value,
+            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.write_8(address, value),
+            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_8(address, value),
+            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_8(address, value),
+            SRAM_LO | SRAM_HI => self.cartridge.write_8(address, value),
             _ => panic!("Unused: {:08X}", address),
         }
     }
@@ -261,5 +260,49 @@ impl SystemBus {
         };
 
         self.scheduler.borrow_mut().update(cycles);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{io_registers::WaitStateControl, system_bus::ClockCycleLuts};
+
+    #[test]
+    fn clock_cycles() {
+        let mut clock_cycle_luts = ClockCycleLuts::new();
+        assert_eq!(
+            clock_cycle_luts.n_cycles_16_lut,
+            [1, 1, 3, 1, 1, 1, 1, 1, 5, 5, 5, 5, 5, 5, 5, 5]
+        );
+        assert_eq!(
+            clock_cycle_luts.s_cycles_16_lut,
+            [1, 1, 3, 1, 1, 1, 1, 1, 3, 3, 5, 5, 9, 9, 5, 5]
+        );
+        assert_eq!(
+            clock_cycle_luts.n_cycles_32_lut,
+            [1, 1, 6, 1, 1, 2, 2, 1, 8, 8, 10, 10, 14, 14, 5, 5]
+        );
+        assert_eq!(
+            clock_cycle_luts.s_cycles_32_lut,
+            [1, 1, 6, 1, 1, 2, 2, 1, 6, 6, 10, 10, 18, 18, 5, 5]
+        );
+
+        clock_cycle_luts.update_wait_states(&WaitStateControl::from_bits(0b100001100010111));
+        assert_eq!(
+            clock_cycle_luts.n_cycles_16_lut,
+            [1, 1, 3, 1, 1, 1, 1, 1, 4, 4, 5, 5, 9, 9, 9, 9]
+        );
+        assert_eq!(
+            clock_cycle_luts.s_cycles_16_lut,
+            [1, 1, 3, 1, 1, 1, 1, 1, 2, 2, 5, 5, 9, 9, 9, 9]
+        );
+        assert_eq!(
+            clock_cycle_luts.n_cycles_32_lut,
+            [1, 1, 6, 1, 1, 2, 2, 1, 6, 6, 10, 10, 18, 18, 9, 9]
+        );
+        assert_eq!(
+            clock_cycle_luts.s_cycles_32_lut,
+            [1, 1, 6, 1, 1, 2, 2, 1, 4, 4, 10, 10, 18, 18, 9, 9]
+        );
     }
 }

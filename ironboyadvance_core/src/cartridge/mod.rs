@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use header::Header;
-use ironboyadvance_arm7tdmi::memory::IoMemoryAccess;
+use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use ironboyadvance_utils::read_file;
 
 use crate::{
@@ -36,7 +36,7 @@ impl Cartridge {
     }
 }
 
-impl IoMemoryAccess for Cartridge {
+impl SystemMemoryAccess for Cartridge {
     fn read_8(&self, address: u32) -> u8 {
         match address & 0xFF000000 {
             ROM_WS0_LO | ROM_WS0_HI => self.data[(address - ROM_WS0_LO) as usize],

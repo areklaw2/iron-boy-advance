@@ -6,7 +6,7 @@ mod tests {
     use serde_repr::Deserialize_repr;
     use std::fs;
 
-    use crate::memory::{IoMemoryAccess, MemoryAccess, MemoryInterface, decompose_access_pattern};
+    use crate::memory::{SystemMemoryAccess, MemoryAccess, MemoryInterface, decompose_access_pattern};
     use crate::{cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
 
     #[derive(Debug, Deserialize_repr, Clone, Copy, PartialEq, Eq)]
@@ -215,7 +215,7 @@ mod tests {
         fn idle_cycle(&mut self) {}
     }
 
-    impl IoMemoryAccess for TestBus {
+    impl SystemMemoryAccess for TestBus {
         fn read_8(&self, address: u32) -> u8 {
             self.data[address as usize]
         }

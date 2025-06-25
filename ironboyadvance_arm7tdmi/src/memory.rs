@@ -63,7 +63,7 @@ pub trait MemoryInterface {
     fn idle_cycle(&mut self);
 }
 
-pub trait IoMemoryAccess {
+pub trait SystemMemoryAccess {
     fn read_8(&self, address: u32) -> u8;
 
     fn read_16(&self, address: u32) -> u16 {

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use bitfields::bitfield;
-use ironboyadvance_arm7tdmi::memory::IoMemoryAccess;
+use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
 use crate::{scheduler::Scheduler, system_bus::ClockCycleLuts};
 
@@ -50,7 +50,7 @@ impl IoRegisters {
 }
 
 //TODO: Work on WaitControl
-impl IoMemoryAccess for IoRegisters {
+impl SystemMemoryAccess for IoRegisters {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             _ => 0, //TODO: add tracing for this
