@@ -609,11 +609,11 @@ pub fn execute_single_data_swap<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
 }
 
 pub fn execute_software_interrupt<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, _instruction: &ArmInstruction) -> CpuAction {
-    cpu.exeception(Exception::SoftwareInterrupt);
+    cpu.exception(Exception::SoftwareInterrupt);
     CpuAction::PipelineFlush
 }
 
 pub fn execute_undefined<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, _instruction: &ArmInstruction) -> CpuAction {
-    cpu.exeception(Exception::Undefined);
+    cpu.exception(Exception::Undefined);
     CpuAction::PipelineFlush
 }

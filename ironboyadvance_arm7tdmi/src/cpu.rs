@@ -356,7 +356,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.bus = bus
     }
 
-    pub fn exeception(&mut self, exception: Exception) {
+    pub fn exception(&mut self, exception: Exception) {
         let (mode, disable_irq, disable_fiq) = match exception {
             Exception::Reset => (CpuMode::Supervisor, true, true),
             Exception::Undefined => (CpuMode::Undefined, true, false),
@@ -385,12 +385,12 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     pub fn reset(&mut self) {
-        self.exeception(Exception::Reset);
+        self.exception(Exception::Reset);
     }
 
     pub fn irq(&mut self) {
         if !self.cpsr.irq_disable() {
-            self.exeception(Exception::Irq);
+            self.exception(Exception::Irq);
         }
     }
 }

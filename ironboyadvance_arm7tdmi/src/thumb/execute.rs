@@ -541,7 +541,7 @@ pub fn execute_software_interrupt<I: MemoryInterface>(
     cpu: &mut Arm7tdmiCpu<I>,
     _instruction: &ThumbInstruction,
 ) -> CpuAction {
-    cpu.exeception(Exception::SoftwareInterrupt);
+    cpu.exception(Exception::SoftwareInterrupt);
     CpuAction::PipelineFlush
 }
 
