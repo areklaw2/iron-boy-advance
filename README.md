@@ -4,7 +4,7 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
 
 ## Features
 
-- [ ] Egui/SDL frontend
+- [ ] Desktop frontend
 - [ ] WASM frontend
 - [ ] Just-in-time (JIT) compilation
 - [ ] Scheduler Based game loop
