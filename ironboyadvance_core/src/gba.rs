@@ -7,7 +7,7 @@ use crate::{
     bios::Bios,
     cartridge::Cartridge,
     ppu::CYCLES_PER_FRAME,
-    scheduler::{self, Scheduler, event::EventType},
+    scheduler::{Scheduler, event::EventType},
     system_bus::SystemBus,
     system_control::HaltMode,
 };
