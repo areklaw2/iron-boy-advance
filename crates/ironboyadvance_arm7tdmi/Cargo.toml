@@ -5,8 +5,9 @@ edition = "2024"
 
 [dependencies]
 ironboyadvance_utils = { path = "../ironboyadvance_utils" }
-bitfields = "0.13.2"
+bitfields = "1.0.1"
 serde = { version = "1.0.218", features = ["derive"] }
 serde_json = "1.0.140"
 serde_repr = "0.1.20"
 bitvec = "1.0.1"
+getset = "0.1.6"

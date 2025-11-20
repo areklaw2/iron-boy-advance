@@ -117,7 +117,7 @@ pub fn execute_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instru
         true => {
             let rd = instruction.rd() as usize;
             let psr = match is_spsr {
-                false => cpu.cpsr(),
+                false => *cpu.cpsr(),
                 true => cpu.spsr(),
             };
             cpu.set_register(rd, psr.into_bits());
@@ -205,8 +205,8 @@ pub fn execute_multiply<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instructio
     };
 
     if instruction.sets_flags() {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
     }
 
     cpu.set_register(rd, result);
@@ -261,8 +261,8 @@ pub fn execute_multiply_long<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instr
     let result_lo = (result & 0xFFFFFFFF) as u32;
     let result_hi = (result >> 32) as u32;
     if instruction.sets_flags() {
-        cpu.set_negative(result_hi >> 31 != 0);
-        cpu.set_zero(result == 0);
+        cpu.cpsr_mut().set_negative(result_hi >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
     }
 
     cpu.set_register(rd_lo, result_lo);

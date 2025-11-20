@@ -8,8 +8,8 @@ ironboyadvance_arm7tdmi = { path = "../ironboyadvance_arm7tdmi" }
 ironboyadvance_sharp_sm83 = { path = "../ironboyadvance_sharp_sm83" }
 ironboyadvance_utils = { path = "../ironboyadvance_utils" }
 thiserror = "2.0.11"
-bitfields = "0.13.2"
-
+bitfields = "1.0.1"
+getset = "0.1.6"
 
 [lib]
 doctest = false #doc test for thiserror are acting up 2/23/2024

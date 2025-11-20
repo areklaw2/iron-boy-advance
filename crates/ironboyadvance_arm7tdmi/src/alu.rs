@@ -3,9 +3,9 @@ use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
 pub fn and<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
     let result = operand1 & operand2;
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(carry);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(carry);
     }
     result
 }
@@ -13,9 +13,9 @@ pub fn and<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 pub fn eor<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
     let result = operand1 ^ operand2;
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(carry);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(carry);
     }
     result
 }
@@ -23,10 +23,11 @@ pub fn eor<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 pub fn sub<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
     let result = operand1.wrapping_sub(operand2);
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(operand1 as u64 >= operand2 as u64);
-        cpu.set_overflow(((operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(operand1 as u64 >= operand2 as u64);
+        cpu.cpsr_mut()
+            .set_overflow(((operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
     }
     result
 }
@@ -38,10 +39,11 @@ pub fn rsb<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 pub fn add<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
     let result = operand1.wrapping_add(operand2);
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(result < operand1);
-        cpu.set_overflow((!(operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(result < operand1);
+        cpu.cpsr_mut()
+            .set_overflow((!(operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
     }
     result
 }
@@ -49,10 +51,11 @@ pub fn add<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 pub fn adc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32) -> u32 {
     let result = operand1 as u64 + operand2 as u64 + cpu.cpsr().carry() as u64;
     if set_flags {
-        cpu.set_negative((result >> 31) & 0b1 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(result >> 32 != 0);
-        cpu.set_overflow((!(operand1 ^ operand2) & (operand1 ^ result as u32)) >> 31 != 0);
+        cpu.cpsr_mut().set_negative((result >> 31) & 0b1 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(result >> 32 != 0);
+        cpu.cpsr_mut()
+            .set_overflow((!(operand1 ^ operand2) & (operand1 ^ result as u32)) >> 31 != 0);
     }
     result as u32
 }
@@ -61,10 +64,11 @@ pub fn sbc<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
     let operand3 = cpu.cpsr().carry() as u32 ^ 1;
     let result = operand1.wrapping_sub(operand2).wrapping_sub(operand3);
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(operand1 as u64 >= operand2 as u64 + operand3 as u64);
-        cpu.set_overflow(((operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(operand1 as u64 >= operand2 as u64 + operand3 as u64);
+        cpu.cpsr_mut()
+            .set_overflow(((operand1 ^ operand2) & (operand1 ^ result)) >> 31 != 0);
     }
     result
 }
@@ -92,9 +96,9 @@ pub fn cmn<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 pub fn orr<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
     let result = operand1 | operand2;
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(carry);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(carry);
     }
     result
 }
@@ -102,9 +106,9 @@ pub fn orr<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 pub fn bic<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand1: u32, operand2: u32, carry: bool) -> u32 {
     let result = operand1 & !operand2;
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(carry);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(carry);
     }
     result
 }
@@ -112,9 +116,9 @@ pub fn bic<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 pub fn mov<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand2: u32, carry: bool) -> u32 {
     let result = operand2;
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(carry);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(carry);
     }
     result
 }
@@ -122,9 +126,9 @@ pub fn mov<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operan
 pub fn mvn<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, set_flags: bool, operand2: u32, carry: bool) -> u32 {
     let result = !operand2;
     if set_flags {
-        cpu.set_negative(result >> 31 != 0);
-        cpu.set_zero(result == 0);
-        cpu.set_carry(carry);
+        cpu.cpsr_mut().set_negative(result >> 31 != 0);
+        cpu.cpsr_mut().set_zero(result == 0);
+        cpu.cpsr_mut().set_carry(carry);
     }
     result
 }

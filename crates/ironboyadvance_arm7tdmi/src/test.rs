@@ -285,29 +285,31 @@ mod tests {
 
                 cpu.cycle();
 
-                assert_eq!(cpu.general_registers(), final_state.r);
-                assert_eq!(cpu.banked_registers_fiq(), final_state.r_fiq);
-                assert_eq!(cpu.banked_registers_svc(), final_state.r_svc);
-                assert_eq!(cpu.banked_registers_abt(), final_state.r_abt);
-                assert_eq!(cpu.banked_registers_irq(), final_state.r_irq);
-                assert_eq!(cpu.banked_registers_und(), final_state.r_und);
+                assert_eq!(cpu.general_registers(), &final_state.r);
+                assert_eq!(cpu.banked_registers_fiq(), &final_state.r_fiq);
+                assert_eq!(cpu.banked_registers_svc(), &final_state.r_svc);
+                assert_eq!(cpu.banked_registers_abt(), &final_state.r_abt);
+                assert_eq!(cpu.banked_registers_irq(), &final_state.r_irq);
+                assert_eq!(cpu.banked_registers_und(), &final_state.r_und);
                 assert_eq!(
                     cpu.spsrs().map(|x| x.into_bits()),
                     final_state.spsr.map(|x| ProgramStatusRegister::from_bits(x).into_bits())
                 );
 
                 let expected = ProgramStatusRegister::from_bits(final_state.cpsr);
-                let mut actual = cpu.cpsr();
+
                 // the booth multiplication sets the carry. data sheet says its set to a meaningless value. Will ignore result
-                if ["MUL", "MLA", "MULL", "MLAL"]
+                let is_mutliply = ["MUL", "MLA", "MULL", "MLAL"]
                     .iter()
-                    .any(|s| cpu.dissassembled_instruction.contains(s))
-                {
+                    .any(|s| cpu.dissassembled_instruction.contains(s));
+
+                let actual = cpu.cpsr_mut();
+                if is_mutliply {
                     actual.set_carry(expected.carry());
                 }
                 assert_eq!(expected.into_bits(), actual.into_bits());
 
-                assert_eq!(cpu.pipeline(), final_state.pipeline);
+                assert_eq!(cpu.pipeline(), &final_state.pipeline);
             }
         }
     }

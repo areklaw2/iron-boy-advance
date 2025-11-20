@@ -1,4 +1,4 @@
-use ironboyadvance_utils::get_set;
+use getset::{CopyGetters, Getters, MutGetters, Setters};
 
 use crate::{
     Condition, CpuAction, Exception,
@@ -20,15 +20,25 @@ pub trait Instruction {
     fn value(&self) -> Self::Size;
 }
 
+#[derive(Getters, CopyGetters, MutGetters, Setters)]
 pub struct Arm7tdmiCpu<I: MemoryInterface> {
+    #[getset(get = "pub", set = "pub")]
     general_registers: [u32; 16],
+    #[getset(get = "pub", set = "pub")]
     banked_registers_fiq: [u32; 7], //r8 to r14
+    #[getset(get = "pub", set = "pub")]
     banked_registers_svc: [u32; 2], //r13 to r14
+    #[getset(get = "pub", set = "pub")]
     banked_registers_abt: [u32; 2], //r13 to r14
+    #[getset(get = "pub", set = "pub")]
     banked_registers_irq: [u32; 2], //r13 to r14
+    #[getset(get = "pub", set = "pub")]
     banked_registers_und: [u32; 2], //r13 to r14
+    #[getset(get = "pub", set = "pub")]
     spsrs: [ProgramStatusRegister; 5],
+    #[getset(get = "pub", get_mut = "pub", set = "pub")]
     cpsr: ProgramStatusRegister,
+    #[getset(get = "pub", set = "pub")]
     pipeline: [u32; 2],
     bus: I, // May need to make this shared TODO:make getter
     next_memory_access: u8,
@@ -110,16 +120,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         cpu
     }
 
-    get_set!(general_registers, set_general_registers, [u32; 16]);
-    get_set!(banked_registers_fiq, set_banked_registers_fiq, [u32; 7]);
-    get_set!(banked_registers_svc, set_banked_registers_svc, [u32; 2]);
-    get_set!(banked_registers_abt, set_banked_registers_abt, [u32; 2]);
-    get_set!(banked_registers_irq, set_banked_registers_irq, [u32; 2]);
-    get_set!(banked_registers_und, set_banked_registers_und, [u32; 2]);
-    get_set!(spsrs, set_spsrs, [ProgramStatusRegister; 5]);
-    get_set!(cpsr, set_cpsr, ProgramStatusRegister);
-    get_set!(pipeline, set_pipeline, [u32; 2]);
-
     pub fn cycle(&mut self) {
         let pc = self.general_registers[PC] & !0x1;
 
@@ -191,22 +191,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             LE => self.cpsr.zero() || (self.cpsr.negative() != self.cpsr.overflow()),
             AL => true,
         }
-    }
-
-    pub fn set_negative(&mut self, status: bool) {
-        self.cpsr.set_negative(status);
-    }
-
-    pub fn set_zero(&mut self, status: bool) {
-        self.cpsr.set_zero(status);
-    }
-
-    pub fn set_carry(&mut self, status: bool) {
-        self.cpsr.set_carry(status);
-    }
-
-    pub fn set_overflow(&mut self, status: bool) {
-        self.cpsr.set_overflow(status);
     }
 
     pub fn set_flags(&mut self, value: u8) {
@@ -365,7 +349,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             Exception::Fiq => (CpuMode::Fiq, true, true),
         };
 
-        self.set_mode_spsr(mode, self.cpsr());
+        self.set_mode_spsr(mode, self.cpsr);
         self.set_mode(mode);
         if disable_irq {
             self.cpsr.set_irq_disable(true);

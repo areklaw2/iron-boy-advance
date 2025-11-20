@@ -25,9 +25,9 @@ pub fn execute_move_shifted_register<I: MemoryInterface>(
         ShiftType::ROR => unimplemented!(),
     };
 
-    cpu.set_negative(result >> 31 != 0);
-    cpu.set_zero(result == 0);
-    cpu.set_carry(carry);
+    cpu.cpsr_mut().set_negative(result >> 31 != 0);
+    cpu.cpsr_mut().set_zero(result == 0);
+    cpu.cpsr_mut().set_carry(carry);
 
     cpu.set_register(rd, result);
     CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
@@ -91,9 +91,9 @@ pub fn execute_alu_operations<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, inst
             cpu.idle_cycle();
             access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential);
 
-            cpu.set_negative(result >> 31 != 0);
-            cpu.set_zero(result == 0);
-            cpu.set_carry(carry);
+            cpu.cpsr_mut().set_negative(result >> 31 != 0);
+            cpu.cpsr_mut().set_zero(result == 0);
+            cpu.cpsr_mut().set_carry(carry);
             result
         }
         LSR => {
@@ -102,9 +102,9 @@ pub fn execute_alu_operations<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, inst
             cpu.idle_cycle();
             access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential);
 
-            cpu.set_negative(result >> 31 != 0);
-            cpu.set_zero(result == 0);
-            cpu.set_carry(carry);
+            cpu.cpsr_mut().set_negative(result >> 31 != 0);
+            cpu.cpsr_mut().set_zero(result == 0);
+            cpu.cpsr_mut().set_carry(carry);
             result
         }
         ASR => {
@@ -113,9 +113,9 @@ pub fn execute_alu_operations<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, inst
             cpu.idle_cycle();
             access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential);
 
-            cpu.set_negative(result >> 31 != 0);
-            cpu.set_zero(result == 0);
-            cpu.set_carry(carry);
+            cpu.cpsr_mut().set_negative(result >> 31 != 0);
+            cpu.cpsr_mut().set_zero(result == 0);
+            cpu.cpsr_mut().set_carry(carry);
             result
         }
         ADC => adc(cpu, true, operand1, operand2),
@@ -126,9 +126,9 @@ pub fn execute_alu_operations<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, inst
             cpu.idle_cycle();
             access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential);
 
-            cpu.set_negative(result >> 31 != 0);
-            cpu.set_zero(result == 0);
-            cpu.set_carry(carry);
+            cpu.cpsr_mut().set_negative(result >> 31 != 0);
+            cpu.cpsr_mut().set_zero(result == 0);
+            cpu.cpsr_mut().set_carry(carry);
             result
         }
         TST => tst(cpu, true, operand1, operand2, carry),
@@ -144,8 +144,8 @@ pub fn execute_alu_operations<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, inst
             access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential);
 
             let result = operand1.wrapping_mul(operand2);
-            cpu.set_negative(result >> 31 != 0);
-            cpu.set_zero(result == 0);
+            cpu.cpsr_mut().set_negative(result >> 31 != 0);
+            cpu.cpsr_mut().set_zero(result == 0);
             result
         }
         BIC => bic(cpu, true, operand1, operand2, carry),
