@@ -20,6 +20,8 @@ pub enum GbaError {
     BiosError(#[from] BiosError),
     #[error("Path cannot be empty")]
     EmptyPath,
+    #[error("Unable to extract filename")]
+    InvalidRomPath,
 }
 
 pub struct GameBoyAdvance {
@@ -32,7 +34,12 @@ pub struct GameBoyAdvance {
 
 impl GameBoyAdvance {
     pub fn new(rom_path: PathBuf, bios_path: PathBuf, show_logs: bool, skip_bios: bool) -> Result<GameBoyAdvance, GbaError> {
-        let rom_name = rom_path.file_name().unwrap().to_str().unwrap().to_string();
+        let rom_name = rom_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| GbaError::InvalidRomPath)?;
+
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         let cartridge = Cartridge::load(rom_path)?;
         let bios = Bios::load(bios_path)?;
@@ -50,7 +57,7 @@ impl GameBoyAdvance {
             HaltMode::Halted => {
                 if self.arm7tdmi.bus().interrupt_pending() {
                     self.arm7tdmi.irq();
-                    self.arm7tdmi.bus().un_halt();
+                    self.arm7tdmi.bus_mut().un_halt();
                 } else {
                     self.scheduler.borrow_mut().update_to_next_event()
                 }

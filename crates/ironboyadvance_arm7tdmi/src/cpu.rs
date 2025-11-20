@@ -1,4 +1,4 @@
-use getset::{CopyGetters, Getters, MutGetters, Setters};
+use getset::{Getters, MutGetters, Setters};
 
 use crate::{
     Condition, CpuAction, Exception,
@@ -20,7 +20,7 @@ pub trait Instruction {
     fn value(&self) -> Self::Size;
 }
 
-#[derive(Getters, CopyGetters, MutGetters, Setters)]
+#[derive(Getters, MutGetters, Setters)]
 pub struct Arm7tdmiCpu<I: MemoryInterface> {
     #[getset(get = "pub", set = "pub")]
     general_registers: [u32; 16],
@@ -40,7 +40,8 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     cpsr: ProgramStatusRegister,
     #[getset(get = "pub", set = "pub")]
     pipeline: [u32; 2],
-    bus: I, // May need to make this shared TODO:make getter
+    #[getset(get = "pub", get_mut = "pub", set = "pub")]
+    bus: I,
     next_memory_access: u8,
     arm_lut: [ArmInstructionKind; 4096],
     thumb_lut: [ThumbInstructionKind; 1024],
@@ -314,14 +315,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             CpuMode::Undefined => self.spsrs[4] = spsr,
             CpuMode::Invalid => panic!("invalid mode"),
         }
-    }
-
-    pub fn bus(&mut self) -> &mut I {
-        &mut self.bus
-    }
-
-    pub fn set_bus(&mut self, bus: I) {
-        self.bus = bus
     }
 
     pub fn exception(&mut self, exception: Exception) {
