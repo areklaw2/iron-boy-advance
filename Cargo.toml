@@ -1,4 +1,4 @@
-[workspace] 
-members = ["platform/dev", "platform/desktop", "ironboyadvance_sharp_sm83", "ironboyadvance_arm7tdmi", "ironboyadvance_core", "ironboyadvance_utils"]
+[workspace]
+members = ["clients/*", "crates/*"]
 
 resolver = "2"

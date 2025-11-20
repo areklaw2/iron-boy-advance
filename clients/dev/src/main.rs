@@ -1,4 +1,4 @@
-use ironboyadvance_core::{FPS, gba::GameBoyAdvance};
+use ironboyadvance_core::{gba::GameBoyAdvance, FPS};
 
 use clap::{ArgAction, Parser};
 
