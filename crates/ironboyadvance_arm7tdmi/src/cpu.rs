@@ -193,22 +193,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn set_flags(&mut self, value: u8) {
-        self.cpsr.set_flags(value);
-    }
-
-    pub fn set_irq_disable(&mut self, status: bool) {
-        self.cpsr.set_irq_disable(status);
-    }
-
-    pub fn set_state(&mut self, state: CpuState) {
-        self.cpsr.set_state(state);
-    }
-
-    pub fn set_mode(&mut self, mode: CpuMode) {
-        self.cpsr.set_mode(mode);
-    }
-
     pub fn pc(&self) -> u32 {
         self.general_registers[PC]
     }
@@ -350,7 +334,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         };
 
         self.set_mode_spsr(mode, self.cpsr);
-        self.set_mode(mode);
+        self.cpsr.set_mode(mode);
         if disable_irq {
             self.cpsr.set_irq_disable(true);
         }
@@ -363,7 +347,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             CpuState::Thumb => self.pc() - 2,
         };
         self.set_register(LR, return_pc);
-        self.set_state(CpuState::Arm);
+        self.cpsr.set_state(CpuState::Arm);
         self.set_pc(exception as u32);
         self.pipeline_flush();
     }

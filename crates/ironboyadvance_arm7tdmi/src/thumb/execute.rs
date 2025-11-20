@@ -203,7 +203,7 @@ pub fn execute_hi_register_operations_branch_exchange<I: MemoryInterface>(
             }
         }
         BX => {
-            cpu.set_state(CpuState::from_bits((operand2 & 0x1) as u8));
+            cpu.cpsr_mut().set_state(CpuState::from_bits((operand2 & 0x1) as u8));
             cpu.set_pc(operand2 & !0x1);
             cpu.pipeline_flush();
             action = CpuAction::PipelineFlush;

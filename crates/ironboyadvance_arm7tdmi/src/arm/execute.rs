@@ -14,7 +14,7 @@ use crate::arm::ArmInstruction;
 
 pub fn execute_branch_exchange<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     let value = cpu.register(instruction.rn() as usize);
-    cpu.set_state(CpuState::from_bits((value & 0x1) as u8));
+    cpu.cpsr_mut().set_state(CpuState::from_bits((value & 0x1) as u8));
     cpu.set_pc(value & !0x1);
     cpu.pipeline_flush();
     CpuAction::PipelineFlush
@@ -482,7 +482,7 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
     let mode = cpu.cpsr().mode();
     let switch_mode = load_psr_force_user && (!load || !transfer_pc) && ![CpuMode::User, CpuMode::System].contains(&mode);
     if switch_mode {
-        cpu.set_mode(CpuMode::User);
+        cpu.cpsr_mut().set_mode(CpuMode::User);
     }
 
     let add = instruction.add();
@@ -568,7 +568,7 @@ pub fn execute_block_data_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>,
     }
 
     if switch_mode {
-        cpu.set_mode(mode);
+        cpu.cpsr_mut().set_mode(mode);
     }
 
     action
