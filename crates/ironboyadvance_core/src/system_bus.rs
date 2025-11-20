@@ -152,6 +152,7 @@ pub struct SystemBus {
     oam: Vec<u8>,
     cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler>>,
+    // TODO: think through how to do this with out smart point
     cycle_luts: Rc<RefCell<ClockCycleLuts>>,
 }
 

@@ -1,5 +1,3 @@
-//TODO: implement step tests
-
 #[cfg(test)]
 mod tests {
     use serde::Deserialize;
@@ -81,7 +79,7 @@ mod tests {
     }
 
     #[allow(unused)]
-    pub struct TestBus {
+    struct TestBus {
         data: Vec<u8>,
         base_address: u32,
         opcode: u32,
@@ -253,7 +251,9 @@ mod tests {
         // Skip Coprocessor instructions
         let skip = ["arm_cdp.json", "arm_mcr_mrc.json", "arm_stc_ldc.json"];
         let mut cpu = Arm7tdmiCpu::new(TestBus::default(), true);
-        let directory = fs::read_dir("../external/arm7tdmi/v1").expect("Unable to access directory");
+        let directory = fs::read_dir("../../external/arm7tdmi/v1").expect("Unable to access directory");
+
+        //TODO: Look into running tests in each file in parrallel
         for file in directory {
             let file = file.unwrap().path();
             if file.extension().unwrap().to_str().unwrap() != "json" {

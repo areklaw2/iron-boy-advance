@@ -5,7 +5,7 @@ pub mod cpu;
 mod disassembler;
 pub mod memory;
 mod psr;
-mod tests;
+mod test;
 mod thumb;
 
 pub const CPU_CLOCK_SPEED: u32 = 16777216;

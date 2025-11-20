@@ -19,6 +19,7 @@ impl BitOr for MemoryAccess {
     }
 }
 
+// TODO: write a test for this
 pub fn decompose_access_pattern(access_pattern: u8) -> Vec<MemoryAccess> {
     let mut decomposition = Vec::new();
     match access_pattern & MemoryAccess::Sequential as u8 != 0 {

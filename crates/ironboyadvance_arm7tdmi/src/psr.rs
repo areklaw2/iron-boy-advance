@@ -177,9 +177,8 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn get_psr_mode_panics() {
+    fn get_psr_mode_is_invalid() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFF15);
-        psr.mode();
+        assert_eq!(psr.mode(), CpuMode::Invalid);
     }
 }
