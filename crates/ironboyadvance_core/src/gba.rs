@@ -1,16 +1,26 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use ironboyadvance_arm7tdmi::cpu::Arm7tdmiCpu;
+use thiserror::Error;
 
 use crate::{
-    GbaError,
-    bios::Bios,
-    cartridge::Cartridge,
+    bios::{Bios, BiosError},
+    cartridge::{Cartridge, CartridgeError},
     ppu::CYCLES_PER_FRAME,
     scheduler::{Scheduler, event::EventType},
     system_bus::SystemBus,
     system_control::HaltMode,
 };
+
+#[derive(Error, Debug)]
+pub enum GbaError {
+    #[error("Failed to load cartridge: {0}")]
+    CartridgeError(#[from] CartridgeError),
+    #[error("Failed to load cartridge: {0}")]
+    BiosError(#[from] BiosError),
+    #[error("Path cannot be empty")]
+    EmptyPath,
+}
 
 pub struct GameBoyAdvance {
     arm7tdmi: Arm7tdmiCpu<SystemBus>,

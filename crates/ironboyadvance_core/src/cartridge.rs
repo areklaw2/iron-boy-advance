@@ -1,11 +1,12 @@
-use std::path::PathBuf;
+use std::{array::TryFromSliceError, path::PathBuf};
 
 use header::Header;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use ironboyadvance_utils::read_file;
+use thiserror::Error;
 
 use crate::{
-    GbaError,
+    cartridge::header::HeaderError,
     system_bus::{ROM_WS0_HI, ROM_WS0_LO, ROM_WS1_HI, ROM_WS1_LO, ROM_WS2_HI, ROM_WS2_LO, SRAM_HI, SRAM_LO},
 };
 
@@ -13,16 +14,32 @@ pub mod header;
 
 const MAX_CARTRIDGE_BYTES: usize = 32 * 1024 * 1024;
 
+#[derive(Error, Debug)]
+pub enum CartridgeError {
+    #[error("Cartridge read failed")]
+    ReadFailure,
+    #[error("Unsupported Cartridge type")]
+    InvalidCatridgeType,
+    #[error("Error reading save")]
+    SaveReadFailed,
+    #[error("Save file failed with error: {0}")]
+    SaveWriteFailure(#[from] std::io::Error),
+    #[error("Data with incorrect length being loaded")]
+    IncorrectLengthLoaded,
+    #[error("Cartridge head load failed: {0}")]
+    HeaderLoadFailer(#[from] HeaderError),
+}
+
 pub struct Cartridge {
     header: Header,
     data: Vec<u8>,
 }
 
 impl Cartridge {
-    pub fn load(path: PathBuf) -> Result<Cartridge, GbaError> {
+    pub fn load(path: PathBuf) -> Result<Cartridge, CartridgeError> {
         let buffer = match read_file(&path) {
             Ok(buffer) => buffer.into_boxed_slice(),
-            Err(_) => return Err(GbaError::FileLoadFailure),
+            Err(_) => return Err(CartridgeError::ReadFailure),
         };
 
         let header = Header::load(&buffer[0..228])?;
