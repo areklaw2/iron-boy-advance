@@ -1,6 +1,9 @@
-use ironboyadvance_core::{gba::GameBoyAdvance, FPS};
+use std::fs::OpenOptions;
+
+use ironboyadvance_core::{FPS, gba::GameBoyAdvance};
 
 use clap::{ArgAction, Parser};
+use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 const FRAME_DURATION_NANOS: f32 = 1_000_000_000.0 / FPS;
 const FRAME_DURATION: std::time::Duration = std::time::Duration::from_nanos(FRAME_DURATION_NANOS as u64);
@@ -28,6 +31,7 @@ fn main() {
     let show_logs = cli.logs;
     let _show_memory = cli.memory;
     let _show_vram = cli.vram;
+    initilize_logger();
 
     //TODO: build out the windows
     let mut game_boy_advance = GameBoyAdvance::new(cli.rom.into(), cli.bios.into(), show_logs, cli.skip_bios).unwrap();
@@ -40,4 +44,25 @@ fn main() {
             std::hint::spin_loop();
         }
     }
+}
+
+fn initilize_logger() {
+    let log_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open("ironboyadvance.log")
+        .expect("Failed to create log file");
+
+    tracing_subscriber::registry()
+        .with(
+            fmt::layer()
+                .with_writer(log_file)
+                .with_ansi(false)
+                .without_time() // remove this
+                .with_target(false) // remove this
+                .with_level(false) // remove this
+                .with_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug"))),
+        )
+        .init();
 }
