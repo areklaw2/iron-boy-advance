@@ -55,20 +55,22 @@ impl GameBoyAdvance {
         match self.arm7tdmi.bus().halt_mode() {
             HaltMode::Stopped => todo!(),
             HaltMode::Halted => {
+                // interrupt
                 if self.arm7tdmi.bus().interrupt_pending() {
                     self.arm7tdmi.irq();
                     self.arm7tdmi.bus_mut().un_halt();
                 } else {
-                    self.scheduler.borrow_mut().update_to_next_event()
+                    // keep halted until interrupt is triggered
+                    self.scheduler.borrow_mut().update_to_next_event();
+                    return;
                 }
-            }
-            HaltMode::Running => {
-                if self.arm7tdmi.bus().interrupt_pending() {
-                    self.arm7tdmi.irq();
-                }
-                self.arm7tdmi.cycle();
             }
         }
+
+        if self.arm7tdmi.bus().interrupt_pending() {
+            self.arm7tdmi.irq();
+        }
+        self.arm7tdmi.cycle();
     }
 
     pub fn run(&mut self, overshoot: usize) -> usize {

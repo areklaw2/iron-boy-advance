@@ -136,6 +136,7 @@ impl SystemBus {
     }
 
     pub fn un_halt(&mut self) {
-        self.io_registers.system_controller_mut().set_halt_mode(HaltMode::Running);
+        //TODO: this needs to check interrupts as well
+        unimplemented!();
     }
 }

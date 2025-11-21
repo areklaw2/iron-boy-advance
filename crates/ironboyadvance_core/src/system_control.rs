@@ -1,8 +1,11 @@
 use bitfields::bitfield;
 use getset::{CopyGetters, Setters};
-use ironboyadvance_arm7tdmi::memory::{MemoryAccess, MemoryAccessWidth};
+use ironboyadvance_arm7tdmi::memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess};
 
-use crate::system_bus::{PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE};
+use crate::{
+    io_registers::{HALTCNT, WAITCNT},
+    system_bus::{PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE},
+};
 
 const INDEX_WRAM_BOARD: usize = (WRAM_BOARD_BASE >> 24) as usize;
 const INDEX_PALETTE_RAM: usize = (PALETTE_RAM_BASE >> 24) as usize;
@@ -142,7 +145,6 @@ pub struct WaitStateControl {
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum HaltMode {
-    Running,
     Halted,
     Stopped,
 }
@@ -160,17 +162,13 @@ impl SystemController {
         SystemController {
             cycle_luts: ClockCycleLuts::new(),
             waitstate_control: WaitStateControl::from_bits(0),
-            halt_mode: HaltMode::Running,
+            halt_mode: HaltMode::Halted,
         }
     }
 
     pub fn set_waitstate_control(&mut self, value: u16) {
         self.waitstate_control.set_bits(value);
         self.cycle_luts.update_wait_states(&self.waitstate_control);
-    }
-
-    pub fn waitstate_control(&self) -> WaitStateControl {
-        self.waitstate_control
     }
 
     pub fn cycles(&self, lut_index: usize, width: MemoryAccessWidth, access: MemoryAccess) -> usize {
@@ -185,6 +183,38 @@ impl SystemController {
                 MemoryAccess::Sequential => self.cycle_luts.s_cycles_32_lut[lut_index],
                 _ => panic!("Should be NonSequential or Sequential"),
             },
+        }
+    }
+}
+
+impl SystemMemoryAccess for SystemController {
+    fn read_8(&self, address: u32) -> u8 {
+        match address {
+            _ => 0, //TODO: add tracing for this
+        }
+    }
+
+    fn read_16(&self, address: u32) -> u16 {
+        match address {
+            WAITCNT => self.waitstate_control.into(),
+            _ => 0, //TODO: add tracing for this
+        }
+    }
+
+    fn write_8(&mut self, address: u32, value: u8) {
+        match address {
+            HALTCNT => match value != 0 {
+                true => self.halt_mode = HaltMode::Stopped,
+                false => self.halt_mode = HaltMode::Halted,
+            },
+            _ => {} //TODO: add tracing for this
+        }
+    }
+
+    fn write_16(&mut self, address: u32, value: u16) {
+        match address {
+            WAITCNT => self.set_waitstate_control(value),
+            _ => {} //TODO: add tracing for this
         }
     }
 }
