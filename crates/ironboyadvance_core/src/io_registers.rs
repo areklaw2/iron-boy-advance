@@ -16,6 +16,8 @@ pub const WAITCNT: u32 = 0x04000204;
 const IME: u32 = 0x04000208;
 pub const POSTFLG: u32 = 0x04000300;
 pub const HALTCNT: u32 = 0x04000301;
+pub const PURPOSE_UNKNOWN: u32 = 0x04000410;
+pub const INTERNAL_MEMORY_CONTROL: u32 = 0x04000800;
 
 #[derive(Getters, MutGetters, Setters)]
 pub struct IoRegisters {
@@ -58,8 +60,9 @@ impl SystemMemoryAccess for IoRegisters {
             WAITCNT => self.system_controller.read_16(address),
             IME => self.interrupt_control.interrupt_master_enable() as u16,
             POSTFLG => self.system_controller.read_16(address),
+            INTERNAL_MEMORY_CONTROL => self.system_controller.read_16(address),
             _ => {
-                debug!("Read not implemented address: {:08X}", address);
+                debug!("Read halfword not in IoRegisters implemented address: {:08X}", address);
                 0
             }
         }
@@ -81,7 +84,13 @@ impl SystemMemoryAccess for IoRegisters {
             WAITCNT => self.system_controller.write_16(address, value),
             IME => self.interrupt_control.set_interrupt_master_enable(value != 0),
             POSTFLG => self.system_controller.write_16(address, value),
-            _ => debug!("Write not implemented address: {:08X}, value: {:08X}", address, value),
+            HALTCNT => self.system_controller.write_16(address, value),
+            PURPOSE_UNKNOWN => self.system_controller.write_16(address, value),
+            INTERNAL_MEMORY_CONTROL => self.system_controller.write_16(address, value),
+            _ => debug!(
+                "Write halfword not implemented IoRegisters address: {:08X}, value: {:08X}",
+                address, value
+            ),
         }
     }
 }

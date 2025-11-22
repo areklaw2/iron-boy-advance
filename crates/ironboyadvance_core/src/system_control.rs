@@ -1,9 +1,10 @@
 use bitfields::bitfield;
 use getset::{CopyGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess};
+use tracing::debug;
 
 use crate::{
-    io_registers::{HALTCNT, WAITCNT},
+    io_registers::{HALTCNT, INTERNAL_MEMORY_CONTROL, POSTFLG, PURPOSE_UNKNOWN, WAITCNT},
     system_bus::{PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE},
 };
 
@@ -144,6 +145,7 @@ pub struct WaitStateControl {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
+#[allow(unused)]
 pub enum HaltMode {
     Halted,
     Stopped,
@@ -153,8 +155,11 @@ pub enum HaltMode {
 pub struct SystemController {
     cycle_luts: ClockCycleLuts,
     waitstate_control: WaitStateControl,
+    post_flag: bool,
     #[getset(get_copy = "pub", set = "pub")]
     halt_mode: HaltMode,
+    purpose_unknown: u8,
+    internal_memory_control: u16,
 }
 
 impl SystemController {
@@ -162,7 +167,10 @@ impl SystemController {
         SystemController {
             cycle_luts: ClockCycleLuts::new(),
             waitstate_control: WaitStateControl::from_bits(0),
+            post_flag: false,
             halt_mode: HaltMode::Halted,
+            purpose_unknown: 0,
+            internal_memory_control: 0,
         }
     }
 
@@ -190,31 +198,41 @@ impl SystemController {
 impl SystemMemoryAccess for SystemController {
     fn read_8(&self, address: u32) -> u8 {
         match address {
-            _ => 0, //TODO: add tracing for this
+            _ => {
+                debug!("Read byte not implemented in SystemController address: {:08X}", address);
+                0
+            }
         }
     }
 
     fn read_16(&self, address: u32) -> u16 {
         match address {
             WAITCNT => self.waitstate_control.into(),
-            _ => 0, //TODO: add tracing for this
+            POSTFLG => self.post_flag as u16,
+            INTERNAL_MEMORY_CONTROL => self.internal_memory_control,
+            _ => 0,
         }
     }
 
-    fn write_8(&mut self, address: u32, value: u8) {
+    fn write_8(&mut self, address: u32, _value: u8) {
         match address {
-            HALTCNT => match value != 0 {
-                true => self.halt_mode = HaltMode::Stopped,
-                false => self.halt_mode = HaltMode::Halted,
-            },
-            _ => {} //TODO: add tracing for this
+            _ => {
+                debug!("write byte not implemented in SystemController address: {:08X}", address);
+            }
         }
     }
 
     fn write_16(&mut self, address: u32, value: u16) {
         match address {
             WAITCNT => self.set_waitstate_control(value),
-            _ => {} //TODO: add tracing for this
+            POSTFLG => self.post_flag = value & 0x1 != 0,
+            HALTCNT => match value != 0 {
+                true => todo!("Stopped"), //self.halt_mode = HaltMode::Stopped,
+                false => self.halt_mode = HaltMode::Halted,
+            },
+            PURPOSE_UNKNOWN => self.purpose_unknown = value as u8,
+            INTERNAL_MEMORY_CONTROL => self.internal_memory_control = value,
+            _ => {}
         }
     }
 }
