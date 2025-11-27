@@ -1,6 +1,6 @@
 use std::fs::OpenOptions;
 
-use ironboyadvance_core::{FPS, gba::GameBoyAdvance};
+use ironboyadvance_core::{FPS, GameBoyAdvance};
 
 use clap::{ArgAction, Parser};
 use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
