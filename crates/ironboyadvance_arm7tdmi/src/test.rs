@@ -250,7 +250,7 @@ mod tests {
     fn single_step_tests() {
         // Skip Coprocessor instructions
         let skip = ["arm_cdp.json", "arm_mcr_mrc.json", "arm_stc_ldc.json"];
-        let mut cpu = Arm7tdmiCpu::new(TestBus::default(), true);
+        let mut cpu = Arm7tdmiCpu::new(TestBus::default(), false, true);
         let directory = fs::read_dir("../../external/arm7tdmi/v1").expect("Unable to access directory");
 
         //TODO: Look into running tests in each file in parrallel

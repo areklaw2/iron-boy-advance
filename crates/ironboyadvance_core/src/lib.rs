@@ -55,7 +55,7 @@ impl GameBoyAdvance {
         let cartridge = Cartridge::load(rom_path)?;
         let bios = Bios::load(bios_path)?;
         let gba = GameBoyAdvance {
-            arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone()), skip_bios),
+            arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone()), show_logs, skip_bios),
             scheduler,
             rom_name,
         };
@@ -121,5 +121,37 @@ impl GameBoyAdvance {
             }
         }
         false
+    }
+}
+
+pub struct GameBoyAdvanceBuilder {
+    rom_path: PathBuf,
+    bios_path: PathBuf,
+    show_logs: bool,
+    skip_bios: bool,
+}
+
+impl GameBoyAdvanceBuilder {
+    pub fn new(rom_path: PathBuf, bios_path: PathBuf) -> Self {
+        Self {
+            rom_path,
+            bios_path,
+            show_logs: false,
+            skip_bios: false,
+        }
+    }
+
+    pub fn show_logs(mut self, show_logs: bool) -> Self {
+        self.show_logs = show_logs;
+        self
+    }
+
+    pub fn skip_bios(mut self, skip_bios: bool) -> Self {
+        self.skip_bios = skip_bios;
+        self
+    }
+
+    pub fn build(self) -> Result<GameBoyAdvance, GbaError> {
+        GameBoyAdvance::new(self.rom_path, self.bios_path, self.show_logs, self.skip_bios)
     }
 }

@@ -1,6 +1,6 @@
 use std::fs::OpenOptions;
 
-use ironboyadvance_core::{FPS, GameBoyAdvance};
+use ironboyadvance_core::{FPS, GameBoyAdvance, GameBoyAdvanceBuilder};
 
 use clap::{ArgAction, Parser};
 use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
@@ -28,13 +28,18 @@ struct DeveloperCli {
 
 fn main() {
     let cli = DeveloperCli::parse();
-    let show_logs = cli.logs;
     let _show_memory = cli.memory;
     let _show_vram = cli.vram;
     initilize_logger();
 
     //TODO: build out the windows
-    let mut game_boy_advance = GameBoyAdvance::new(cli.rom.into(), cli.bios.into(), show_logs, cli.skip_bios).unwrap();
+    //let mut game_boy_advance = GameBoyAdvance::new(cli.rom.into(), cli.bios.into(), true, cli.skip_bios).unwrap();
+
+    let mut game_boy_advance = GameBoyAdvanceBuilder::new(cli.rom.into(), cli.bios.into())
+        .show_logs(cli.logs)
+        .skip_bios(cli.skip_bios)
+        .build()
+        .unwrap();
     let mut overshoot = 0;
     'game: loop {
         let frame_start_time = std::time::Instant::now();

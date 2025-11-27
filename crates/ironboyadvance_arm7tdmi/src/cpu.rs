@@ -1,4 +1,5 @@
 use getset::{Getters, MutGetters, Setters};
+use tracing::debug;
 
 use crate::{
     Condition, CpuAction, Exception,
@@ -46,6 +47,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     arm_lut: [ArmInstructionKind; 4096],
     thumb_lut: [ThumbInstructionKind; 1024],
     pub(super) dissassembled_instruction: String,
+    show_logs: bool,
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
@@ -79,7 +81,7 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {
-    pub fn new(bus: I, skip_bios: bool) -> Self {
+    pub fn new(bus: I, show_logs: bool, skip_bios: bool) -> Self {
         let mut cpu = Arm7tdmiCpu {
             general_registers: [0; 16],
             banked_registers_fiq: [0; 7], //r8 to r14
@@ -95,6 +97,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             arm_lut: [ArmInstructionKind::Undefined; 4096],
             thumb_lut: [ThumbInstructionKind::Undefined; 1024],
             dissassembled_instruction: String::new(),
+            show_logs,
         };
 
         cpu.arm_lut = generate_arm_lut();
@@ -133,8 +136,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = ArmInstruction::new(self.arm_lut[lut_index as usize], instruction, pc.saturating_sub(8));
                 self.dissassembled_instruction = instruction.disassemble(self);
 
-                println!("{}", instruction);
-                println!("{}", self.dissassembled_instruction);
+                if self.show_logs {
+                    debug!("{}", instruction);
+                    debug!("{}", self.dissassembled_instruction);
+                }
 
                 let condition = instruction.cond();
                 if condition != Condition::AL && !self.is_condition_met(condition) {
@@ -159,8 +164,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                     ThumbInstruction::new(self.thumb_lut[lut_index as usize], instruction as u16, pc.saturating_sub(4));
                 self.dissassembled_instruction = instruction.disassemble(self);
 
-                println!("{}", instruction);
-                println!("{}", self.dissassembled_instruction);
+                if self.show_logs {
+                    debug!("{}", instruction);
+                    debug!("{}", self.dissassembled_instruction);
+                }
 
                 match instruction.execute(self) {
                     CpuAction::Advance(memory_access) => {
