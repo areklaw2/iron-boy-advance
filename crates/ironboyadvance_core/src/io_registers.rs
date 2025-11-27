@@ -44,6 +44,7 @@ impl IoRegisters {
     }
 }
 
+//TODO: go with the byte approach
 impl SystemMemoryAccess for IoRegisters {
     fn read_8(&self, address: u32) -> u8 {
         let value = self.read_16(address & !0x1);
