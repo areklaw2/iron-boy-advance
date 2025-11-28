@@ -235,11 +235,11 @@ pub fn execute_load_store_register_offset<I: MemoryInterface>(
     let load = instruction.load();
     match (load, byte) {
         (false, false) => {
-            let value = cpu.register(rd as usize);
+            let value = cpu.register(rd);
             cpu.store_32(address, value, MemoryAccess::NonSequential as u8);
         }
         (false, true) => {
-            let value = cpu.register(rd as usize);
+            let value = cpu.register(rd);
             cpu.store_8(address, value as u8, MemoryAccess::NonSequential as u8);
         }
         (true, false) => {
@@ -270,7 +270,7 @@ pub fn execute_load_store_sign_extended_byte_halfword<I: MemoryInterface>(
     let halfword = instruction.halfword();
     match (signed, halfword) {
         (false, false) => {
-            let value = cpu.register(rd as usize);
+            let value = cpu.register(rd);
             cpu.store_16(address, value as u16, MemoryAccess::NonSequential as u8);
         }
         (false, true) => {
@@ -306,11 +306,11 @@ pub fn execute_load_store_immediate_offset<I: MemoryInterface>(
     let load = instruction.load();
     match (load, byte) {
         (false, false) => {
-            let value = cpu.register(rd as usize);
+            let value = cpu.register(rd);
             cpu.store_32(address, value, MemoryAccess::NonSequential as u8);
         }
         (false, true) => {
-            let value = cpu.register(rd as usize);
+            let value = cpu.register(rd);
             cpu.store_8(address, value as u8, MemoryAccess::NonSequential as u8);
         }
         (true, false) => {
@@ -343,7 +343,7 @@ pub fn execute_load_store_halfword<I: MemoryInterface>(
             cpu.idle_cycle();
         }
         false => {
-            let value = cpu.register(rd as usize);
+            let value = cpu.register(rd);
             cpu.store_16(address, value as u16, MemoryAccess::NonSequential as u8);
         }
     }
@@ -366,7 +366,7 @@ pub fn execute_sp_relative_load_store<I: MemoryInterface>(
             cpu.idle_cycle();
         }
         false => {
-            let value = cpu.register(rd as usize);
+            let value = cpu.register(rd);
             cpu.store_32(address, value, MemoryAccess::NonSequential as u8);
         }
     }

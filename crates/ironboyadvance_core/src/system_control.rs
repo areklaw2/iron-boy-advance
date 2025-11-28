@@ -197,12 +197,8 @@ impl SystemController {
 
 impl SystemMemoryAccess for SystemController {
     fn read_8(&self, address: u32) -> u8 {
-        match address {
-            _ => {
-                debug!("Read byte not implemented in SystemController address: {:08X}", address);
-                0
-            }
-        }
+        debug!("Read byte not implemented in SystemController address: {:08X}", address);
+        0
     }
 
     fn read_16(&self, address: u32) -> u16 {
@@ -215,11 +211,7 @@ impl SystemMemoryAccess for SystemController {
     }
 
     fn write_8(&mut self, address: u32, _value: u8) {
-        match address {
-            _ => {
-                debug!("write byte not implemented in SystemController address: {:08X}", address);
-            }
-        }
+        debug!("write byte not implemented in SystemController address: {:08X}", address);
     }
 
     fn write_16(&mut self, address: u32, value: u16) {

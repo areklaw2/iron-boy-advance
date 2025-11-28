@@ -1,4 +1,5 @@
 #[derive(Debug, Copy, Clone)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ShiftType {
     LSL,
     LSR,
@@ -68,7 +69,7 @@ pub fn lsr(value: u32, amount: u32, carry: &mut bool, is_immediate: bool) -> u32
     match amount {
         0 => value,
         1..=31 => {
-            *carry = (value >> amount - 1) & 0b1 != 0;
+            *carry = (value >> (amount - 1)) & 0b1 != 0;
             value >> amount
         }
         32 => {
@@ -86,8 +87,8 @@ pub fn asr(value: u32, amount: u32, carry: &mut bool, is_immediate: bool) -> u32
     let amount = if is_immediate && amount == 0 { 32 } else { amount };
     match amount {
         0 => value,
-        0..=31 => {
-            *carry = (value >> amount - 1) & 0b1 != 0;
+        1..=31 => {
+            *carry = (value >> (amount - 1)) & 0b1 != 0;
             ((value as i32) >> amount) as u32
         }
         _ => {

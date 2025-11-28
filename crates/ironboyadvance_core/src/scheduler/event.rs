@@ -53,7 +53,7 @@ impl Ord for Event {
 
 impl PartialOrd for Event {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        other.time.partial_cmp(&self.time)
+        Some(self.cmp(other))
     }
 
     fn lt(&self, other: &Self) -> bool {

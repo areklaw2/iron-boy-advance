@@ -5,8 +5,8 @@ use super::ArmInstructionKind;
 
 pub fn generate_arm_lut() -> [ArmInstructionKind; 4096] {
     let mut arm_lut = [Undefined; 4096];
-    for i in 0..4096 {
-        arm_lut[i] = decode_arm(((i as u32 & 0x0FF0) << 16) | ((i as u32 & 0x000F) << 4));
+    for (i, arm_instruction_kind) in arm_lut.iter_mut().enumerate() {
+        *arm_instruction_kind = decode_arm(((i as u32 & 0x0FF0) << 16) | ((i as u32 & 0x000F) << 4));
     }
     arm_lut
 }

@@ -4,8 +4,8 @@ use super::ThumbInstructionKind;
 
 pub fn generate_thumb_lut() -> [ThumbInstructionKind; 1024] {
     let mut thumb_lut = [Undefined; 1024];
-    for i in 0..1024 {
-        thumb_lut[i] = decode_thumb((i as u16) << 6);
+    for (i, thumb_instruction_kind) in thumb_lut.iter_mut().enumerate() {
+        *thumb_instruction_kind = decode_thumb((i as u16) << 6);
     }
     thumb_lut
 }

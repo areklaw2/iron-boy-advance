@@ -49,7 +49,7 @@ impl GameBoyAdvance {
             .file_name()
             .and_then(|name| name.to_str())
             .map(|s| s.to_string())
-            .ok_or_else(|| GbaError::InvalidRomPath)?;
+            .ok_or(GbaError::InvalidRomPath)?;
 
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         let cartridge = Cartridge::load(rom_path)?;

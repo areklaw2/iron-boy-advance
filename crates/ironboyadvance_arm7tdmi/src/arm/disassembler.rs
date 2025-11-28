@@ -70,7 +70,7 @@ pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
     match instruction.bits[16..=21].load::<u8>() == 0xF {
         true => {
             let rd = instruction.rd() as usize;
-            return format!("MRS{} {},{}", cond, rd, psr);
+            format!("MRS{} {},{}", cond, rd, psr)
         }
         false => {
             let operand = match instruction.is_immediate() {
@@ -150,7 +150,11 @@ pub fn disassemble_single_data_transfer(instruction: &ArmInstruction) -> String 
                 }
             };
 
-            let write_back = if instruction.write_back() && offset != "" { "!" } else { "" };
+            let write_back = if instruction.write_back() && !offset.is_empty() {
+                "!"
+            } else {
+                ""
+            };
             match pre_index {
                 true => format!("[{}{}]{}", rn, offset, write_back),
                 false => format!("[{}]{}", rn, offset),
@@ -183,7 +187,11 @@ pub fn disassemble_halfword_and_signed_data_transfer(instruction: &ArmInstructio
                 false => format!(",{}{}", add, rm),
             };
 
-            let write_back = if instruction.write_back() && offset != "" { "!" } else { "" };
+            let write_back = if instruction.write_back() && !offset.is_empty() {
+                "!"
+            } else {
+                ""
+            };
             match pre_index {
                 true => format!("[{}{}]{}", rn, offset, write_back),
                 false => format!("[{}]{}", rn, offset),
@@ -275,5 +283,5 @@ pub fn disassemble_software_interrupt(instruction: &ArmInstruction) -> String {
 }
 
 pub fn disassemble_undefined(_instruction: &ArmInstruction) -> String {
-    format!("Undefined")
+    "Undefined".into()
 }

@@ -84,8 +84,8 @@ impl Header {
 
 fn calculate_checksum(bytes: &[u8]) -> u8 {
     let mut checksum = 0u8;
-    for i in 0..bytes.len() {
-        checksum = checksum.wrapping_sub(bytes[i])
+    for byte in bytes {
+        checksum = checksum.wrapping_sub(*byte)
     }
     checksum = checksum.wrapping_sub(0x19);
     checksum

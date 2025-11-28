@@ -170,6 +170,7 @@ impl From<u16> for HiRegister {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub(crate) enum Condition {
     EQ,
     NE,
@@ -213,6 +214,7 @@ impl From<u32> for Condition {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub(crate) enum DataProcessingOpcode {
     AND,
     EOR,
@@ -259,6 +261,7 @@ impl From<u32> for DataProcessingOpcode {
 
 // THUMB
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub(crate) enum MovCmpAddSubImmediateOpcode {
     MOV,
     CMP,
@@ -280,6 +283,7 @@ impl From<u16> for MovCmpAddSubImmediateOpcode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub(crate) enum AluOperationsOpcode {
     AND,
     EOR,
@@ -325,6 +329,7 @@ impl From<u16> for AluOperationsOpcode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub(crate) enum HiRegOpsBxOpcode {
     ADD,
     CMP,

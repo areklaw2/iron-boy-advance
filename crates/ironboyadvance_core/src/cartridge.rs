@@ -1,4 +1,4 @@
-use std::{array::TryFromSliceError, path::PathBuf};
+use std::path::PathBuf;
 
 use header::Header;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
@@ -43,8 +43,8 @@ impl Cartridge {
         };
 
         let header = Header::load(&buffer[0..228])?;
-        println!("{}", header.game_title());
-        println!("{}", header.game_code());
+        dbg!("Game Tile: {}", header.game_title());
+        dbg!("Game Code: {}", header.game_code());
 
         let mut data = vec![0; MAX_CARTRIDGE_BYTES];
         data[..buffer.len()].clone_from_slice(&buffer);
