@@ -2,3 +2,10 @@
 members = ["clients/*", "crates/*"]
 
 resolver = "2"
+
+  [workspace.dependencies]
+  thiserror = "2.0.11"
+  bitfields = "1.0.2"
+  getset = "0.1.6"
+  tracing = "0.1.43"
+  tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }

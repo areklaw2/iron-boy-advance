@@ -7,9 +7,9 @@ edition = "2024"
 ironboyadvance_arm7tdmi = { path = "../ironboyadvance_arm7tdmi" }
 ironboyadvance_sharp_sm83 = { path = "../ironboyadvance_sharp_sm83" }
 ironboyadvance_utils = { path = "../ironboyadvance_utils" }
-thiserror = "2.0.11"
-bitfields = "1.0.1"
-getset = "0.1.6"
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+thiserror = { workspace = true }
+bitfields = { workspace = true }
+getset = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
