@@ -1,6 +1,6 @@
 use std::fs::OpenOptions;
 
-use ironboyadvance_core::{FPS, GameBoyAdvance, GameBoyAdvanceBuilder};
+use ironboyadvance_core::{FPS, GameBoyAdvanceBuilder};
 
 use clap::{ArgAction, Parser};
 use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
@@ -33,7 +33,6 @@ fn main() {
     initilize_logger();
 
     //TODO: build out the windows
-    //let mut game_boy_advance = GameBoyAdvance::new(cli.rom.into(), cli.bios.into(), true, cli.skip_bios).unwrap();
 
     let mut game_boy_advance = GameBoyAdvanceBuilder::new(cli.rom.into(), cli.bios.into())
         .show_logs(cli.logs)
@@ -56,7 +55,7 @@ fn initilize_logger() {
         .create(true)
         .write(true)
         .truncate(true)
-        .open("ironboyadvance.log")
+        .open("../../ironboyadvance.log")
         .expect("Failed to create log file");
 
     tracing_subscriber::registry()

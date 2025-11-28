@@ -97,11 +97,11 @@ pub trait SystemMemoryAccess {
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {
-    pub fn load_signed_8(&mut self, address: u32, access_pattern: u8) -> u32 {
+    pub(crate) fn load_signed_8(&mut self, address: u32, access_pattern: u8) -> u32 {
         self.load_8(address, access_pattern) as i8 as i32 as u32
     }
 
-    pub fn load_signed_16(&mut self, address: u32, access_pattern: u8) -> u32 {
+    pub(crate) fn load_signed_16(&mut self, address: u32, access_pattern: u8) -> u32 {
         match address & 0x1 != 0 {
             true => {
                 let mut value = self.load_8(address, access_pattern);
@@ -112,7 +112,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn load_rotated_16(&mut self, address: u32, access_pattern: u8) -> u32 {
+    pub(crate) fn load_rotated_16(&mut self, address: u32, access_pattern: u8) -> u32 {
         let value = self.load_16(address, access_pattern);
         match address & 0x1 != 0 {
             true => value >> 8 | value << 24,
@@ -120,7 +120,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn load_rotated_32(&mut self, address: u32, access_pattern: u8) -> u32 {
+    pub(crate) fn load_rotated_32(&mut self, address: u32, access_pattern: u8) -> u32 {
         let value = self.load_32(address, access_pattern);
         let rotation = (address & 0x3) << 3;
         value >> rotation | value.wrapping_shl(32 - rotation)

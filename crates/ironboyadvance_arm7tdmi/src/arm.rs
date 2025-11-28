@@ -58,8 +58,6 @@ impl fmt::Display for ArmInstruction {
 }
 
 impl Instruction for ArmInstruction {
-    type Size = u32;
-
     fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
         match self.kind {
             BranchAndExchange => disassemble_branch_exchange(self),
@@ -92,10 +90,6 @@ impl Instruction for ArmInstruction {
             SoftwareInterrupt => execute_software_interrupt(cpu, self),
             Undefined => execute_undefined(cpu, self),
         }
-    }
-
-    fn value(&self) -> u32 {
-        self.bits.load::<u32>()
     }
 }
 

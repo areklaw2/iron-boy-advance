@@ -301,7 +301,7 @@ mod tests {
                 // the booth multiplication sets the carry. data sheet says its set to a meaningless value. Will ignore result
                 let is_mutliply = ["MUL", "MLA", "MULL", "MLAL"]
                     .iter()
-                    .any(|s| cpu.dissassembled_instruction.contains(s));
+                    .any(|s| cpu.dissassembled_instruction().contains(s));
 
                 let actual = cpu.cpsr_mut();
                 if is_mutliply {

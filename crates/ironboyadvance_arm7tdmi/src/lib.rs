@@ -11,13 +11,13 @@ mod thumb;
 pub const CPU_CLOCK_SPEED: u32 = 16777216;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CpuAction {
+pub(crate) enum CpuAction {
     Advance(u8),
     PipelineFlush,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CpuMode {
+pub(crate) enum CpuMode {
     User = 0b10000,
     Fiq = 0b10001,
     Irq = 0b10010,
@@ -49,7 +49,7 @@ impl CpuMode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CpuState {
+pub(crate) enum CpuState {
     Arm = 0,
     Thumb = 1,
 }
@@ -70,7 +70,7 @@ impl CpuState {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Register {
+pub(crate) enum Register {
     R0,
     R1,
     R2,
@@ -114,7 +114,7 @@ impl From<u32> for Register {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum LoRegister {
+pub(crate) enum LoRegister {
     R0,
     R1,
     R2,
@@ -142,7 +142,7 @@ impl From<u16> for LoRegister {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum HiRegister {
+pub(crate) enum HiRegister {
     R8,
     R9,
     R10,
@@ -170,7 +170,7 @@ impl From<u16> for HiRegister {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Condition {
+pub(crate) enum Condition {
     EQ,
     NE,
     CS,
@@ -213,7 +213,7 @@ impl From<u32> for Condition {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum DataProcessingOpcode {
+pub(crate) enum DataProcessingOpcode {
     AND,
     EOR,
     SUB,
@@ -259,7 +259,7 @@ impl From<u32> for DataProcessingOpcode {
 
 // THUMB
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum MovCmpAddSubImmediateOpcode {
+pub(crate) enum MovCmpAddSubImmediateOpcode {
     MOV,
     CMP,
     ADD,
@@ -280,7 +280,7 @@ impl From<u16> for MovCmpAddSubImmediateOpcode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum AluOperationsOpcode {
+pub(crate) enum AluOperationsOpcode {
     AND,
     EOR,
     LSL,
@@ -325,7 +325,7 @@ impl From<u16> for AluOperationsOpcode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum HiRegOpsBxOpcode {
+pub(crate) enum HiRegOpsBxOpcode {
     ADD,
     CMP,
     MOV,
@@ -345,7 +345,8 @@ impl From<u16> for HiRegOpsBxOpcode {
     }
 }
 
-pub enum Exception {
+#[allow(dead_code)]
+pub(crate) enum Exception {
     Reset = 0x00,
     Undefined = 0x04,
     SoftwareInterrupt = 0x08,

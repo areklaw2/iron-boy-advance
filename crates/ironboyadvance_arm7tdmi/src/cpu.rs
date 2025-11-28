@@ -10,43 +10,34 @@ use crate::{
 
 use super::{CpuMode, CpuState, arm::ArmInstruction, psr::ProgramStatusRegister};
 
-pub const SP: usize = 13;
-pub const LR: usize = 14;
-pub const PC: usize = 15;
+pub(crate) const SP: usize = 13;
+pub(crate) const LR: usize = 14;
+pub(crate) const PC: usize = 15;
 
-pub trait Instruction {
-    type Size;
+pub(crate) trait Instruction {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
     fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
-    fn value(&self) -> Self::Size;
 }
 
 #[derive(Getters, MutGetters, Setters)]
+#[getset(get = "pub(crate)", set = "pub(crate)")]
 pub struct Arm7tdmiCpu<I: MemoryInterface> {
-    #[getset(get = "pub", set = "pub")]
     general_registers: [u32; 16],
-    #[getset(get = "pub", set = "pub")]
     banked_registers_fiq: [u32; 7], //r8 to r14
-    #[getset(get = "pub", set = "pub")]
     banked_registers_svc: [u32; 2], //r13 to r14
-    #[getset(get = "pub", set = "pub")]
     banked_registers_abt: [u32; 2], //r13 to r14
-    #[getset(get = "pub", set = "pub")]
     banked_registers_irq: [u32; 2], //r13 to r14
-    #[getset(get = "pub", set = "pub")]
     banked_registers_und: [u32; 2], //r13 to r14
-    #[getset(get = "pub", set = "pub")]
     spsrs: [ProgramStatusRegister; 5],
-    #[getset(get = "pub", get_mut = "pub", set = "pub")]
+    #[getset(get_mut = "pub(crate)")]
     cpsr: ProgramStatusRegister,
-    #[getset(get = "pub", set = "pub")]
     pipeline: [u32; 2],
     #[getset(get = "pub", get_mut = "pub", set = "pub")]
     bus: I,
     next_memory_access: u8,
     arm_lut: [ArmInstructionKind; 4096],
     thumb_lut: [ThumbInstructionKind; 1024],
-    pub(super) dissassembled_instruction: String,
+    dissassembled_instruction: String,
     show_logs: bool,
 }
 
@@ -180,7 +171,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn is_condition_met(&self, condition: Condition) -> bool {
+    pub(crate) fn is_condition_met(&self, condition: Condition) -> bool {
         use Condition::*;
         match condition {
             EQ => self.cpsr.zero(),
@@ -201,23 +192,23 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn pc(&self) -> u32 {
+    pub(crate) fn pc(&self) -> u32 {
         self.general_registers[PC]
     }
 
-    pub fn set_pc(&mut self, value: u32) {
+    pub(crate) fn set_pc(&mut self, value: u32) {
         self.general_registers[PC] = value;
     }
 
-    pub fn advance_pc_thumb(&mut self) {
+    pub(crate) fn advance_pc_thumb(&mut self) {
         self.general_registers[PC] = self.general_registers[PC].wrapping_add(2);
     }
 
-    pub fn advance_pc_arm(&mut self) {
+    pub(crate) fn advance_pc_arm(&mut self) {
         self.general_registers[PC] = self.general_registers[PC].wrapping_add(4);
     }
 
-    pub fn pipeline_flush(&mut self) {
+    pub(crate) fn pipeline_flush(&mut self) {
         match self.cpsr.state() {
             CpuState::Arm => {
                 self.pipeline[0] = self.load_32(
@@ -248,7 +239,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn register(&self, index: usize) -> u32 {
+    pub(crate) fn register(&self, index: usize) -> u32 {
         match index {
             0..=7 | 15 => self.general_registers[index],
             8..=12 => match self.cpsr.mode() == CpuMode::Fiq {
@@ -268,7 +259,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn set_register(&mut self, index: usize, value: u32) {
+    pub(crate) fn set_register(&mut self, index: usize, value: u32) {
         match index {
             0..=7 | 15 => self.general_registers[index] = value,
             8..=12 => match self.cpsr.mode() == CpuMode::Fiq {
@@ -288,7 +279,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn spsr(&self) -> ProgramStatusRegister {
+    pub(crate) fn spsr(&self) -> ProgramStatusRegister {
         match self.cpsr.mode() {
             CpuMode::User | CpuMode::System => self.cpsr,
             CpuMode::Fiq => self.spsrs[0],
@@ -300,7 +291,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn set_spsr(&mut self, spsr: ProgramStatusRegister) {
+    pub(crate) fn set_spsr(&mut self, spsr: ProgramStatusRegister) {
         match self.cpsr.mode() {
             CpuMode::User | CpuMode::System => self.cpsr = spsr,
             CpuMode::Fiq => self.spsrs[0] = spsr,
@@ -312,7 +303,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn set_mode_spsr(&mut self, mode: CpuMode, spsr: ProgramStatusRegister) {
+    pub(crate) fn set_mode_spsr(&mut self, mode: CpuMode, spsr: ProgramStatusRegister) {
         match mode {
             CpuMode::User | CpuMode::System => self.cpsr = spsr,
             CpuMode::Fiq => self.spsrs[0] = spsr,
@@ -324,7 +315,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub fn exception(&mut self, exception: Exception) {
+    pub(crate) fn exception(&mut self, exception: Exception) {
         let (mode, disable_irq, disable_fiq) = match exception {
             Exception::Reset => (CpuMode::Supervisor, true, true),
             Exception::Undefined => (CpuMode::Undefined, true, false),

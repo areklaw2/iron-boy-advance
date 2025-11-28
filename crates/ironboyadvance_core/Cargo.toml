@@ -13,5 +13,3 @@ getset = "0.1.6"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 
-[lib]
-doctest = false #doc test for thiserror are acting up 2/23/2024

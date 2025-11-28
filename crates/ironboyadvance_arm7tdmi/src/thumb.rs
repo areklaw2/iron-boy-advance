@@ -60,8 +60,6 @@ impl fmt::Display for ThumbInstruction {
 }
 
 impl Instruction for ThumbInstruction {
-    type Size = u16;
-
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         match self.kind {
             MoveShiftedRegister => disassemble_move_shifted_register(self),
@@ -110,10 +108,6 @@ impl Instruction for ThumbInstruction {
             LongBranchWithLink => execute_long_branch_with_link(cpu, self),
             Undefined => unimplemented!(),
         }
-    }
-
-    fn value(&self) -> u16 {
-        self.bits.load::<u16>()
     }
 }
 
