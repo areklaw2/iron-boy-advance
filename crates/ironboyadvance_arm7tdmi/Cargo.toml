@@ -14,3 +14,5 @@ getset = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
+[dev-dependencies]
+rayon = "1.10"

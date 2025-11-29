@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
+    use rayon::prelude::*;
     use serde::Deserialize;
     use serde_repr::Deserialize_repr;
     use std::fs;
+    use std::path::PathBuf;
 
     use crate::memory::{MemoryAccess, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
     use crate::{cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
@@ -246,71 +248,86 @@ mod tests {
         }
     }
 
+    fn run_test_file(file_path: PathBuf) -> Result<(), String> {
+        if file_path.extension().unwrap().to_str().unwrap() != "json" {
+            return Ok(());
+        }
+
+        // Skip coprocessor instructions
+        let skip = ["arm_cdp.json", "arm_mcr_mrc.json", "arm_stc_ldc.json"];
+        if skip.contains(&file_path.file_name().unwrap().to_str().unwrap()) {
+            return Ok(());
+        }
+
+        let test_json = fs::read_to_string(&file_path).map_err(|e| format!("Failed to read {:?}: {}", file_path, e))?;
+        let tests: Vec<Test> =
+            serde_json::from_str(&test_json).map_err(|e| format!("Failed to parse {:?}: {}", file_path, e))?;
+
+        let mut cpu = Arm7tdmiCpu::new(TestBus::default(), false, true);
+
+        for test in tests {
+            let test_bus = TestBus::new(test.base_addr[0], test.opcode, test.transactions.clone());
+            cpu.set_bus(test_bus);
+
+            let initial_state = test.initial_state;
+            let final_state = test.final_state;
+
+            cpu.set_general_registers(initial_state.r);
+            cpu.set_banked_registers_fiq(initial_state.r_fiq);
+            cpu.set_banked_registers_svc(initial_state.r_svc);
+            cpu.set_banked_registers_abt(initial_state.r_abt);
+            cpu.set_banked_registers_irq(initial_state.r_irq);
+            cpu.set_banked_registers_und(initial_state.r_und);
+            cpu.set_cpsr(ProgramStatusRegister::from_bits(initial_state.cpsr));
+            cpu.set_spsrs(initial_state.spsr.map(|x| ProgramStatusRegister::from_bits(x)));
+            cpu.set_pipeline(initial_state.pipeline);
+
+            cpu.cycle();
+
+            assert_eq!(cpu.general_registers(), &final_state.r);
+            assert_eq!(cpu.banked_registers_fiq(), &final_state.r_fiq);
+            assert_eq!(cpu.banked_registers_svc(), &final_state.r_svc);
+            assert_eq!(cpu.banked_registers_abt(), &final_state.r_abt);
+            assert_eq!(cpu.banked_registers_irq(), &final_state.r_irq);
+            assert_eq!(cpu.banked_registers_und(), &final_state.r_und);
+            assert_eq!(
+                cpu.spsrs().map(|x| x.into_bits()),
+                final_state.spsr.map(|x| ProgramStatusRegister::from_bits(x).into_bits())
+            );
+
+            let expected = ProgramStatusRegister::from_bits(final_state.cpsr);
+
+            // The booth multiplication sets the carry. data sheet says its set to a meaningless value. Will ignore result
+            let is_mutliply = ["MUL", "MLA", "MULL", "MLAL"]
+                .iter()
+                .any(|s| cpu.dissassembled_instruction().contains(s));
+
+            let actual = cpu.cpsr_mut();
+            if is_mutliply {
+                actual.set_carry(expected.carry());
+            }
+            assert_eq!(expected.into_bits(), actual.into_bits());
+
+            assert_eq!(cpu.pipeline(), &final_state.pipeline);
+        }
+
+        Ok(())
+    }
+
     #[test]
     fn single_step_tests() {
-        // Skip Coprocessor instructions
-        let skip = ["arm_cdp.json", "arm_mcr_mrc.json", "arm_stc_ldc.json"];
-        let mut cpu = Arm7tdmiCpu::new(TestBus::default(), false, true);
         let directory = fs::read_dir("../../external/arm7tdmi/v1").expect("Unable to access directory");
+        let file_paths: Vec<PathBuf> = directory.filter_map(|entry| entry.ok()).map(|entry| entry.path()).collect();
 
-        //TODO: Look into running tests in each file in parrallel
-        for file in directory {
-            let file = file.unwrap().path();
-            if file.extension().unwrap().to_str().unwrap() != "json" {
-                continue;
-            }
-
-            if skip.contains(&file.file_name().unwrap().to_str().unwrap()) {
-                continue;
-            }
-
-            let test_json = fs::read_to_string(file).expect("unable to read file");
-            let tests: Vec<Test> = serde_json::from_str(&test_json).unwrap();
-            for test in tests {
-                let test_bus = TestBus::new(test.base_addr[0], test.opcode, test.transactions.clone());
-                cpu.set_bus(test_bus);
-
-                let initial_state = test.initial_state;
-                let final_state = test.final_state;
-
-                cpu.set_general_registers(initial_state.r);
-                cpu.set_banked_registers_fiq(initial_state.r_fiq);
-                cpu.set_banked_registers_svc(initial_state.r_svc);
-                cpu.set_banked_registers_abt(initial_state.r_abt);
-                cpu.set_banked_registers_irq(initial_state.r_irq);
-                cpu.set_banked_registers_und(initial_state.r_und);
-                cpu.set_cpsr(ProgramStatusRegister::from_bits(initial_state.cpsr));
-                cpu.set_spsrs(initial_state.spsr.map(|x| ProgramStatusRegister::from_bits(x)));
-                cpu.set_pipeline(initial_state.pipeline);
-
-                cpu.cycle();
-
-                assert_eq!(cpu.general_registers(), &final_state.r);
-                assert_eq!(cpu.banked_registers_fiq(), &final_state.r_fiq);
-                assert_eq!(cpu.banked_registers_svc(), &final_state.r_svc);
-                assert_eq!(cpu.banked_registers_abt(), &final_state.r_abt);
-                assert_eq!(cpu.banked_registers_irq(), &final_state.r_irq);
-                assert_eq!(cpu.banked_registers_und(), &final_state.r_und);
-                assert_eq!(
-                    cpu.spsrs().map(|x| x.into_bits()),
-                    final_state.spsr.map(|x| ProgramStatusRegister::from_bits(x).into_bits())
-                );
-
-                let expected = ProgramStatusRegister::from_bits(final_state.cpsr);
-
-                // the booth multiplication sets the carry. data sheet says its set to a meaningless value. Will ignore result
-                let is_mutliply = ["MUL", "MLA", "MULL", "MLAL"]
-                    .iter()
-                    .any(|s| cpu.dissassembled_instruction().contains(s));
-
-                let actual = cpu.cpsr_mut();
-                if is_mutliply {
-                    actual.set_carry(expected.carry());
-                }
-                assert_eq!(expected.into_bits(), actual.into_bits());
-
-                assert_eq!(cpu.pipeline(), &final_state.pipeline);
-            }
-        }
+        // Process files in parallel
+        file_paths
+            .par_iter()
+            .try_for_each(|path| {
+                run_test_file(path.clone()).map_err(|e| {
+                    eprintln!("Test failed in file {:?}: {}", path, e);
+                    e
+                })
+            })
+            .expect("Test failures occurred");
     }
 }
