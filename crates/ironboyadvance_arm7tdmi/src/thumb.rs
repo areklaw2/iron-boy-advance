@@ -56,6 +56,7 @@ impl fmt::Display for ThumbInstruction {
 }
 
 impl Instruction for ThumbInstruction {
+    #[inline]
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         match self.kind {
             MoveShiftedRegister => disassemble_move_shifted_register(self),
@@ -81,6 +82,7 @@ impl Instruction for ThumbInstruction {
         }
     }
 
+    #[inline]
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         match self.kind {
             MoveShiftedRegister => execute_move_shifted_register(cpu, self),
@@ -108,6 +110,7 @@ impl Instruction for ThumbInstruction {
 }
 
 impl ThumbInstruction {
+    #[inline]
     pub fn new(kind: ThumbInstructionKind, instruction: u16, executed_pc: u32) -> ThumbInstruction {
         ThumbInstruction {
             kind,
@@ -116,6 +119,7 @@ impl ThumbInstruction {
         }
     }
 
+    #[inline]
     pub fn opcode(&self) -> u16 {
         match self.kind {
             MoveShiftedRegister | MoveCompareAddSubtractImmediate => self.value.bits(11..=12),
@@ -126,6 +130,7 @@ impl ThumbInstruction {
         }
     }
 
+    #[inline]
     pub fn offset(&self) -> u16 {
         match self.kind {
             MoveShiftedRegister | LoadStoreImmediateOffset | LoadStoreHalfword => self.value.bits(6..=10),
@@ -142,18 +147,22 @@ impl ThumbInstruction {
         }
     }
 
+    #[inline]
     pub fn is_immediate(&self) -> bool {
         self.value.bit(10)
     }
 
+    #[inline]
     pub fn rn(&self) -> LoRegister {
         self.value.bits(6..=8).into()
     }
 
+    #[inline]
     pub fn rs(&self) -> LoRegister {
         self.value.bits(3..=5).into()
     }
 
+    #[inline]
     pub fn rd(&self) -> LoRegister {
         match self.kind {
             MoveShiftedRegister
@@ -171,6 +180,7 @@ impl ThumbInstruction {
         }
     }
 
+    #[inline]
     pub fn rb(&self) -> LoRegister {
         match self.kind {
             LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword | LoadStoreImmediateOffset | LoadStoreHalfword => {
@@ -181,30 +191,37 @@ impl ThumbInstruction {
         }
     }
 
+    #[inline]
     pub fn ro(&self) -> LoRegister {
         self.value.bits(6..=8).into()
     }
 
+    #[inline]
     pub fn hs(&self) -> HiRegister {
         self.value.bits(3..=5).into()
     }
 
+    #[inline]
     pub fn hd(&self) -> HiRegister {
         self.value.bits(0..=2).into()
     }
 
+    #[inline]
     pub fn h1(&self) -> bool {
         self.value.bit(7)
     }
 
+    #[inline]
     pub fn h2(&self) -> bool {
         self.value.bit(6)
     }
 
+    #[inline]
     pub fn load(&self) -> bool {
         self.value.bit(11)
     }
 
+    #[inline]
     pub fn byte(&self) -> bool {
         match self.kind {
             LoadStoreRegisterOffset => self.value.bit(10),
@@ -213,10 +230,12 @@ impl ThumbInstruction {
         }
     }
 
+    #[inline]
     pub fn halfword(&self) -> bool {
         self.value.bit(11)
     }
 
+    #[inline]
     pub fn signed(&self) -> bool {
         match self.kind {
             LoadStoreSignExtendedByteHalfword => self.value.bit(10),
@@ -225,22 +244,27 @@ impl ThumbInstruction {
         }
     }
 
+    #[inline]
     pub fn sp(&self) -> bool {
         self.value.bit(11)
     }
 
+    #[inline]
     pub fn store_lr_load_pc(&self) -> bool {
         self.value.bit(8)
     }
 
+    #[inline]
     pub fn register_list(&self) -> Vec<usize> {
         (0..=7).filter(|&i| self.value.bit(i)).collect()
     }
 
+    #[inline]
     pub fn cond(&self) -> Condition {
         (self.value.bits(8..=11) as u32).into()
     }
 
+    #[inline]
     pub fn high(&self) -> bool {
         self.value.bit(11)
     }
