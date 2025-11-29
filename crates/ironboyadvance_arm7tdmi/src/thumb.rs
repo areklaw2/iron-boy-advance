@@ -182,10 +182,7 @@ impl ThumbInstruction {
     }
 
     pub fn ro(&self) -> LoRegister {
-        match self.kind {
-            LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword => self.value.bits(6..=8).into(),
-            _ => unimplemented!(),
-        }
+        self.value.bits(6..=8).into()
     }
 
     pub fn hs(&self) -> HiRegister {

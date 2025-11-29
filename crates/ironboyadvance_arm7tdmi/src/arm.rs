@@ -161,10 +161,7 @@ impl ArmInstruction {
     }
 
     pub fn sets_flags(&self) -> bool {
-        match self.kind {
-            DataProcessing | Multiply | MultiplyLong => self.value.bit(20),
-            _ => unimplemented!(),
-        }
+        self.value.bit(20)
     }
 
     pub fn shift_by(&self) -> ShiftBy {
@@ -207,10 +204,7 @@ impl ArmInstruction {
     }
 
     pub fn accumulate(&self) -> bool {
-        match self.kind {
-            Multiply | MultiplyLong => self.value.bit(21),
-            _ => unimplemented!(),
-        }
+        self.value.bit(21)
     }
 
     pub fn unsigned(&self) -> bool {
@@ -218,38 +212,23 @@ impl ArmInstruction {
     }
 
     pub fn pre_index(&self) -> bool {
-        match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.value.bit(24),
-            _ => unimplemented!(),
-        }
+        self.value.bit(24)
     }
 
     pub fn add(&self) -> bool {
-        match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.value.bit(23),
-            _ => unimplemented!(),
-        }
+        self.value.bit(23)
     }
 
     pub fn byte(&self) -> bool {
-        match self.kind {
-            SingleDataTransfer | SingleDataSwap => self.value.bit(22),
-            _ => unimplemented!(),
-        }
+        self.value.bit(22)
     }
 
     pub fn write_back(&self) -> bool {
-        match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.value.bit(21),
-            _ => unimplemented!(),
-        }
+        self.value.bit(21)
     }
 
     pub fn load(&self) -> bool {
-        match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.value.bit(20),
-            _ => unimplemented!(),
-        }
+        self.value.bit(20)
     }
 
     pub fn signed(&self) -> bool {
