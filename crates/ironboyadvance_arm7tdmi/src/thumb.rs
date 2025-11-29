@@ -1,7 +1,7 @@
 use ThumbInstructionKind::*;
-use bitvec::{field::BitField, order::Lsb0, vec::BitVec, view::BitView};
 use disassembler::*;
 use execute::*;
+use ironboyadvance_utils::bit::BitOps;
 use std::fmt;
 
 use crate::{
@@ -41,7 +41,7 @@ pub enum ThumbInstructionKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ThumbInstruction {
     kind: ThumbInstructionKind,
-    bits: BitVec<u16>,
+    value: u16,
     executed_pc: u32,
 }
 
@@ -50,11 +50,7 @@ impl fmt::Display for ThumbInstruction {
         write!(
             f,
             "ThumbInstruction: kind: {:?}, bits: {} -> (0x{:04X}), executed_pc:{} -> (0x{:08X})",
-            self.kind,
-            self.bits.load::<u16>(),
-            self.bits.load::<u16>(),
-            self.executed_pc,
-            self.executed_pc
+            self.kind, self.value, self.value, self.executed_pc, self.executed_pc
         )
     }
 }
@@ -115,52 +111,47 @@ impl ThumbInstruction {
     pub fn new(kind: ThumbInstructionKind, instruction: u16, executed_pc: u32) -> ThumbInstruction {
         ThumbInstruction {
             kind,
-            bits: instruction.view_bits::<Lsb0>().to_bitvec(),
+            value: instruction,
             executed_pc,
         }
     }
 
     pub fn opcode(&self) -> u16 {
         match self.kind {
-            MoveShiftedRegister | MoveCompareAddSubtractImmediate => self.bits[11..=12].load(),
-            AddSubtract => self.bits[9] as u16,
-            AluOperations => self.bits[6..=9].load(),
-            HiRegisterOperationsBranchExchange => self.bits[8..=9].load(),
+            MoveShiftedRegister | MoveCompareAddSubtractImmediate => self.value.bits(11..=12),
+            AddSubtract => self.value.bit(9) as u16,
+            AluOperations => self.value.bits(6..=9),
+            HiRegisterOperationsBranchExchange => self.value.bits(8..=9),
             _ => unimplemented!(),
         }
     }
 
     pub fn offset(&self) -> u16 {
         match self.kind {
-            MoveShiftedRegister | LoadStoreImmediateOffset | LoadStoreHalfword => self.bits[6..=10].load(),
-            AddSubtract => self.bits[6..=8].load(),
+            MoveShiftedRegister | LoadStoreImmediateOffset | LoadStoreHalfword => self.value.bits(6..=10),
+            AddSubtract => self.value.bits(6..=8),
             MoveCompareAddSubtractImmediate
             | PcRelativeLoad
             | SpRelativeLoadStore
             | LoadAddress
             | ConditionalBranch
-            | SoftwareInterrupt => self.bits[0..=7].load(),
-            AddOffsetToSp => self.bits[0..=6].load(),
-            UnconditionalBranch | LongBranchWithLink => self.bits[0..=10].load(),
+            | SoftwareInterrupt => self.value.bits(0..=7),
+            AddOffsetToSp => self.value.bits(0..=6),
+            UnconditionalBranch | LongBranchWithLink => self.value.bits(0..=10),
             _ => unimplemented!(),
         }
     }
 
     pub fn is_immediate(&self) -> bool {
-        self.bits[10]
+        self.value.bit(10)
     }
 
     pub fn rn(&self) -> LoRegister {
-        self.bits[6..=8].load::<u16>().into()
+        self.value.bits(6..=8).into()
     }
 
     pub fn rs(&self) -> LoRegister {
-        match self.kind {
-            MoveShiftedRegister | AddSubtract | AluOperations | HiRegisterOperationsBranchExchange => {
-                self.bits[3..=5].load::<u16>().into()
-            }
-            _ => unimplemented!(),
-        }
+        self.value.bits(3..=5).into()
     }
 
     pub fn rd(&self) -> LoRegister {
@@ -172,9 +163,9 @@ impl ThumbInstruction {
             | LoadStoreRegisterOffset
             | LoadStoreSignExtendedByteHalfword
             | LoadStoreImmediateOffset
-            | LoadStoreHalfword => self.bits[0..=2].load::<u16>().into(),
+            | LoadStoreHalfword => self.value.bits(0..=2).into(),
             MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore | LoadAddress => {
-                self.bits[8..=10].load::<u16>().into()
+                self.value.bits(8..=10).into()
             }
             _ => unimplemented!(),
         }
@@ -183,90 +174,77 @@ impl ThumbInstruction {
     pub fn rb(&self) -> LoRegister {
         match self.kind {
             LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword | LoadStoreImmediateOffset | LoadStoreHalfword => {
-                self.bits[3..=5].load::<u16>().into()
+                self.value.bits(3..=5).into()
             }
-            MultipleLoadStore => self.bits[8..=10].load::<u16>().into(),
+            MultipleLoadStore => self.value.bits(8..=10).into(),
             _ => unimplemented!(),
         }
     }
 
     pub fn ro(&self) -> LoRegister {
         match self.kind {
-            LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword => self.bits[6..=8].load::<u16>().into(),
+            LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword => self.value.bits(6..=8).into(),
             _ => unimplemented!(),
         }
     }
 
     pub fn hs(&self) -> HiRegister {
-        match self.kind {
-            HiRegisterOperationsBranchExchange => self.bits[3..=5].load::<u16>().into(),
-            _ => unimplemented!(),
-        }
+        self.value.bits(3..=5).into()
     }
 
     pub fn hd(&self) -> HiRegister {
-        match self.kind {
-            HiRegisterOperationsBranchExchange => self.bits[0..=2].load::<u16>().into(),
-            _ => unimplemented!(),
-        }
+        self.value.bits(0..=2).into()
     }
 
     pub fn h1(&self) -> bool {
-        self.bits[7]
+        self.value.bit(7)
     }
 
     pub fn h2(&self) -> bool {
-        self.bits[6]
+        self.value.bit(6)
     }
 
     pub fn load(&self) -> bool {
-        self.bits[11]
+        self.value.bit(11)
     }
 
     pub fn byte(&self) -> bool {
         match self.kind {
-            LoadStoreRegisterOffset => self.bits[10],
-            LoadStoreImmediateOffset => self.bits[12],
+            LoadStoreRegisterOffset => self.value.bit(10),
+            LoadStoreImmediateOffset => self.value.bit(12),
             _ => unimplemented!(),
         }
     }
 
     pub fn halfword(&self) -> bool {
-        self.bits[11]
+        self.value.bit(11)
     }
 
     pub fn signed(&self) -> bool {
         match self.kind {
-            LoadStoreSignExtendedByteHalfword => self.bits[10],
-            AddOffsetToSp => self.bits[7],
+            LoadStoreSignExtendedByteHalfword => self.value.bit(10),
+            AddOffsetToSp => self.value.bit(7),
             _ => unimplemented!(),
         }
     }
 
     pub fn sp(&self) -> bool {
-        self.bits[11]
+        self.value.bit(11)
     }
 
     pub fn store_lr_load_pc(&self) -> bool {
-        self.bits[8]
+        self.value.bit(8)
     }
 
     pub fn register_list(&self) -> Vec<usize> {
-        self.bits[0..=7]
-            .iter()
-            .enumerate()
-            .filter_map(|(i, b)| match b.as_ref() {
-                true => Some(i),
-                false => None,
-            })
-            .collect()
+        (0..=7).filter(|&i| self.value.bit(i)).collect()
     }
 
     pub fn cond(&self) -> Condition {
-        self.bits[8..=11].load::<u32>().into()
+        (self.value.bits(8..=11) as u32).into()
     }
 
     pub fn high(&self) -> bool {
-        self.bits[11]
+        self.value.bit(11)
     }
 }

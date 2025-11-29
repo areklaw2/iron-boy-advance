@@ -1,4 +1,4 @@
-use bitvec::field::BitField;
+use ironboyadvance_utils::bit::BitOps;
 
 use crate::{CpuMode, DataProcessingOpcode, Register, barrel_shifter::ShiftBy, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
@@ -67,7 +67,7 @@ pub fn disassemble_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, in
         },
     };
 
-    match instruction.bits[16..=21].load::<u8>() == 0xF {
+    match instruction.value.bits(16..=21) as u8 == 0xF {
         true => {
             let rd = instruction.rd() as usize;
             format!("MRS{} {},{}", cond, rd, psr)

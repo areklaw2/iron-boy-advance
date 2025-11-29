@@ -1,8 +1,8 @@
 use ArmInstructionKind::*;
-use bitvec::{field::BitField, order::Lsb0, vec::BitVec, view::BitView};
 use core::fmt;
 use disassembler::*;
 use execute::*;
+use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
     Condition, CpuAction, DataProcessingOpcode,
@@ -39,7 +39,7 @@ pub enum ArmInstructionKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArmInstruction {
     kind: ArmInstructionKind,
-    bits: BitVec<u32>,
+    value: u32,
     executed_pc: u32,
 }
 
@@ -48,11 +48,7 @@ impl fmt::Display for ArmInstruction {
         write!(
             f,
             "ArmInstruction: kind: {:?}, bits: {} -> (0x{:08X}), executed_pc:{} -> (0x{:08X})",
-            self.kind,
-            self.bits.load::<u32>(),
-            self.bits.load::<u32>(),
-            self.executed_pc,
-            self.executed_pc
+            self.kind, self.value, self.value, self.executed_pc, self.executed_pc
         )
     }
 }
@@ -97,22 +93,22 @@ impl ArmInstruction {
     pub fn new(kind: ArmInstructionKind, instruction: u32, executed_pc: u32) -> ArmInstruction {
         ArmInstruction {
             kind,
-            bits: instruction.view_bits::<Lsb0>().to_bitvec(),
+            value: instruction,
             executed_pc,
         }
     }
 
     pub fn cond(&self) -> Condition {
-        self.bits[28..=31].load::<u32>().into()
+        self.value.bits(28..=31).into()
     }
 
     pub fn rn(&self) -> Register {
         match self.kind {
-            BranchAndExchange => self.bits[0..=3].load::<u32>().into(),
+            BranchAndExchange => self.value.bits(0..=3).into(),
             DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer | SingleDataSwap => {
-                self.bits[16..=19].load::<u32>().into()
+                self.value.bits(16..=19).into()
             }
-            Multiply => self.bits[12..=15].load::<u32>().into(),
+            Multiply => self.value.bits(12..=15).into(),
             _ => unimplemented!(),
         }
     }
@@ -120,184 +116,159 @@ impl ArmInstruction {
     pub fn rd(&self) -> Register {
         match self.kind {
             PsrTransfer | DataProcessing | SingleDataTransfer | HalfwordAndSignedDataTransfer | SingleDataSwap => {
-                self.bits[12..=15].load::<u32>().into()
+                self.value.bits(12..=15).into()
             }
-            Multiply => self.bits[16..=19].load::<u32>().into(),
+            Multiply => self.value.bits(16..=19).into(),
             _ => unimplemented!(),
         }
     }
 
     pub fn rd_hi(&self) -> Register {
-        self.bits[16..=19].load::<u32>().into()
+        self.value.bits(16..=19).into()
     }
 
     pub fn rd_lo(&self) -> Register {
-        self.bits[12..=15].load::<u32>().into()
+        self.value.bits(12..=15).into()
     }
 
     pub fn rm(&self) -> Register {
-        match self.kind {
-            PsrTransfer
-            | DataProcessing
-            | Multiply
-            | MultiplyLong
-            | SingleDataTransfer
-            | HalfwordAndSignedDataTransfer
-            | SingleDataSwap => self.bits[0..=3].load::<u32>().into(),
-            _ => unimplemented!(),
-        }
+        self.value.bits(0..=3).into()
     }
 
     pub fn rs(&self) -> Register {
-        match self.kind {
-            DataProcessing | Multiply | MultiplyLong | SingleDataTransfer => self.bits[8..=11].load::<u32>().into(),
-            _ => unimplemented!(),
-        }
+        self.value.bits(8..=11).into()
     }
 
     pub fn link(&self) -> bool {
-        self.bits[24]
+        self.value.bit(24)
     }
 
     pub fn offset(&self) -> u32 {
-        match self.kind {
-            BranchAndBranchWithLink => self.bits[0..=23].load(),
-            _ => unimplemented!(),
-        }
+        self.value.bits(0..=23)
     }
 
     pub fn is_immediate(&self) -> bool {
         match self.kind {
-            PsrTransfer | DataProcessing => self.bits[25],
-            SingleDataTransfer => !self.bits[25],
-            HalfwordAndSignedDataTransfer => self.bits[22],
+            PsrTransfer | DataProcessing => self.value.bit(25),
+            SingleDataTransfer => !self.value.bit(25),
+            HalfwordAndSignedDataTransfer => self.value.bit(22),
             _ => unimplemented!(),
         }
     }
 
     pub fn opcode(&self) -> DataProcessingOpcode {
-        self.bits[21..=24].load::<u32>().into()
+        self.value.bits(21..=24).into()
     }
 
     pub fn sets_flags(&self) -> bool {
         match self.kind {
-            DataProcessing | Multiply | MultiplyLong => self.bits[20],
+            DataProcessing | Multiply | MultiplyLong => self.value.bit(20),
             _ => unimplemented!(),
         }
     }
 
     pub fn shift_by(&self) -> ShiftBy {
-        match self.bits[4] {
+        match self.value.bit(4) {
             true => ShiftBy::Register,
             false => ShiftBy::Immediate,
         }
     }
 
     pub fn shift_amount(&self) -> u32 {
-        self.bits[7..=11].load()
+        self.value.bits(7..=11)
     }
 
     pub fn shift_type(&self) -> ShiftType {
-        self.bits[5..=6].load::<u32>().into()
+        self.value.bits(5..=6).into()
     }
 
     pub fn rotate(&self) -> u32 {
-        match self.kind {
-            PsrTransfer | DataProcessing => self.bits[8..=11].load(),
-            _ => unimplemented!(),
-        }
+        self.value.bits(8..=11)
     }
 
     pub fn immediate(&self) -> u32 {
         match self.kind {
-            PsrTransfer | DataProcessing => self.bits[0..=7].load(),
-            SingleDataTransfer => self.bits[0..=11].load(),
+            PsrTransfer | DataProcessing => self.value.bits(0..=7),
+            SingleDataTransfer => self.value.bits(0..=11),
             _ => unimplemented!(),
         }
     }
 
     pub fn immediate_hi(&self) -> u32 {
-        self.bits[8..=11].load()
+        self.value.bits(8..=11)
     }
 
     pub fn immediate_lo(&self) -> u32 {
-        self.bits[0..=3].load()
+        self.value.bits(0..=3)
     }
 
     pub fn is_spsr(&self) -> bool {
-        self.bits[22]
+        self.value.bit(22)
     }
 
     pub fn accumulate(&self) -> bool {
         match self.kind {
-            Multiply | MultiplyLong => self.bits[21],
+            Multiply | MultiplyLong => self.value.bit(21),
             _ => unimplemented!(),
         }
     }
 
     pub fn unsigned(&self) -> bool {
-        self.bits[22]
+        self.value.bit(22)
     }
 
     pub fn pre_index(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[24],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.value.bit(24),
             _ => unimplemented!(),
         }
     }
 
     pub fn add(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[23],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.value.bit(23),
             _ => unimplemented!(),
         }
     }
 
     pub fn byte(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | SingleDataSwap => self.bits[22],
+            SingleDataTransfer | SingleDataSwap => self.value.bit(22),
             _ => unimplemented!(),
         }
     }
 
     pub fn write_back(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[21],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.value.bit(21),
             _ => unimplemented!(),
         }
     }
 
     pub fn load(&self) -> bool {
         match self.kind {
-            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.bits[20],
+            SingleDataTransfer | HalfwordAndSignedDataTransfer | BlockDataTransfer => self.value.bit(20),
             _ => unimplemented!(),
         }
     }
 
     pub fn signed(&self) -> bool {
-        self.bits[6]
+        self.value.bit(6)
     }
 
     pub fn halfword(&self) -> bool {
-        self.bits[5]
+        self.value.bit(5)
     }
 
     pub fn load_psr_force_user(&self) -> bool {
-        self.bits[22]
+        self.value.bit(22)
     }
 
     pub fn register_list(&self) -> Vec<usize> {
-        self.bits[0..=15]
-            .iter()
-            .enumerate()
-            .filter_map(|(i, b)| match b.as_ref() {
-                true => Some(i),
-                false => None,
-            })
-            .collect()
+        (0..=15).filter(|&i| self.value.bit(i)).collect()
     }
 
     pub fn comment(&self) -> u32 {
-        self.bits[0..=23].load()
+        self.value.bits(0..=23)
     }
 }

@@ -1,4 +1,4 @@
-use bitvec::field::BitField;
+use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
     CpuAction, CpuMode, CpuState, DataProcessingOpcode, Exception,
@@ -113,7 +113,7 @@ pub fn execute_data_processing<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, ins
 
 pub fn execute_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instruction: &ArmInstruction) -> CpuAction {
     let is_spsr = instruction.is_spsr();
-    match instruction.bits[16..=21].load::<u8>() == 0xF {
+    match instruction.value.bits(16..=21) as u8 == 0xF {
         true => {
             let rd = instruction.rd() as usize;
             let psr = match is_spsr {
@@ -124,16 +124,16 @@ pub fn execute_psr_transfer<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, instru
         }
         false => {
             let mut mask = 0u32;
-            if instruction.bits[19] {
+            if instruction.value.bit(19) {
                 mask |= 0xFF000000;
             }
-            if instruction.bits[18] {
+            if instruction.value.bit(18) {
                 mask |= 0xFF0000;
             }
-            if instruction.bits[17] {
+            if instruction.value.bit(17) {
                 mask |= 0xFF00;
             }
-            if instruction.bits[16] {
+            if instruction.value.bit(16) {
                 mask |= 0xFF;
             }
 
