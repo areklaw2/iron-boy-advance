@@ -2,7 +2,6 @@ use std::{cell::RefCell, rc::Rc};
 
 use getset::{Getters, MutGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
-use ironboyadvance_utils::bit::BitOps;
 use tracing::debug;
 
 use crate::{
@@ -10,15 +9,6 @@ use crate::{
     scheduler::Scheduler,
     system_control::SystemController,
 };
-
-const IE: u32 = 0x04000200;
-const IF: u32 = 0x04000202;
-pub const WAITCNT: u32 = 0x04000204;
-const IME: u32 = 0x04000208;
-pub const POSTFLG: u32 = 0x04000300;
-pub const HALTCNT: u32 = 0x04000301;
-pub const PURPOSE_UNKNOWN: u32 = 0x04000410;
-pub const INTERNAL_MEMORY_CONTROL: u32 = 0x04000800;
 
 #[derive(Getters, MutGetters, Setters)]
 pub struct IoRegisters {
@@ -48,26 +38,12 @@ impl IoRegisters {
 impl SystemMemoryAccess for IoRegisters {
     fn read_8(&self, address: u32) -> u8 {
         match address {
-            // IE
-            0x04000200 => self.interrupt_controller.read_8(address),
-            0x04000201 => self.interrupt_controller.read_8(address),
-            // IF
-            0x04000202 => self.interrupt_controller.read_8(address),
-            0x04000203 => self.interrupt_controller.read_8(address),
-            // WAITCNT
-            0x04000204 => self.system_controller.read_8(address),
-            0x04000205 => self.system_controller.read_8(address),
-            // IME
-            0x04000208 => self.interrupt_controller.read_8(address),
-            // POSTFLG
-            0x04000300 => self.system_controller.read_8(address),
-            // INTERNAL MEMORY CONTROL
-            0x04000800 => self.system_controller.read_8(address),
-            0x04000801 => self.system_controller.read_8(address),
-            0x04000802 => self.system_controller.read_8(address),
-            0x04000803 => self.system_controller.read_8(address),
+            // Interrupt Control
+            0x04000200..=0x04000203 | 0x04000208..=0x04000209 => self.interrupt_controller.read_8(address),
+            // System Control
+            0x04000204..=0x04000205 | 0x04000300 | 0x04000800..=0x04000803 => self.system_controller.read_8(address),
             _ => {
-                debug!("Read byte not in IoRegisters implemented address: {:08X}", address);
+                debug!("Read byte not implemented for I/O register: {:#010X}", address);
                 0
             }
         }
@@ -75,26 +51,14 @@ impl SystemMemoryAccess for IoRegisters {
 
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
-            // IE
-            0x04000200 => self.interrupt_controller.write_8(address, value),
-            0x04000201 => self.interrupt_controller.write_8(address, value),
-            // IF
-            0x04000202 => self.interrupt_controller.write_8(address, value),
-            0x04000203 => self.interrupt_controller.write_8(address, value),
-            // WAITCNT
-            0x04000204 => self.system_controller.write_8(address, value),
-            0x04000205 => self.system_controller.write_8(address, value),
-            // IME
-            0x04000208 => self.interrupt_controller.write_8(address, value),
-            // POSTFLG
-            0x04000300 => self.system_controller.write_8(address, value),
-            // INTERNAL MEMORY CONTROL
-            0x04000800 => self.system_controller.write_8(address, value),
-            0x04000801 => self.system_controller.write_8(address, value),
-            0x04000802 => self.system_controller.write_8(address, value),
-            0x04000803 => self.system_controller.write_8(address, value),
+            // Interrupt Control
+            0x04000200..=0x04000203 | 0x04000208..=0x04000209 => self.interrupt_controller.write_8(address, value),
+            // System Control
+            0x04000204..=0x04000205 | 0x04000300..=0x04000301 | 0x04000800..=0x04000803 => {
+                self.system_controller.write_8(address, value)
+            }
             _ => debug!(
-                "Write byte not implemented IoRegisters address: {:08X}, value: {:08X}",
+                "Write byte not implemented for I/O register: {:#010X}, value: {:#04X}",
                 address, value
             ),
         }

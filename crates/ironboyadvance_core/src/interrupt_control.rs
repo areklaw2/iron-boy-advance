@@ -3,6 +3,8 @@ use std::{cell::RefCell, rc::Rc};
 use bitfields::bitfield;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
+use crate::system_bus::{read_reg_16_byte, write_reg_16_byte};
+
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Interrupt {
@@ -48,47 +50,34 @@ impl InterruptController {
 impl SystemMemoryAccess for InterruptController {
     fn read_8(&self, address: u32) -> u8 {
         match address {
-            //IE
-            0x04000200 => (self.interrupt_enable.into_bits() & 0xFF) as u8,
-            0x04000201 => (self.interrupt_enable.into_bits() >> 8) as u8,
-            //IF
-            0x04000202 => (self.interrupt_flags.borrow().into_bits() & 0xFF) as u8,
-            0x04000203 => (self.interrupt_flags.borrow().into_bits() >> 8) as u8,
+            // IE
+            0x04000200..=0x04000201 => read_reg_16_byte(self.interrupt_enable.into_bits(), address),
+            // IF
+            0x04000202..=0x04000203 => read_reg_16_byte(self.interrupt_flags.borrow().into_bits(), address),
             // IME
-            0x04000208 => self.interrupt_master_enable as u8,
-            _ => {
-                panic!("Read byte not in IoRegisters implemented address: {:08X}", address)
-            }
+            0x04000208..=0x04000209 => read_reg_16_byte(self.interrupt_master_enable as u16, address),
+            _ => panic!("Invalid byte read for InterruptController: {:#010X}", address),
         }
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
-            //IE
-            0x04000200 => {
-                let current = self.interrupt_enable.into_bits();
-                self.interrupt_enable.set_bits((current & 0xFF00) | value as u16);
+            // IE
+            0x04000200..=0x04000201 => {
+                let new_value = write_reg_16_byte(self.interrupt_enable.into_bits(), address, value);
+                self.interrupt_enable.set_bits(new_value);
             }
-            0x04000201 => {
-                let current = self.interrupt_enable.into_bits();
-                self.interrupt_enable.set_bits((current & 0x00FF) | ((value as u16) << 8));
-            }
-            //IF
-            0x04000202 => {
-                let current = self.interrupt_flags.borrow().into_bits();
-                self.interrupt_flags.borrow_mut().set_bits((current & 0xFF00) | value as u16);
-            }
-            0x04000203 => {
-                let current = self.interrupt_flags.borrow().into_bits();
-                self.interrupt_flags
-                    .borrow_mut()
-                    .set_bits((current & 0x00FF) | ((value as u16) << 8));
+            // IF
+            0x04000202..=0x04000203 => {
+                let new_value = write_reg_16_byte(self.interrupt_flags.borrow().into_bits(), address, value);
+                self.interrupt_flags.borrow_mut().set_bits(new_value);
             }
             // IME
-            0x04000208 => self.interrupt_master_enable = value & 0x1 != 0,
-            _ => {
-                panic!("Write byte not in IoRegisters implemented address: {:08X}", address)
+            0x04000208..=0x04000209 => {
+                let new_value = write_reg_16_byte(self.interrupt_master_enable as u16, address, value);
+                self.interrupt_master_enable = new_value & 0x1 != 0;
             }
+            _ => panic!("Invalid byte write for InterruptController: {:#010X}", address),
         }
     }
 }

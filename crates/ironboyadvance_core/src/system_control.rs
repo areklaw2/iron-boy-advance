@@ -3,9 +3,9 @@ use getset::{CopyGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess};
 use tracing::debug;
 
-use crate::{
-    io_registers::{HALTCNT, INTERNAL_MEMORY_CONTROL, POSTFLG, PURPOSE_UNKNOWN, WAITCNT},
-    system_bus::{PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE},
+use crate::system_bus::{
+    PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE, read_reg_16_byte,
+    read_reg_32_byte, write_reg_16_byte, write_u32_byte,
 };
 
 const INDEX_WRAM_BOARD: usize = (WRAM_BOARD_BASE >> 24) as usize;
@@ -122,26 +122,39 @@ impl ClockCycleLuts {
 
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct WaitStateControl {
+struct WaitStateControl {
     #[bits(2)]
     sram_wait_control: u8,
     #[bits(2)]
     ws0_first_access: u8,
-    #[bits(1)]
-    ws0_second_access: u8,
+    ws0_second_access: bool,
     #[bits(2)]
     ws1_first_access: u8,
-    #[bits(1)]
-    ws1_second_access: u8,
+    ws1_second_access: bool,
     #[bits(2)]
     ws2_first_access: u8,
-    #[bits(1)]
-    ws2_second_access: u8,
+    ws2_second_access: bool,
     #[bits(2)]
     phi_terminal_output: u8,
     _reserved: bool,
     game_pak_prefetch_buffer_enable: bool,
     game_pak_type_flag: bool,
+}
+
+#[bitfield(u32)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+struct InternalMemoryControl {
+    disable_32k_256k_wram: bool,
+    #[bits(3)]
+    unknown_1: u8,
+    _reserved_1: bool,
+    enable_256_wram: bool,
+    #[bits(18)]
+    _reserved_2: u32,
+    #[bits(4)]
+    wait_control_wram: u8,
+    #[bits(4)]
+    unknown_2: u8,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -158,8 +171,7 @@ pub struct SystemController {
     post_flag: bool,
     #[getset(get_copy = "pub", set = "pub")]
     halt_mode: HaltMode,
-    purpose_unknown: u8,
-    internal_memory_control: u16,
+    internal_memory_control: InternalMemoryControl,
 }
 
 impl SystemController {
@@ -169,8 +181,7 @@ impl SystemController {
             waitstate_control: WaitStateControl::from_bits(0),
             post_flag: false,
             halt_mode: HaltMode::Halted,
-            purpose_unknown: 0,
-            internal_memory_control: 0,
+            internal_memory_control: InternalMemoryControl::from_bits(0x0D000020), // Initialized by hardware
         }
     }
 
@@ -197,34 +208,37 @@ impl SystemController {
 
 impl SystemMemoryAccess for SystemController {
     fn read_8(&self, address: u32) -> u8 {
-        debug!("Read byte not implemented in SystemController address: {:08X}", address);
-        0
-    }
-
-    fn read_16(&self, address: u32) -> u16 {
         match address {
-            WAITCNT => self.waitstate_control.into(),
-            POSTFLG => self.post_flag as u16,
-            INTERNAL_MEMORY_CONTROL => self.internal_memory_control,
-            _ => 0,
+            // WAITCNT
+            0x04000204..=0x04000205 => read_reg_16_byte(self.waitstate_control.into_bits(), address),
+            // POSTFLG
+            0x04000300 => self.post_flag as u8,
+            // INTERNAL MEMORY CONTROL
+            0x04000800..=0x04000803 => read_reg_32_byte(self.internal_memory_control.into_bits(), address),
+            _ => panic!("Invalid byte read for SystemController: {:#010X}", address),
         }
     }
 
-    fn write_8(&mut self, address: u32, _value: u8) {
-        debug!("write byte not implemented in SystemController address: {:08X}", address);
-    }
-
-    fn write_16(&mut self, address: u32, value: u16) {
+    fn write_8(&mut self, address: u32, value: u8) {
         match address {
-            WAITCNT => self.set_waitstate_control(value),
-            POSTFLG => self.post_flag = value & 0x1 != 0,
-            HALTCNT => match value != 0 {
-                true => todo!("Stopped"), //self.halt_mode = HaltMode::Stopped,
+            // WAITCNT
+            0x04000204..=0x04000205 => {
+                let new_value = write_reg_16_byte(self.waitstate_control.into_bits(), address, value);
+                self.set_waitstate_control(new_value);
+            }
+            // POSTFLG
+            0x04000300 => self.post_flag = value & 0x1 != 0,
+            // HALTCNT
+            0x04000301 => match value & 0x80 != 0 {
+                true => todo!("Stopped"),
                 false => self.halt_mode = HaltMode::Halted,
             },
-            PURPOSE_UNKNOWN => self.purpose_unknown = value as u8,
-            INTERNAL_MEMORY_CONTROL => self.internal_memory_control = value,
-            _ => {}
+            // INTERNAL MEMORY CONTROL
+            0x04000800..=0x04000803 => {
+                let new_value = write_u32_byte(self.internal_memory_control.into_bits(), address, value);
+                self.internal_memory_control.set_bits(new_value);
+            }
+            _ => debug!("Invalid byte write in SystemController: {:#010X}", address),
         }
     }
 }
