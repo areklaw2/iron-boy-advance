@@ -181,6 +181,7 @@ impl SystemController {
             waitstate_control: WaitStateControl::from_bits(0),
             post_flag: false,
             halt_mode: HaltMode::Halted,
+            //TODO: add the mirrors
             internal_memory_control: InternalMemoryControl::from_bits(0x0D000020), // Initialized by hardware
         }
     }
