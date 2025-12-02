@@ -2,10 +2,11 @@ use std::{cell::RefCell, rc::Rc};
 
 use getset::{Getters, MutGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_utils::bit::BitOps;
 use tracing::debug;
 
 use crate::{
-    interrupt_control::{Interrupt, InterruptControl},
+    interrupt_control::{Interrupt, InterruptController},
     scheduler::Scheduler,
     system_control::SystemController,
 };
@@ -22,7 +23,7 @@ pub const INTERNAL_MEMORY_CONTROL: u32 = 0x04000800;
 #[derive(Getters, MutGetters, Setters)]
 pub struct IoRegisters {
     scheduler: Rc<RefCell<Scheduler>>,
-    interrupt_control: InterruptControl,
+    interrupt_controller: InterruptController,
     #[getset(get = "pub", get_mut = "pub")]
     system_controller: SystemController,
     data: Vec<u8>,
@@ -33,63 +34,67 @@ impl IoRegisters {
         let interrupt_flags = Rc::new(RefCell::new(Interrupt::from_bits(0)));
         IoRegisters {
             scheduler,
-            interrupt_control: InterruptControl::new(interrupt_flags.clone()),
+            interrupt_controller: InterruptController::new(interrupt_flags.clone()),
             system_controller: SystemController::new(),
             data: vec![0; 0x400],
         }
     }
 
     pub fn interrupt_pending(&self) -> bool {
-        self.interrupt_control.interrupt_pending()
+        self.interrupt_controller.interrupt_pending()
     }
 }
 
-//TODO: go with the byte approach
 impl SystemMemoryAccess for IoRegisters {
     fn read_8(&self, address: u32) -> u8 {
-        let value = self.read_16(address & !0x1);
-        match address & 0x1 != 0 {
-            true => (value >> 8) as u8,
-            false => value as u8,
-        }
-    }
-
-    fn read_16(&self, address: u32) -> u16 {
         match address {
-            IE => self.interrupt_control.interrupt_enable(),
-            IF => self.interrupt_control.interrupt_flags(),
-            WAITCNT => self.system_controller.read_16(address),
-            IME => self.interrupt_control.interrupt_master_enable() as u16,
-            POSTFLG => self.system_controller.read_16(address),
-            INTERNAL_MEMORY_CONTROL => self.system_controller.read_16(address),
+            // IE
+            0x04000200 => self.interrupt_controller.read_8(address),
+            0x04000201 => self.interrupt_controller.read_8(address),
+            // IF
+            0x04000202 => self.interrupt_controller.read_8(address),
+            0x04000203 => self.interrupt_controller.read_8(address),
+            // WAITCNT
+            0x04000204 => self.system_controller.read_8(address),
+            0x04000205 => self.system_controller.read_8(address),
+            // IME
+            0x04000208 => self.interrupt_controller.read_8(address),
+            // POSTFLG
+            0x04000300 => self.system_controller.read_8(address),
+            // INTERNAL MEMORY CONTROL
+            0x04000800 => self.system_controller.read_8(address),
+            0x04000801 => self.system_controller.read_8(address),
+            0x04000802 => self.system_controller.read_8(address),
+            0x04000803 => self.system_controller.read_8(address),
             _ => {
-                debug!("Read halfword not in IoRegisters implemented address: {:08X}", address);
+                debug!("Read byte not in IoRegisters implemented address: {:08X}", address);
                 0
             }
         }
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
-        let current_value = self.read_16(address & !0x1);
-        let new_value = match address & 0x1 != 0 {
-            true => (current_value & 0x00FF) | ((value as u16) << 8),
-            false => (current_value & 0xFF00) | value as u16,
-        };
-        self.write_16(address & !0x1, new_value);
-    }
-
-    fn write_16(&mut self, address: u32, value: u16) {
         match address {
-            IE => self.interrupt_control.set_interrupt_enable(value),
-            IF => self.interrupt_control.set_interrupt_flags(value),
-            WAITCNT => self.system_controller.write_16(address, value),
-            IME => self.interrupt_control.set_interrupt_master_enable(value != 0),
-            POSTFLG => self.system_controller.write_16(address, value),
-            HALTCNT => self.system_controller.write_16(address, value),
-            PURPOSE_UNKNOWN => self.system_controller.write_16(address, value),
-            INTERNAL_MEMORY_CONTROL => self.system_controller.write_16(address, value),
+            // IE
+            0x04000200 => self.interrupt_controller.write_8(address, value),
+            0x04000201 => self.interrupt_controller.write_8(address, value),
+            // IF
+            0x04000202 => self.interrupt_controller.write_8(address, value),
+            0x04000203 => self.interrupt_controller.write_8(address, value),
+            // WAITCNT
+            0x04000204 => self.system_controller.write_8(address, value),
+            0x04000205 => self.system_controller.write_8(address, value),
+            // IME
+            0x04000208 => self.interrupt_controller.write_8(address, value),
+            // POSTFLG
+            0x04000300 => self.system_controller.write_8(address, value),
+            // INTERNAL MEMORY CONTROL
+            0x04000800 => self.system_controller.write_8(address, value),
+            0x04000801 => self.system_controller.write_8(address, value),
+            0x04000802 => self.system_controller.write_8(address, value),
+            0x04000803 => self.system_controller.write_8(address, value),
             _ => debug!(
-                "Write halfword not implemented IoRegisters address: {:08X}, value: {:08X}",
+                "Write byte not implemented IoRegisters address: {:08X}, value: {:08X}",
                 address, value
             ),
         }
