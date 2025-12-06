@@ -65,7 +65,7 @@ impl MemoryInterface for SystemBus {
     }
 
     fn idle_cycle(&mut self) {
-        self.scheduler.borrow_mut().update(1);
+        self.scheduler.borrow_mut().step(1);
     }
 }
 
@@ -124,11 +124,11 @@ impl SystemBus {
         let access = decompose_access_pattern(access_pattern)[0];
         let index = ((address >> 24) & 0xF) as usize;
         let cycles = self.io_registers.system_controller().cycles(index, width, access);
-        self.scheduler.borrow_mut().update(cycles);
+        self.scheduler.borrow_mut().step(cycles);
     }
 
     pub fn interrupt_pending(&self) -> bool {
-        self.io_registers.interrupt_pending()
+        self.io_registers.interrupt_controller().interrupt_pending()
     }
 
     pub fn halt_mode(&self) -> HaltMode {
@@ -136,8 +136,7 @@ impl SystemBus {
     }
 
     pub fn un_halt(&mut self) {
-        //TODO: this needs to check interrupts as well
-        unimplemented!();
+        self.io_registers.system_controller_mut().set_halt_mode(HaltMode::Running);
     }
 }
 

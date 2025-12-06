@@ -5,7 +5,7 @@ use tracing::debug;
 
 use crate::system_bus::{
     PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE, read_reg_16_byte,
-    read_reg_32_byte, write_reg_16_byte, write_u32_byte,
+    write_reg_16_byte,
 };
 
 const INDEX_WRAM_BOARD: usize = (WRAM_BOARD_BASE >> 24) as usize;
@@ -162,6 +162,8 @@ struct InternalMemoryControl {
 pub enum HaltMode {
     Halted,
     Stopped,
+    //TODO: see if i can refactor this out once i have hardware implemented
+    Running,
 }
 
 #[derive(CopyGetters, Setters)]
@@ -171,7 +173,6 @@ pub struct SystemController {
     post_flag: bool,
     #[getset(get_copy = "pub", set = "pub")]
     halt_mode: HaltMode,
-    internal_memory_control: InternalMemoryControl,
 }
 
 impl SystemController {
@@ -180,9 +181,8 @@ impl SystemController {
             cycle_luts: ClockCycleLuts::new(),
             waitstate_control: WaitStateControl::from_bits(0),
             post_flag: false,
-            halt_mode: HaltMode::Halted,
-            //TODO: add the mirrors
-            internal_memory_control: InternalMemoryControl::from_bits(0x0D000020), // Initialized by hardware
+            //TODO: see if i can refactor this out once i have hardware implemented
+            halt_mode: HaltMode::Running,
         }
     }
 
@@ -214,8 +214,6 @@ impl SystemMemoryAccess for SystemController {
             0x04000204..=0x04000205 => read_reg_16_byte(self.waitstate_control.into_bits(), address),
             // POSTFLG
             0x04000300 => self.post_flag as u8,
-            // INTERNAL MEMORY CONTROL
-            0x04000800..=0x04000803 => read_reg_32_byte(self.internal_memory_control.into_bits(), address),
             _ => panic!("Invalid byte read for SystemController: {:#010X}", address),
         }
     }
@@ -234,11 +232,6 @@ impl SystemMemoryAccess for SystemController {
                 true => todo!("Stopped"),
                 false => self.halt_mode = HaltMode::Halted,
             },
-            // INTERNAL MEMORY CONTROL
-            0x04000800..=0x04000803 => {
-                let new_value = write_u32_byte(self.internal_memory_control.into_bits(), address, value);
-                self.internal_memory_control.set_bits(new_value);
-            }
             _ => debug!("Invalid byte write in SystemController: {:#010X}", address),
         }
     }

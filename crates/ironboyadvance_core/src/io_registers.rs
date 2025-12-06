@@ -13,6 +13,7 @@ use crate::{
 #[derive(Getters, MutGetters, Setters)]
 pub struct IoRegisters {
     scheduler: Rc<RefCell<Scheduler>>,
+    #[getset(get = "pub", get_mut = "pub")]
     interrupt_controller: InterruptController,
     #[getset(get = "pub", get_mut = "pub")]
     system_controller: SystemController,
@@ -29,19 +30,15 @@ impl IoRegisters {
             data: vec![0; 0x400],
         }
     }
-
-    pub fn interrupt_pending(&self) -> bool {
-        self.interrupt_controller.interrupt_pending()
-    }
 }
 
 impl SystemMemoryAccess for IoRegisters {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // Interrupt Control
-            0x04000200..=0x04000203 | 0x04000208..=0x04000209 => self.interrupt_controller.read_8(address),
+            0x04000200..=0x04000203 | 0x04000208 => self.interrupt_controller.read_8(address),
             // System Control
-            0x04000204..=0x04000205 | 0x04000300 | 0x04000800..=0x04000803 => self.system_controller.read_8(address),
+            0x04000204..=0x04000205 | 0x04000300 => self.system_controller.read_8(address),
             _ => {
                 debug!("Read byte not implemented for I/O register: {:#010X}", address);
                 0
@@ -52,11 +49,9 @@ impl SystemMemoryAccess for IoRegisters {
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
             // Interrupt Control
-            0x04000200..=0x04000203 | 0x04000208..=0x04000209 => self.interrupt_controller.write_8(address, value),
+            0x04000200..=0x04000203 | 0x04000208 => self.interrupt_controller.write_8(address, value),
             // System Control
-            0x04000204..=0x04000205 | 0x04000300..=0x04000301 | 0x04000800..=0x04000803 => {
-                self.system_controller.write_8(address, value)
-            }
+            0x04000204..=0x04000205 | 0x04000300..=0x04000301 => self.system_controller.write_8(address, value),
             _ => debug!(
                 "Write byte not implemented for I/O register: {:#010X}, value: {:#04X}",
                 address, value

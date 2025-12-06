@@ -43,8 +43,8 @@ impl Cartridge {
         };
 
         let header = Header::load(&buffer[0..228])?;
-        dbg!("Game Tile: {}", header.game_title());
-        dbg!("Game Code: {}", header.game_code());
+        println!("Game Tile: {}", header.game_title());
+        println!("Game Code: {}", header.game_code());
 
         let mut data = vec![0; MAX_CARTRIDGE_BYTES];
         data[..buffer.len()].clone_from_slice(&buffer);
