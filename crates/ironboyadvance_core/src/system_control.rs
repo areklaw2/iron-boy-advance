@@ -141,22 +141,6 @@ struct WaitStateControl {
     game_pak_type_flag: bool,
 }
 
-#[bitfield(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
-struct InternalMemoryControl {
-    disable_32k_256k_wram: bool,
-    #[bits(3)]
-    unknown_1: u8,
-    _reserved_1: bool,
-    enable_256_wram: bool,
-    #[bits(18)]
-    _reserved_2: u32,
-    #[bits(4)]
-    wait_control_wram: u8,
-    #[bits(4)]
-    unknown_2: u8,
-}
-
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[allow(unused)]
 pub enum HaltMode {
@@ -232,7 +216,7 @@ impl SystemMemoryAccess for SystemController {
                 true => todo!("Stopped"),
                 false => self.halt_mode = HaltMode::Halted,
             },
-            _ => debug!("Invalid byte write in SystemController: {:#010X}", address),
+            _ => panic!("Invalid byte write in SystemController: {:#010X}", address),
         }
     }
 }

@@ -128,8 +128,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.dissassembled_instruction = instruction.disassemble(self);
 
                 if self.show_logs {
-                    debug!("{}", instruction);
-                    debug!("{}", self.dissassembled_instruction);
+                    // debug!("{}", instruction);
+                    // debug!("{}", self.dissassembled_instruction);
                 }
 
                 let condition = instruction.cond();
@@ -156,8 +156,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.dissassembled_instruction = instruction.disassemble(self);
 
                 if self.show_logs {
-                    debug!("{}", instruction);
-                    debug!("{}", self.dissassembled_instruction);
+                    // debug!("{}", instruction);
+                    // debug!("{}", self.dissassembled_instruction);
                 }
 
                 match instruction.execute(self) {
