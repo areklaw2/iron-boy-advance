@@ -30,6 +30,7 @@ impl BgMode {
     }
 }
 
+// TOOD: add enums as needed
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct LcdControl {
@@ -79,6 +80,35 @@ pub struct LcdStatus {
 }
 
 impl RegisterOps<u16> for LcdStatus {
+    fn register(&self) -> u16 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u16) {
+        self.set_bits(bits);
+    }
+}
+
+// TOOD: add enums as needed
+#[bitfield(u16)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct BgControl {
+    #[bits(2)]
+    priority: u8,
+    #[bits(2)]
+    character_base_block: u8, // BG Tile Data
+    #[bits(2)]
+    _reserved: u8,
+    mosiac: bool,
+    colors: bool,
+    #[bits(5)]
+    screen_base_block: u8, // BG Map Data
+    display_area_overflow: bool,
+    #[bits(2)]
+    screen_size: u8,
+}
+
+impl RegisterOps<u16> for BgControl {
     fn register(&self) -> u16 {
         self.into_bits()
     }

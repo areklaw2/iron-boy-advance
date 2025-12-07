@@ -5,7 +5,7 @@ use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use crate::{
     interrupt_control::Interrupt,
     io_registers::RegisterOps,
-    ppu::registers::{LcdControl, LcdStatus},
+    ppu::registers::{BgControl, LcdControl, LcdStatus},
     scheduler::Scheduler,
 };
 
@@ -32,6 +32,7 @@ pub struct Ppu {
     green_swap: bool,
     lcd_status: LcdStatus,
     vertical_counter: u8,
+    bg_controls: [BgControl; 4],
     interrupt_flags: Rc<RefCell<Interrupt>>,
     scheduler: Rc<RefCell<Scheduler>>,
 }
@@ -43,6 +44,7 @@ impl Ppu {
             green_swap: false,
             lcd_status: LcdStatus::from_bits(0),
             vertical_counter: 0,
+            bg_controls: [BgControl::from_bits(0); 4],
             interrupt_flags,
             scheduler,
         }
@@ -61,6 +63,11 @@ impl SystemMemoryAccess for Ppu {
             0x04000004..=0x04000005 => self.lcd_status.read_byte(address),
             // VCOUNT
             0x04000006..=0x04000007 => (self.vertical_counter as u16).read_byte(address),
+            // BG0CNT, BG1CNT, BG2CNT, BG3CNT
+            0x04000008..=0x04000009 => self.bg_controls[0].read_byte(address),
+            0x0400000A..=0x0400000B => self.bg_controls[1].read_byte(address),
+            0x0400000C..=0x0400000D => self.bg_controls[2].read_byte(address),
+            0x0400000E..=0x0400000F => self.bg_controls[3].read_byte(address),
             _ => panic!("Invalid byte read for Ppu Register: {:#010X}", address),
         }
     }
@@ -73,7 +80,12 @@ impl SystemMemoryAccess for Ppu {
             0x04000002 => self.green_swap = value & 0x1 != 0,
             0x04000003 => {}
             // DISPSTAT
-            0x04000004..=0x04000005 => self.lcd_control.write_byte(address, value),
+            0x04000004..=0x04000005 => self.lcd_status.write_byte(address, value),
+            // BG0CNT, BG1CNT, BG2CNT, BG3CNT
+            0x04000008..=0x04000009 => self.bg_controls[0].write_byte(address, value),
+            0x0400000A..=0x0400000B => self.bg_controls[1].write_byte(address, value),
+            0x0400000C..=0x0400000D => self.bg_controls[2].write_byte(address, value),
+            0x0400000E..=0x0400000F => self.bg_controls[3].write_byte(address, value),
             _ => panic!("Invalid byte write for Ppu Register: {:#010X}", address),
         }
     }
