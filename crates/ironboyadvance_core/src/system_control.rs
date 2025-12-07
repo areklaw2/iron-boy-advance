@@ -1,11 +1,10 @@
 use bitfields::bitfield;
 use getset::{CopyGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess};
-use tracing::debug;
 
-use crate::system_bus::{
-    PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE, read_reg_16_byte,
-    write_reg_16_byte,
+use crate::{
+    io_registers::RegisterOps,
+    system_bus::{PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE},
 };
 
 const INDEX_WRAM_BOARD: usize = (WRAM_BOARD_BASE >> 24) as usize;
@@ -141,6 +140,16 @@ struct WaitStateControl {
     game_pak_type_flag: bool,
 }
 
+impl RegisterOps<u16> for WaitStateControl {
+    fn register(&self) -> u16 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u16) {
+        self.set_bits(bits);
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[allow(unused)]
 pub enum HaltMode {
@@ -170,11 +179,6 @@ impl SystemController {
         }
     }
 
-    pub fn set_waitstate_control(&mut self, value: u16) {
-        self.waitstate_control.set_bits(value);
-        self.cycle_luts.update_wait_states(&self.waitstate_control);
-    }
-
     pub fn cycles(&self, lut_index: usize, width: MemoryAccessWidth, access: MemoryAccess) -> usize {
         match width {
             MemoryAccessWidth::Byte | MemoryAccessWidth::HalfWord => match access {
@@ -195,7 +199,7 @@ impl SystemMemoryAccess for SystemController {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // WAITCNT
-            0x04000204..=0x04000205 => read_reg_16_byte(self.waitstate_control.into_bits(), address),
+            0x04000204..=0x04000205 => self.waitstate_control.read_byte(address),
             // POSTFLG
             0x04000300 => self.post_flag as u8,
             _ => panic!("Invalid byte read for SystemController: {:#010X}", address),
@@ -206,8 +210,8 @@ impl SystemMemoryAccess for SystemController {
         match address {
             // WAITCNT
             0x04000204..=0x04000205 => {
-                let new_value = write_reg_16_byte(self.waitstate_control.into_bits(), address, value);
-                self.set_waitstate_control(new_value);
+                self.waitstate_control.write_byte(address, value);
+                self.cycle_luts.update_wait_states(&self.waitstate_control);
             }
             // POSTFLG
             0x04000300 => self.post_flag = value & 0x1 != 0,

@@ -4,9 +4,9 @@ use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
 use crate::{
     interrupt_control::Interrupt,
-    ppu::registers::LcdControl,
+    io_registers::RegisterOps,
+    ppu::registers::{LcdControl, LcdStatus},
     scheduler::Scheduler,
-    system_bus::{read_reg_16_byte, write_reg_16_byte},
 };
 
 pub const CYCLES_PER_PIXEL: u32 = 4;
@@ -30,6 +30,8 @@ mod registers;
 pub struct Ppu {
     lcd_control: LcdControl,
     green_swap: bool,
+    lcd_status: LcdStatus,
+    vertical_counter: u8,
     interrupt_flags: Rc<RefCell<Interrupt>>,
     scheduler: Rc<RefCell<Scheduler>>,
 }
@@ -39,6 +41,8 @@ impl Ppu {
         Self {
             lcd_control: LcdControl::from_bits(0),
             green_swap: false,
+            lcd_status: LcdStatus::from_bits(0),
+            vertical_counter: 0,
             interrupt_flags,
             scheduler,
         }
@@ -49,9 +53,14 @@ impl SystemMemoryAccess for Ppu {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // DISPCNT
-            0x04000000..=0x04000001 => read_reg_16_byte(self.lcd_control.into_bits(), address),
+            0x04000000..=0x04000001 => self.lcd_control.read_byte(address),
             // Green Swap
-            0x04000002..=0x04000003 => read_reg_16_byte(self.green_swap as u16, address),
+            0x04000002 => self.green_swap as u8,
+            0x04000003 => 0,
+            // DISPSTAT
+            0x04000004..=0x04000005 => self.lcd_status.read_byte(address),
+            // VCOUNT
+            0x04000006..=0x04000007 => (self.vertical_counter as u16).read_byte(address),
             _ => panic!("Invalid byte read for Ppu Register: {:#010X}", address),
         }
     }
@@ -59,15 +68,12 @@ impl SystemMemoryAccess for Ppu {
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
             // DISPCNT
-            0x04000000..=0x04000001 => {
-                let new_value = write_reg_16_byte(self.lcd_control.into_bits(), address, value);
-                self.lcd_control.set_bits(new_value);
-            }
+            0x04000000..=0x04000001 => self.lcd_control.write_byte(address, value),
             // Green Swap
-            0x04000002..=0x04000003 => {
-                let new_value = write_reg_16_byte(self.green_swap as u16, address, value);
-                self.green_swap = new_value & 0x1 != 0;
-            }
+            0x04000002 => self.green_swap = value & 0x1 != 0,
+            0x04000003 => {}
+            // DISPSTAT
+            0x04000004..=0x04000005 => self.lcd_control.write_byte(address, value),
             _ => panic!("Invalid byte write for Ppu Register: {:#010X}", address),
         }
     }

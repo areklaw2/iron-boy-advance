@@ -1,5 +1,7 @@
 use bitfields::bitfield;
 
+use crate::io_registers::RegisterOps;
+
 pub enum BgMode {
     Mode0,
     Mode1,
@@ -46,4 +48,42 @@ pub struct LcdControl {
     window_0_display: bool,
     window_1_display: bool,
     obj_window_display: bool,
+}
+
+impl RegisterOps<u16> for LcdControl {
+    fn register(&self) -> u16 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u16) {
+        self.set_bits(bits);
+    }
+}
+
+#[bitfield(u16)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct LcdStatus {
+    #[bits(1, access = ro)]
+    v_blank: bool,
+    #[bits(1, access = ro)]
+    h_blank: bool,
+    #[bits(1, access = ro)]
+    v_counter: bool,
+    v_blank_irq_enable: bool,
+    h_blank_irq_enable: bool,
+    v_counter_irq_enable: bool,
+    #[bits(2)]
+    _reserved: u8,
+    #[bits(8)]
+    v_count_setting: u8,
+}
+
+impl RegisterOps<u16> for LcdStatus {
+    fn register(&self) -> u16 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u16) {
+        self.set_bits(bits);
+    }
 }
