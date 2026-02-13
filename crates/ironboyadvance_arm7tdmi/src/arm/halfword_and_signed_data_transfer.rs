@@ -6,16 +6,14 @@ use crate::{
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct HalfwordAndSignedDataTransfer {
     value: u32,
-    executed_pc: u32,
 }
 
 impl HalfwordAndSignedDataTransfer {
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
+    pub fn new(value: u32) -> Self {
+        Self { value }
     }
 
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
@@ -165,6 +163,11 @@ impl HalfwordAndSignedDataTransfer {
             true => format!("LDR{}{} {},{}", cond, sh, rd, address),
             false => format!("STR{}{} {},{}", cond, sh, rd, address),
         }
+    }
+
+    #[inline]
+    pub fn cond(&self) -> Condition {
+        self.value.bits(28..=31).into()
     }
 
     #[inline]

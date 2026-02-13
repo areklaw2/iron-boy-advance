@@ -7,16 +7,14 @@ use crate::{
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct MultiplyLong {
     value: u32,
-    executed_pc: u32,
 }
 
 impl MultiplyLong {
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
+    pub fn new(value: u32) -> Self {
+        Self { value }
     }
 
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
@@ -91,6 +89,11 @@ impl MultiplyLong {
             (false, false) => format!("SMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
             (false, true) => format!("SMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
         }
+    }
+
+    #[inline]
+    pub fn cond(&self) -> Condition {
+        self.value.bits(28..=31).into()
     }
 
     #[inline]

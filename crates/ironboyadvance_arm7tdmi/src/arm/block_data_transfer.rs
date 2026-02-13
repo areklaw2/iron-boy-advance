@@ -6,16 +6,14 @@ use crate::{
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BlockDataTransfer {
     value: u32,
-    executed_pc: u32,
 }
 
 impl BlockDataTransfer {
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
+    pub fn new(value: u32) -> Self {
+        Self { value }
     }
 
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
@@ -181,6 +179,11 @@ impl BlockDataTransfer {
         };
 
         format!("{} {}{},({}){}", mnemonic, rn, write_back, register_list, load_psr_force_user)
+    }
+
+    #[inline]
+    pub fn cond(&self) -> Condition {
+        self.value.bits(28..=31).into()
     }
 
     #[inline]

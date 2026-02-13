@@ -2,16 +2,14 @@ use ironboyadvance_utils::bit::BitOps;
 
 use crate::{Condition, CpuAction, CpuState, Register, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BranchAndExchange {
     value: u32,
-    executed_pc: u32,
 }
 
 impl BranchAndExchange {
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
+    pub fn new(value: u32) -> Self {
+        Self { value }
     }
 
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
@@ -26,6 +24,11 @@ impl BranchAndExchange {
         let cond = self.cond();
         let rn = self.rn();
         format!("BX{cond} {rn}")
+    }
+
+    #[inline]
+    pub fn cond(&self) -> Condition {
+        self.value.bits(28..=31).into()
     }
 
     #[inline]

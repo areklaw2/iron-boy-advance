@@ -6,16 +6,14 @@ use crate::{
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct SingleDataSwap {
     value: u32,
-    executed_pc: u32,
 }
 
 impl SingleDataSwap {
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
+    pub fn new(value: u32) -> Self {
+        Self { value }
     }
 
     pub fn execute_single_data_swap<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
@@ -59,6 +57,11 @@ impl SingleDataSwap {
         let rm = self.rm();
         let rn = self.rn();
         format!("SWP{}{} {},{},[{}]", cond, byte, rd, rm, rn)
+    }
+
+    #[inline]
+    pub fn cond(&self) -> Condition {
+        self.value.bits(28..=31).into()
     }
 
     #[inline]

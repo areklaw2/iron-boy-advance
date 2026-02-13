@@ -6,16 +6,14 @@ use crate::{
     memory::MemoryInterface,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BranchAndBranchWithLink {
     value: u32,
-    executed_pc: u32,
 }
 
 impl BranchAndBranchWithLink {
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
+    pub fn new(value: u32) -> Self {
+        Self { value }
     }
 
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
@@ -34,6 +32,11 @@ impl BranchAndBranchWithLink {
         let link = if self.link() { "L" } else { "" };
         let expression = self.offset();
         format!("B{link}{cond} 0x{expression:08X}")
+    }
+
+    #[inline]
+    pub fn cond(&self) -> Condition {
+        self.value.bits(28..=31).into()
     }
 
     #[inline]

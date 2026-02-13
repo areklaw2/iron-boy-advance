@@ -8,16 +8,14 @@ use crate::{
     psr::ProgramStatusRegister,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct PsrTransfer {
     value: u32,
-    executed_pc: u32,
 }
 
 impl PsrTransfer {
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
+    pub fn new(value: u32) -> Self {
+        Self { value }
     }
 
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
@@ -126,6 +124,11 @@ impl PsrTransfer {
                 }
             }
         }
+    }
+
+    #[inline]
+    pub fn cond(&self) -> Condition {
+        self.value.bits(28..=31).into()
     }
 
     #[inline]
