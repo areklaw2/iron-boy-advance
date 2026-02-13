@@ -1,3 +1,5 @@
+use core::fmt;
+
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
@@ -219,5 +221,16 @@ impl BlockDataTransfer {
     #[inline]
     pub fn register_list(&self) -> Vec<usize> {
         (0..=15).filter(|&i| self.value.bit(i)).collect()
+    }
+}
+
+impl fmt::Display for BlockDataTransfer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = "BlockDataTransfer";
+        write!(
+            f,
+            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
+            name, self.value, self.value
+        )
     }
 }

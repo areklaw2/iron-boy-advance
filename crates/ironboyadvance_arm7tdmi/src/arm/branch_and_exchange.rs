@@ -1,3 +1,5 @@
+use core::fmt;
+
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{Condition, CpuAction, CpuState, Register, cpu::Arm7tdmiCpu, memory::MemoryInterface};
@@ -34,5 +36,16 @@ impl BranchAndExchange {
     #[inline]
     fn rn(&self) -> Register {
         self.value.bits(0..=3).into()
+    }
+}
+
+impl fmt::Display for BranchAndExchange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = "BranchAndExchange";
+        write!(
+            f,
+            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
+            name, self.value, self.value
+        )
     }
 }

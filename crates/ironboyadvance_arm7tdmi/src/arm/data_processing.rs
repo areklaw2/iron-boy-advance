@@ -1,3 +1,5 @@
+use core::fmt;
+
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
@@ -196,5 +198,16 @@ impl DataProcessing {
     #[inline]
     pub fn immediate(&self) -> u32 {
         self.value.bits(0..=7)
+    }
+}
+
+impl fmt::Display for DataProcessing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = "DataProcessing";
+        write!(
+            f,
+            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
+            name, self.value, self.value
+        )
     }
 }

@@ -1,3 +1,5 @@
+use core::fmt;
+
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
@@ -192,5 +194,16 @@ impl SingleDataTransfer {
     #[inline]
     pub fn load(&self) -> bool {
         self.value.bit(20)
+    }
+}
+
+impl fmt::Display for SingleDataTransfer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = "SingleDataTransfer";
+        write!(
+            f,
+            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
+            name, self.value, self.value
+        )
     }
 }

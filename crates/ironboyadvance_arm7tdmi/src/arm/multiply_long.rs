@@ -1,3 +1,5 @@
+use core::fmt;
+
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
@@ -129,5 +131,16 @@ impl MultiplyLong {
     #[inline]
     pub fn unsigned(&self) -> bool {
         self.value.bit(22)
+    }
+}
+
+impl fmt::Display for MultiplyLong {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = "MultiplyLong";
+        write!(
+            f,
+            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
+            name, self.value, self.value
+        )
     }
 }

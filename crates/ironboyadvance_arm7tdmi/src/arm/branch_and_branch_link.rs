@@ -1,3 +1,5 @@
+use core::fmt;
+
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
@@ -47,5 +49,16 @@ impl BranchAndBranchWithLink {
     #[inline]
     fn offset(&self) -> u32 {
         self.value.bits(0..=23)
+    }
+}
+
+impl fmt::Display for BranchAndBranchWithLink {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = "BranchAndBranchWithLink";
+        write!(
+            f,
+            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
+            name, self.value, self.value
+        )
     }
 }

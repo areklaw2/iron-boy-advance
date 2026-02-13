@@ -3,7 +3,7 @@ use tracing::debug;
 
 use crate::{
     Condition, CpuAction, Exception,
-    arm::{ArmInstructionKind, lut::generate_arm_lut},
+    arm::{lut::generate_arm_lut, undefined::Undefined},
     memory::{MemoryAccess, MemoryInterface},
     thumb::{ThumbInstruction, ThumbInstructionKind, lut::generate_thumb_lut},
 };
@@ -35,7 +35,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     #[getset(get = "pub", get_mut = "pub", set = "pub")]
     bus: I,
     next_memory_access: u8,
-    arm_lut: [ArmInstructionKind; 4096],
+    arm_lut: [ArmInstruction; 4096],
     thumb_lut: [ThumbInstructionKind; 1024],
     dissassembled_instruction: String,
     show_logs: bool,
@@ -85,7 +85,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             pipeline: [0; 2],
             bus,
             next_memory_access: MemoryAccess::Instruction | MemoryAccess::NonSequential,
-            arm_lut: [ArmInstructionKind::Undefined; 4096],
+            arm_lut: [ArmInstruction::Undefined(Undefined::default()); 4096],
             thumb_lut: [ThumbInstructionKind::Undefined; 1024],
             dissassembled_instruction: String::new(),
             show_logs,

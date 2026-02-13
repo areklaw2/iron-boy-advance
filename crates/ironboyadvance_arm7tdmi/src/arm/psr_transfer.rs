@@ -1,3 +1,5 @@
+use core::fmt;
+
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
@@ -159,5 +161,16 @@ impl PsrTransfer {
     #[inline]
     pub fn is_spsr(&self) -> bool {
         self.value.bit(22)
+    }
+}
+
+impl fmt::Display for PsrTransfer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = "PsrTransfer";
+        write!(
+            f,
+            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
+            name, self.value, self.value
+        )
     }
 }

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
@@ -108,5 +110,16 @@ impl Multiply {
     #[inline]
     pub fn accumulate(&self) -> bool {
         self.value.bit(21)
+    }
+}
+
+impl fmt::Display for Multiply {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = "Multiply";
+        write!(
+            f,
+            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
+            name, self.value, self.value
+        )
     }
 }
