@@ -5,8 +5,6 @@ pub trait BitOps {
     fn bit(&self, index: usize) -> bool;
     fn set_bit(&mut self, index: usize, value: bool);
     fn bits(&self, range: RangeInclusive<usize>) -> Self;
-    fn byte(&self, index: usize) -> u8;
-    fn set_byte(&mut self, index: usize, value: u8);
 }
 
 macro_rules! impl_bitops {
@@ -44,18 +42,6 @@ macro_rules! impl_bitops {
                     };
                     (self >> start) & mask
                 }
-
-                fn byte(&self, index: usize) -> u8 {
-                    debug_assert!(index < size_of::<$t>());
-                    ((self >> (index * 8)) & 0xFF) as u8
-                }
-
-                fn set_byte(&mut self, index: usize, value: u8) {
-                    debug_assert!(index < size_of::<$t>());
-                    let shift = index * 8;
-                    let mask = !(0xFF << shift);
-                    *self = (*self & mask) | ((value as $t) << shift);
-                }
             }
         )+
     };
@@ -88,11 +74,6 @@ mod tests {
         assert_eq!(value.bits(0..=2), 0b111);
         assert_eq!(value.bits(7..=7), 0b1);
         assert_eq!(value.bits(0..=7), value);
-
-        assert_eq!(value.byte(0), value);
-        let mut val: u8 = 0;
-        val.set_byte(0, 0xFF);
-        assert_eq!(val, 0xFF);
     }
 
     #[test]
@@ -110,16 +91,6 @@ mod tests {
 
         assert_eq!(value.bits(0..=3), 0b0111);
         assert_eq!(value.bits(15..=15), 0b1);
-
-        let value: u16 = 0x1234;
-        assert_eq!(value.byte(0), 0x34);
-        assert_eq!(value.byte(1), 0x12);
-
-        let mut value: u16 = 0;
-        value.set_byte(0, 0xAB);
-        assert_eq!(value, 0x00AB);
-        value.set_byte(1, 0xCD);
-        assert_eq!(value, 0xCDAB);
     }
 
     #[test]
@@ -134,19 +105,6 @@ mod tests {
         assert_eq!(value.bit(31), true);
 
         assert_eq!(value.bits(1..=3), 0b011);
-
-        let value: u32 = 0x12345678;
-        assert_eq!(value.byte(0), 0x78);
-        assert_eq!(value.byte(1), 0x56);
-        assert_eq!(value.byte(2), 0x34);
-        assert_eq!(value.byte(3), 0x12);
-
-        let mut value: u32 = 0;
-        value.set_byte(0, 0xAA);
-        value.set_byte(1, 0xBB);
-        value.set_byte(2, 0xCC);
-        value.set_byte(3, 0xDD);
-        assert_eq!(value, 0xDDCCBBAA);
     }
 
     #[test]
@@ -161,16 +119,6 @@ mod tests {
         assert_eq!(value.bit(63), true);
 
         assert_eq!(value.bits(1..=4), 0b1011);
-
-        let value: u64 = 0x0123456789ABCDEF;
-        assert_eq!(value.byte(0), 0xEF);
-        assert_eq!(value.byte(7), 0x01);
-
-        let mut val: u64 = 0;
-        for i in 0..8 {
-            val.set_byte(i, i as u8);
-        }
-        assert_eq!(val, 0x0706050403020100);
     }
 
     #[test]
@@ -200,17 +148,6 @@ mod tests {
         for i in 0..16 {
             value.set_bit(i, false);
             assert_eq!(value.bit(i), false);
-        }
-    }
-
-    #[test]
-    fn set_and_get_byte() {
-        let mut value: u32 = 0;
-
-        for i in 0..4 {
-            let test_byte = (i * 17) as u8;
-            value.set_byte(i, test_byte);
-            assert_eq!(value.byte(i), test_byte, "byte {} mismatch", i);
         }
     }
 
