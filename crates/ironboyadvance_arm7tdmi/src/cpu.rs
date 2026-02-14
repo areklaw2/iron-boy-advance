@@ -3,12 +3,12 @@ use tracing::debug;
 
 use crate::{
     Condition, CpuAction, Exception,
-    arm::{ArmInstructionFactory, generate_arm_lut, undefined::Undefined},
+    arm::{self, ArmInstruction, ArmInstructionFactory, generate_arm_lut},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::{ThumbInstruction, ThumbInstructionKind, lut::generate_thumb_lut},
+    thumb::{self, ThumbInstruction, ThumbInstructionFactory, generate_thumb_lut},
 };
 
-use super::{CpuMode, CpuState, arm::ArmInstruction, psr::ProgramStatusRegister};
+use super::{CpuMode, CpuState, psr::ProgramStatusRegister};
 
 pub(crate) const SP: usize = 13;
 pub(crate) const LR: usize = 14;
@@ -36,7 +36,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     bus: I,
     next_memory_access: u8,
     arm_lut: [ArmInstructionFactory; 4096],
-    thumb_lut: [ThumbInstructionKind; 1024],
+    thumb_lut: [ThumbInstructionFactory; 1024],
     dissassembled_instruction: String,
     show_logs: bool,
 }
@@ -85,8 +85,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             pipeline: [0; 2],
             bus,
             next_memory_access: MemoryAccess::Instruction | MemoryAccess::NonSequential,
-            arm_lut: [|v| ArmInstruction::Undefined(Undefined::new(v)); 4096],
-            thumb_lut: [ThumbInstructionKind::Undefined; 1024],
+            arm_lut: [|v| ArmInstruction::Undefined(arm::undefined::Undefined::new(v)); 4096],
+            thumb_lut: [|v| ThumbInstruction::Undefined(thumb::undefined::Undefined::new(v)); 1024],
             dissassembled_instruction: String::new(),
             show_logs,
         };
@@ -151,8 +151,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let lut_index = (instruction) as u16 >> 6;
-                let instruction =
-                    ThumbInstruction::new(self.thumb_lut[lut_index as usize], instruction as u16, pc.saturating_sub(4));
+                let instruction = (self.thumb_lut[lut_index as usize])(instruction as u16);
                 self.dissassembled_instruction = instruction.disassemble(self);
 
                 if self.show_logs {

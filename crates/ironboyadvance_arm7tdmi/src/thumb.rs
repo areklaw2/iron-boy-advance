@@ -1,271 +1,222 @@
-use ThumbInstructionKind::*;
-use disassembler::*;
-use execute::*;
-use ironboyadvance_utils::bit::BitOps;
-use std::fmt;
+use core::fmt;
 
 use crate::{
-    Condition, CpuAction, HiRegister, LoRegister,
+    CpuAction,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
+    thumb::{
+        add_offset_to_sp::AddOffsetToSp, add_subtract::AddSubtract, alu_operations::AluOperations,
+        conditional_branch::ConditionalBranch, hi_register_operations_branch_exchange::HiRegisterOperationsBranchExchange,
+        load_address::LoadAddress, load_store_halfword::LoadStoreHalfword,
+        load_store_immediate_offset::LoadStoreImmediateOffset, load_store_register_offset::LoadStoreRegisterOffset,
+        load_store_sign_extended_byte_halfword::LoadStoreSignExtendedByteHalfword,
+        long_branch_with_link::LongBranchWithLink, move_compare_add_subtract_immediate::MoveCompareAddSubtractImmediate,
+        move_shifted_register::MoveShiftedRegister, multiple_load_store::MultipleLoadStore,
+        pc_relative_load::PcRelativeLoad, push_pop_registers::PushPopRegisters, software_interrupt::SoftwareInterrupt,
+        sp_relative_load_store::SpRelativeLoadStore, unconditional_branch::UnconditionalBranch, undefined::Undefined,
+    },
 };
 
-pub mod disassembler;
-pub mod execute;
-pub mod lut;
+pub mod add_offset_to_sp;
+pub mod add_subtract;
+pub mod alu_operations;
+pub mod conditional_branch;
+pub mod hi_register_operations_branch_exchange;
+pub mod load_address;
+pub mod load_store_halfword;
+pub mod load_store_immediate_offset;
+pub mod load_store_register_offset;
+pub mod load_store_sign_extended_byte_halfword;
+pub mod long_branch_with_link;
+pub mod move_compare_add_subtract_immediate;
+pub mod move_shifted_register;
+pub mod multiple_load_store;
+pub mod pc_relative_load;
+pub mod push_pop_registers;
+pub mod software_interrupt;
+pub mod sp_relative_load_store;
+pub mod unconditional_branch;
+pub mod undefined;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ThumbInstructionKind {
-    MoveShiftedRegister,
-    AddSubtract,
-    MoveCompareAddSubtractImmediate,
-    AluOperations,
-    HiRegisterOperationsBranchExchange,
-    PcRelativeLoad,
-    LoadStoreRegisterOffset,
-    LoadStoreSignExtendedByteHalfword,
-    LoadStoreImmediateOffset,
-    LoadStoreHalfword,
-    SpRelativeLoadStore,
-    LoadAddress,
-    AddOffsetToSp,
-    PushPopRegisters,
-    MultipleLoadStore,
-    ConditionalBranch,
-    SoftwareInterrupt,
-    UnconditionalBranch,
-    LongBranchWithLink,
-    Undefined,
+macro_rules! thumb_instruction {
+    ($name:ident) => {
+        impl $name {
+            pub fn new(value: u16) -> Self {
+                Self { value }
+            }
+        }
+
+        impl core::fmt::Display for $name {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                write!(
+                    f,
+                    "ThumbInstruction: name: {:?}, bits: {} -> (0x{:04X})",
+                    stringify!($name),
+                    self.value,
+                    self.value
+                )
+            }
+        }
+    };
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ThumbInstruction {
-    kind: ThumbInstructionKind,
-    value: u16,
-    executed_pc: u32,
-}
+pub(crate) use thumb_instruction;
 
-impl fmt::Display for ThumbInstruction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "ThumbInstruction: kind: {:?}, bits: {} -> (0x{:04X}), executed_pc:{} -> (0x{:08X})",
-            self.kind, self.value, self.value, self.executed_pc, self.executed_pc
-        )
-    }
+pub type ThumbInstructionFactory = fn(u16) -> ThumbInstruction;
+
+#[derive(Debug, Clone, Copy)]
+pub enum ThumbInstruction {
+    MoveShiftedRegister(MoveShiftedRegister),
+    AddSubtract(AddSubtract),
+    MoveCompareAddSubtractImmediate(MoveCompareAddSubtractImmediate),
+    AluOperations(AluOperations),
+    HiRegisterOperationsBranchExchange(HiRegisterOperationsBranchExchange),
+    PcRelativeLoad(PcRelativeLoad),
+    LoadStoreRegisterOffset(LoadStoreRegisterOffset),
+    LoadStoreSignExtendedByteHalfword(LoadStoreSignExtendedByteHalfword),
+    LoadStoreImmediateOffset(LoadStoreImmediateOffset),
+    LoadStoreHalfword(LoadStoreHalfword),
+    SpRelativeLoadStore(SpRelativeLoadStore),
+    LoadAddress(LoadAddress),
+    AddOffsetToSp(AddOffsetToSp),
+    PushPopRegisters(PushPopRegisters),
+    MultipleLoadStore(MultipleLoadStore),
+    ConditionalBranch(ConditionalBranch),
+    SoftwareInterrupt(SoftwareInterrupt),
+    UnconditionalBranch(UnconditionalBranch),
+    LongBranchWithLink(LongBranchWithLink),
+    Undefined(Undefined),
 }
 
 impl Instruction for ThumbInstruction {
     #[inline]
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        match self.kind {
-            MoveShiftedRegister => disassemble_move_shifted_register(self),
-            AddSubtract => disassemble_add_subtract(self),
-            MoveCompareAddSubtractImmediate => disassemble_move_compare_add_subtract_immediate(self),
-            AluOperations => disassemble_alu_operations(self),
-            HiRegisterOperationsBranchExchange => disassemble_hi_register_operations_branch_exchange(self),
-            PcRelativeLoad => disassemble_pc_relative_load(self),
-            LoadStoreRegisterOffset => disassemble_load_store_register_offset(self),
-            LoadStoreSignExtendedByteHalfword => disassemble_load_store_sign_extended_byte_halfword(self),
-            LoadStoreImmediateOffset => disassemble_load_store_immediate_offset(self),
-            LoadStoreHalfword => disassemble_load_store_halfword(self),
-            SpRelativeLoadStore => disassemble_sp_relative_load_store(self),
-            LoadAddress => disassemble_load_address(self),
-            AddOffsetToSp => disassemble_add_offset_to_sp(self),
-            PushPopRegisters => disassemble_push_pop_registers(self),
-            MultipleLoadStore => disassemble_multiple_load_store(self),
-            ConditionalBranch => disassemble_conditional_branch(self),
-            SoftwareInterrupt => disassemble_software_interrupt(self),
-            UnconditionalBranch => disassemble_unconditional_branch(self),
-            LongBranchWithLink => disassemble_long_branch_with_link(self),
-            Undefined => unimplemented!(),
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+        match self {
+            Self::MoveShiftedRegister(i) => i.execute(cpu),
+            Self::AddSubtract(i) => i.execute(cpu),
+            Self::MoveCompareAddSubtractImmediate(i) => i.execute(cpu),
+            Self::AluOperations(i) => i.execute(cpu),
+            Self::HiRegisterOperationsBranchExchange(i) => i.execute(cpu),
+            Self::PcRelativeLoad(i) => i.execute(cpu),
+            Self::LoadStoreRegisterOffset(i) => i.execute(cpu),
+            Self::LoadStoreSignExtendedByteHalfword(i) => i.execute(cpu),
+            Self::LoadStoreImmediateOffset(i) => i.execute(cpu),
+            Self::LoadStoreHalfword(i) => i.execute(cpu),
+            Self::SpRelativeLoadStore(i) => i.execute(cpu),
+            Self::LoadAddress(i) => i.execute(cpu),
+            Self::AddOffsetToSp(i) => i.execute(cpu),
+            Self::PushPopRegisters(i) => i.execute(cpu),
+            Self::MultipleLoadStore(i) => i.execute(cpu),
+            Self::ConditionalBranch(i) => i.execute(cpu),
+            Self::SoftwareInterrupt(i) => i.execute(cpu),
+            Self::UnconditionalBranch(i) => i.execute(cpu),
+            Self::LongBranchWithLink(i) => i.execute(cpu),
+            Self::Undefined(i) => i.execute(cpu),
         }
     }
 
     #[inline]
-    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        match self.kind {
-            MoveShiftedRegister => execute_move_shifted_register(cpu, self),
-            AddSubtract => execute_add_subtract(cpu, self),
-            MoveCompareAddSubtractImmediate => execute_move_compare_add_subtract_immediate(cpu, self),
-            AluOperations => execute_alu_operations(cpu, self),
-            HiRegisterOperationsBranchExchange => execute_hi_register_operations_branch_exchange(cpu, self),
-            PcRelativeLoad => execute_pc_relative_load(cpu, self),
-            LoadStoreRegisterOffset => execute_load_store_register_offset(cpu, self),
-            LoadStoreSignExtendedByteHalfword => execute_load_store_sign_extended_byte_halfword(cpu, self),
-            LoadStoreImmediateOffset => execute_load_store_immediate_offset(cpu, self),
-            LoadStoreHalfword => execute_load_store_halfword(cpu, self),
-            SpRelativeLoadStore => execute_sp_relative_load_store(cpu, self),
-            LoadAddress => execute_load_address(cpu, self),
-            AddOffsetToSp => execute_add_offset_to_sp(cpu, self),
-            PushPopRegisters => execute_push_pop_registers(cpu, self),
-            MultipleLoadStore => execute_multiple_load_store(cpu, self),
-            ConditionalBranch => execute_conditional_branch(cpu, self),
-            SoftwareInterrupt => execute_software_interrupt(cpu, self),
-            UnconditionalBranch => execute_unconditional_branch(cpu, self),
-            LongBranchWithLink => execute_long_branch_with_link(cpu, self),
-            Undefined => unimplemented!(),
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
+        match self {
+            Self::MoveShiftedRegister(i) => i.disassemble(cpu),
+            Self::AddSubtract(i) => i.disassemble(cpu),
+            Self::MoveCompareAddSubtractImmediate(i) => i.disassemble(cpu),
+            Self::AluOperations(i) => i.disassemble(cpu),
+            Self::HiRegisterOperationsBranchExchange(i) => i.disassemble(cpu),
+            Self::PcRelativeLoad(i) => i.disassemble(cpu),
+            Self::LoadStoreRegisterOffset(i) => i.disassemble(cpu),
+            Self::LoadStoreSignExtendedByteHalfword(i) => i.disassemble(cpu),
+            Self::LoadStoreImmediateOffset(i) => i.disassemble(cpu),
+            Self::LoadStoreHalfword(i) => i.disassemble(cpu),
+            Self::SpRelativeLoadStore(i) => i.disassemble(cpu),
+            Self::LoadAddress(i) => i.disassemble(cpu),
+            Self::AddOffsetToSp(i) => i.disassemble(cpu),
+            Self::PushPopRegisters(i) => i.disassemble(cpu),
+            Self::MultipleLoadStore(i) => i.disassemble(cpu),
+            Self::ConditionalBranch(i) => i.disassemble(cpu),
+            Self::SoftwareInterrupt(i) => i.disassemble(cpu),
+            Self::UnconditionalBranch(i) => i.disassemble(cpu),
+            Self::LongBranchWithLink(i) => i.disassemble(cpu),
+            Self::Undefined(i) => i.disassemble(cpu),
         }
     }
 }
 
-impl ThumbInstruction {
-    #[inline]
-    pub fn new(kind: ThumbInstructionKind, instruction: u16, executed_pc: u32) -> ThumbInstruction {
-        ThumbInstruction {
-            kind,
-            value: instruction,
-            executed_pc,
+impl fmt::Display for ThumbInstruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MoveShiftedRegister(i) => i.fmt(f),
+            Self::AddSubtract(i) => i.fmt(f),
+            Self::MoveCompareAddSubtractImmediate(i) => i.fmt(f),
+            Self::AluOperations(i) => i.fmt(f),
+            Self::HiRegisterOperationsBranchExchange(i) => i.fmt(f),
+            Self::PcRelativeLoad(i) => i.fmt(f),
+            Self::LoadStoreRegisterOffset(i) => i.fmt(f),
+            Self::LoadStoreSignExtendedByteHalfword(i) => i.fmt(f),
+            Self::LoadStoreImmediateOffset(i) => i.fmt(f),
+            Self::LoadStoreHalfword(i) => i.fmt(f),
+            Self::SpRelativeLoadStore(i) => i.fmt(f),
+            Self::LoadAddress(i) => i.fmt(f),
+            Self::AddOffsetToSp(i) => i.fmt(f),
+            Self::PushPopRegisters(i) => i.fmt(f),
+            Self::MultipleLoadStore(i) => i.fmt(f),
+            Self::ConditionalBranch(i) => i.fmt(f),
+            Self::SoftwareInterrupt(i) => i.fmt(f),
+            Self::UnconditionalBranch(i) => i.fmt(f),
+            Self::LongBranchWithLink(i) => i.fmt(f),
+            Self::Undefined(i) => i.fmt(f),
         }
     }
+}
 
-    #[inline]
-    pub fn opcode(&self) -> u16 {
-        match self.kind {
-            MoveShiftedRegister | MoveCompareAddSubtractImmediate => self.value.bits(11..=12),
-            AddSubtract => self.value.bit(9) as u16,
-            AluOperations => self.value.bits(6..=9),
-            HiRegisterOperationsBranchExchange => self.value.bits(8..=9),
-            _ => unimplemented!(),
-        }
+pub fn generate_thumb_lut() -> [ThumbInstructionFactory; 1024] {
+    let mut thumb_lut: [ThumbInstructionFactory; 1024] = [|value| ThumbInstruction::Undefined(Undefined::new(value)); 1024];
+    for (i, factory) in thumb_lut.iter_mut().enumerate() {
+        *factory = decode_thumb((i as u16) << 6);
     }
+    thumb_lut
+}
 
-    #[inline]
-    pub fn offset(&self) -> u16 {
-        match self.kind {
-            MoveShiftedRegister | LoadStoreImmediateOffset | LoadStoreHalfword => self.value.bits(6..=10),
-            AddSubtract => self.value.bits(6..=8),
-            MoveCompareAddSubtractImmediate
-            | PcRelativeLoad
-            | SpRelativeLoadStore
-            | LoadAddress
-            | ConditionalBranch
-            | SoftwareInterrupt => self.value.bits(0..=7),
-            AddOffsetToSp => self.value.bits(0..=6),
-            UnconditionalBranch | LongBranchWithLink => self.value.bits(0..=10),
-            _ => unimplemented!(),
-        }
-    }
-
-    #[inline]
-    pub fn is_immediate(&self) -> bool {
-        self.value.bit(10)
-    }
-
-    #[inline]
-    pub fn rn(&self) -> LoRegister {
-        self.value.bits(6..=8).into()
-    }
-
-    #[inline]
-    pub fn rs(&self) -> LoRegister {
-        self.value.bits(3..=5).into()
-    }
-
-    #[inline]
-    pub fn rd(&self) -> LoRegister {
-        match self.kind {
-            MoveShiftedRegister
-            | AddSubtract
-            | AluOperations
-            | HiRegisterOperationsBranchExchange
-            | LoadStoreRegisterOffset
-            | LoadStoreSignExtendedByteHalfword
-            | LoadStoreImmediateOffset
-            | LoadStoreHalfword => self.value.bits(0..=2).into(),
-            MoveCompareAddSubtractImmediate | PcRelativeLoad | SpRelativeLoadStore | LoadAddress => {
-                self.value.bits(8..=10).into()
-            }
-            _ => unimplemented!(),
-        }
-    }
-
-    #[inline]
-    pub fn rb(&self) -> LoRegister {
-        match self.kind {
-            LoadStoreRegisterOffset | LoadStoreSignExtendedByteHalfword | LoadStoreImmediateOffset | LoadStoreHalfword => {
-                self.value.bits(3..=5).into()
-            }
-            MultipleLoadStore => self.value.bits(8..=10).into(),
-            _ => unimplemented!(),
-        }
-    }
-
-    #[inline]
-    pub fn ro(&self) -> LoRegister {
-        self.value.bits(6..=8).into()
-    }
-
-    #[inline]
-    pub fn hs(&self) -> HiRegister {
-        self.value.bits(3..=5).into()
-    }
-
-    #[inline]
-    pub fn hd(&self) -> HiRegister {
-        self.value.bits(0..=2).into()
-    }
-
-    #[inline]
-    pub fn h1(&self) -> bool {
-        self.value.bit(7)
-    }
-
-    #[inline]
-    pub fn h2(&self) -> bool {
-        self.value.bit(6)
-    }
-
-    #[inline]
-    pub fn load(&self) -> bool {
-        self.value.bit(11)
-    }
-
-    #[inline]
-    pub fn byte(&self) -> bool {
-        match self.kind {
-            LoadStoreRegisterOffset => self.value.bit(10),
-            LoadStoreImmediateOffset => self.value.bit(12),
-            _ => unimplemented!(),
-        }
-    }
-
-    #[inline]
-    pub fn halfword(&self) -> bool {
-        self.value.bit(11)
-    }
-
-    #[inline]
-    pub fn signed(&self) -> bool {
-        match self.kind {
-            LoadStoreSignExtendedByteHalfword => self.value.bit(10),
-            AddOffsetToSp => self.value.bit(7),
-            _ => unimplemented!(),
-        }
-    }
-
-    #[inline]
-    pub fn sp(&self) -> bool {
-        self.value.bit(11)
-    }
-
-    #[inline]
-    pub fn store_lr_load_pc(&self) -> bool {
-        self.value.bit(8)
-    }
-
-    #[inline]
-    pub fn register_list(&self) -> Vec<usize> {
-        (0..=7).filter(|&i| self.value.bit(i)).collect()
-    }
-
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        (self.value.bits(8..=11) as u32).into()
-    }
-
-    #[inline]
-    pub fn high(&self) -> bool {
-        self.value.bit(11)
+fn decode_thumb(instruction: u16) -> ThumbInstructionFactory {
+    if instruction & 0xF800 < 0x1800 {
+        |value| ThumbInstruction::MoveShiftedRegister(MoveShiftedRegister::new(value))
+    } else if instruction & 0xF800 == 0x1800 {
+        |value| ThumbInstruction::AddSubtract(AddSubtract::new(value))
+    } else if instruction & 0xE000 == 0x2000 {
+        |value| ThumbInstruction::MoveCompareAddSubtractImmediate(MoveCompareAddSubtractImmediate::new(value))
+    } else if instruction & 0xFC00 == 0x4000 {
+        |value| ThumbInstruction::AluOperations(AluOperations::new(value))
+    } else if instruction & 0xFC00 == 0x4400 {
+        |value| ThumbInstruction::HiRegisterOperationsBranchExchange(HiRegisterOperationsBranchExchange::new(value))
+    } else if instruction & 0xF800 == 0x4800 {
+        |value| ThumbInstruction::PcRelativeLoad(PcRelativeLoad::new(value))
+    } else if instruction & 0xF200 == 0x5000 {
+        |value| ThumbInstruction::LoadStoreRegisterOffset(LoadStoreRegisterOffset::new(value))
+    } else if instruction & 0xF200 == 0x5200 {
+        |value| ThumbInstruction::LoadStoreSignExtendedByteHalfword(LoadStoreSignExtendedByteHalfword::new(value))
+    } else if instruction & 0xE000 == 0x6000 {
+        |value| ThumbInstruction::LoadStoreImmediateOffset(LoadStoreImmediateOffset::new(value))
+    } else if instruction & 0xF000 == 0x8000 {
+        |value| ThumbInstruction::LoadStoreHalfword(LoadStoreHalfword::new(value))
+    } else if instruction & 0xF000 == 0x9000 {
+        |value| ThumbInstruction::SpRelativeLoadStore(SpRelativeLoadStore::new(value))
+    } else if instruction & 0xF000 == 0xA000 {
+        |value| ThumbInstruction::LoadAddress(LoadAddress::new(value))
+    } else if instruction & 0xFF00 == 0xB000 {
+        |value| ThumbInstruction::AddOffsetToSp(AddOffsetToSp::new(value))
+    } else if instruction & 0xF600 == 0xB400 {
+        |value| ThumbInstruction::PushPopRegisters(PushPopRegisters::new(value))
+    } else if instruction & 0xF000 == 0xC000 {
+        |value| ThumbInstruction::MultipleLoadStore(MultipleLoadStore::new(value))
+    } else if instruction & 0xFF00 < 0xDF00 {
+        |value| ThumbInstruction::ConditionalBranch(ConditionalBranch::new(value))
+    } else if instruction & 0xFF00 == 0xDF00 {
+        |value| ThumbInstruction::SoftwareInterrupt(SoftwareInterrupt::new(value))
+    } else if instruction & 0xF800 == 0xE000 {
+        |value| ThumbInstruction::UnconditionalBranch(UnconditionalBranch::new(value))
+    } else if instruction & 0xF000 == 0xF000 {
+        |value| ThumbInstruction::LongBranchWithLink(LongBranchWithLink::new(value))
+    } else {
+        |value| ThumbInstruction::Undefined(Undefined::new(value))
     }
 }
