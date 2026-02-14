@@ -2,12 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
-use crate::{
-    interrupt_control::Interrupt,
-    io_registers::RegisterOps,
-    ppu::registers::{BgAffineParameter, BgControl, BgOffset, BgReferencePoint, LcdControl, LcdStatus},
-    scheduler::Scheduler,
-};
+use crate::{interrupt_control::Interrupt, io_registers::RegisterOps, ppu::registers::*, scheduler::Scheduler};
 
 pub const CYCLES_PER_PIXEL: u32 = 4;
 
@@ -39,6 +34,10 @@ pub struct Ppu {
     bg2_affine_parameters: [BgAffineParameter; 4],
     bg3_reference_points: [BgReferencePoint; 2],
     bg3_affine_parameters: [BgAffineParameter; 4],
+    win_x_dimensions: [WindowDimension; 2],
+    win_y_dimensions: [WindowDimension; 2],
+    win_inside: WindowInside,
+    win_outside: WindowOutside,
     interrupt_flags: Rc<RefCell<Interrupt>>,
     scheduler: Rc<RefCell<Scheduler>>,
 }
@@ -57,6 +56,10 @@ impl Ppu {
             bg2_affine_parameters: [BgAffineParameter::from_bits(0); 4],
             bg3_reference_points: [BgReferencePoint::from_bits(0); 2],
             bg3_affine_parameters: [BgAffineParameter::from_bits(0); 4],
+            win_x_dimensions: [WindowDimension::from_bits(0); 2],
+            win_y_dimensions: [WindowDimension::from_bits(0); 2],
+            win_inside: WindowInside::from_bits(0),
+            win_outside: WindowOutside::from_bits(0),
             interrupt_flags,
             scheduler,
         }
@@ -90,6 +93,10 @@ impl SystemMemoryAccess for Ppu {
             0x04000030..=0x04000037 => 0xFF,
             // BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
             0x04000038..=0x0400003F => 0xFF,
+            // WIN0H, WIN1H, WIN0V, WIN1V
+            0x04000040..=0x04000047 => 0xFF,
+            //WININ, WINOUT
+            0x04000048..=0x0400004B => 0xFF,
             _ => panic!("Invalid byte read for Ppu Register: {:#010X}", address),
         }
     }
@@ -135,6 +142,15 @@ impl SystemMemoryAccess for Ppu {
             // BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
             0x04000038..=0x0400003B => self.bg3_reference_points[0].write_byte(address, value),
             0x0400003C..=0x0400003F => self.bg3_reference_points[1].write_byte(address, value),
+            // WIN0H, WIN1H, WIN0V, WIN1V
+            0x04000040..=0x04000041 => self.win_x_dimensions[0].write_byte(address, value),
+            0x04000042..=0x04000043 => self.win_x_dimensions[1].write_byte(address, value),
+            0x04000044..=0x04000045 => self.win_y_dimensions[0].write_byte(address, value),
+            0x04000046..=0x04000047 => self.win_y_dimensions[1].write_byte(address, value),
+            //WININ, WINOUT
+            0x04000048..=0x04000049 => self.win_inside.write_byte(address, value),
+            0x0400004A..=0x0400004B => self.win_outside.write_byte(address, value),
+
             _ => panic!("Invalid byte write for Ppu Register: {:#010X}", address),
         }
     }
