@@ -5,7 +5,7 @@ use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use crate::{
     interrupt_control::Interrupt,
     io_registers::RegisterOps,
-    ppu::registers::{BgControl, BgScrolling, LcdControl, LcdStatus},
+    ppu::registers::{BgAffineParameter, BgControl, BgOffset, BgReferencePoint, LcdControl, LcdStatus},
     scheduler::Scheduler,
 };
 
@@ -33,8 +33,12 @@ pub struct Ppu {
     lcd_status: LcdStatus,
     vertical_counter: u8,
     bg_controls: [BgControl; 4],
-    bg_x_offsets: [BgScrolling; 4],
-    bg_y_offsets: [BgScrolling; 4],
+    bg_x_offsets: [BgOffset; 4],
+    bg_y_offsets: [BgOffset; 4],
+    bg2_reference_points: [BgReferencePoint; 2],
+    bg2_affine_parameters: [BgAffineParameter; 4],
+    bg3_reference_points: [BgReferencePoint; 2],
+    bg3_affine_parameters: [BgAffineParameter; 4],
     interrupt_flags: Rc<RefCell<Interrupt>>,
     scheduler: Rc<RefCell<Scheduler>>,
 }
@@ -47,8 +51,12 @@ impl Ppu {
             lcd_status: LcdStatus::from_bits(0),
             vertical_counter: 0,
             bg_controls: [BgControl::from_bits(0); 4],
-            bg_x_offsets: [BgScrolling::from_bits(0); 4],
-            bg_y_offsets: [BgScrolling::from_bits(0); 4],
+            bg_x_offsets: [BgOffset::from_bits(0); 4],
+            bg_y_offsets: [BgOffset::from_bits(0); 4],
+            bg2_reference_points: [BgReferencePoint::from_bits(0); 2],
+            bg2_affine_parameters: [BgAffineParameter::from_bits(0); 4],
+            bg3_reference_points: [BgReferencePoint::from_bits(0); 2],
+            bg3_affine_parameters: [BgAffineParameter::from_bits(0); 4],
             interrupt_flags,
             scheduler,
         }
@@ -62,7 +70,7 @@ impl SystemMemoryAccess for Ppu {
             0x04000000..=0x04000001 => self.lcd_control.read_byte(address),
             // Green Swap
             0x04000002 => self.green_swap as u8,
-            0x04000003 => 0,
+            0x04000003 => 0xFF, //TODO: confirm this is fine
             // DISPSTAT
             0x04000004..=0x04000005 => self.lcd_status.read_byte(address),
             // VCOUNT
@@ -73,7 +81,15 @@ impl SystemMemoryAccess for Ppu {
             0x0400000C..=0x0400000D => self.bg_controls[2].read_byte(address),
             0x0400000E..=0x0400000F => self.bg_controls[3].read_byte(address),
             // BG0HOFS, BG0VOFS, BG1HOFS, BG1VOFS, BG2HOFS, BG2VOFS, BG3HOFS, BG3VOFS
-            0x04000010..=0x0400001F => 0xFF, //TODO: confirm this is fine
+            0x04000010..=0x0400001F => 0xFF,
+            // BG2PA, BG2PB, BG2PC, BG2PD
+            0x04000020..=0x04000027 => 0xFF,
+            // BG2X_L, BG2X_H, BG2Y_L, BG2Y_H
+            0x04000028..=0x0400002F => 0xFF,
+            // BG3PA, BG3PB, BG3PC, BG3PD
+            0x04000030..=0x04000037 => 0xFF,
+            // BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
+            0x04000038..=0x0400003F => 0xFF,
             _ => panic!("Invalid byte read for Ppu Register: {:#010X}", address),
         }
     }
@@ -103,6 +119,22 @@ impl SystemMemoryAccess for Ppu {
             0x0400001A..=0x0400001B => self.bg_y_offsets[2].write_byte(address, value),
             0x0400001C..=0x0400001D => self.bg_x_offsets[3].write_byte(address, value),
             0x0400001E..=0x0400001F => self.bg_y_offsets[3].write_byte(address, value),
+            // BG2PA, BG2PB, BG2PC, BG2PD
+            0x04000020..=0x04000021 => self.bg2_affine_parameters[0].write_byte(address, value),
+            0x04000022..=0x04000023 => self.bg2_affine_parameters[1].write_byte(address, value),
+            0x04000024..=0x04000025 => self.bg2_affine_parameters[2].write_byte(address, value),
+            0x04000026..=0x04000027 => self.bg2_affine_parameters[3].write_byte(address, value),
+            // BG2X_L, BG2X_H, BG2Y_L, BG2Y_H
+            0x04000028..=0x0400002B => self.bg2_reference_points[0].write_byte(address, value),
+            0x0400002C..=0x0400002F => self.bg2_reference_points[1].write_byte(address, value),
+            // BG3PA, BG3PB, BG3PC, BG3PD
+            0x04000030..=0x04000031 => self.bg3_affine_parameters[0].write_byte(address, value),
+            0x04000032..=0x04000033 => self.bg3_affine_parameters[1].write_byte(address, value),
+            0x04000034..=0x04000035 => self.bg3_affine_parameters[2].write_byte(address, value),
+            0x04000036..=0x04000037 => self.bg3_affine_parameters[3].write_byte(address, value),
+            // BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
+            0x04000038..=0x0400003B => self.bg3_reference_points[0].write_byte(address, value),
+            0x0400003C..=0x0400003F => self.bg3_reference_points[1].write_byte(address, value),
             _ => panic!("Invalid byte write for Ppu Register: {:#010X}", address),
         }
     }

@@ -31,7 +31,6 @@ impl BgMode {
     }
 }
 
-// TOOD: add enums as needed
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct LcdControl {
@@ -90,9 +89,6 @@ impl RegisterOps<u16> for LcdStatus {
     }
 }
 
-// https://rust-console.github.io/gbatek-gbaonly/#--lcd-io-bg-control
-// reread section for screen size stuff
-
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct BgControl {
@@ -123,14 +119,56 @@ impl RegisterOps<u16> for BgControl {
 
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct BgScrolling {
+pub struct BgOffset {
     #[bits(9)]
     offset: u16,
     #[bits(7)]
     not_used: u8,
 }
 
-impl RegisterOps<u16> for BgScrolling {
+impl RegisterOps<u16> for BgOffset {
+    fn register(&self) -> u16 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u16) {
+        self.set_bits(bits);
+    }
+}
+
+#[bitfield(u32)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct BgReferencePoint {
+    fractional_portion: u8,
+    #[bits(19)]
+    interger_portion: u32,
+    #[bits(1)]
+    sign: bool,
+    #[bits(4)]
+    not_used: u8,
+}
+
+impl RegisterOps<u32> for BgReferencePoint {
+    fn register(&self) -> u32 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u32) {
+        self.set_bits(bits);
+    }
+}
+
+#[bitfield(u16)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct BgAffineParameter {
+    fractional_portion: u8,
+    #[bits(7)]
+    interger_portion: u8,
+    #[bits(1)]
+    sign: bool,
+}
+
+impl RegisterOps<u16> for BgAffineParameter {
     fn register(&self) -> u16 {
         self.into_bits()
     }
