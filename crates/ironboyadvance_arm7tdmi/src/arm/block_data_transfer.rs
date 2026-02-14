@@ -1,9 +1,8 @@
-use core::fmt;
-
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
-    Condition, CpuAction, CpuMode, Register,
+    CpuAction, CpuMode, Register,
+    arm::arm_instruction,
     cpu::{Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
@@ -13,11 +12,9 @@ pub struct BlockDataTransfer {
     value: u32,
 }
 
-impl BlockDataTransfer {
-    pub fn new(value: u32) -> Self {
-        Self { value }
-    }
+arm_instruction!(BlockDataTransfer);
 
+impl BlockDataTransfer {
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let mut register_list = self.register_list();
         let rn = self.rn() as usize;
@@ -130,7 +127,7 @@ impl BlockDataTransfer {
         action
     }
 
-    pub fn disassemble(&self) -> String {
+    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let pre_index = self.pre_index();
         let add = self.add();
@@ -184,11 +181,6 @@ impl BlockDataTransfer {
     }
 
     #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
-    }
-
-    #[inline]
     pub fn rn(&self) -> Register {
         self.value.bits(16..=19).into()
     }
@@ -221,16 +213,5 @@ impl BlockDataTransfer {
     #[inline]
     pub fn register_list(&self) -> Vec<usize> {
         (0..=15).filter(|&i| self.value.bit(i)).collect()
-    }
-}
-
-impl fmt::Display for BlockDataTransfer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = "BlockDataTransfer";
-        write!(
-            f,
-            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-            name, self.value, self.value
-        )
     }
 }

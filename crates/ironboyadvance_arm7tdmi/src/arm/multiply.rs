@@ -1,10 +1,9 @@
-use std::fmt;
-
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
-    Condition, CpuAction, Register,
+    CpuAction, Register,
     alu::multiplier_array_cycles,
+    arm::arm_instruction,
     cpu::{Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
@@ -14,11 +13,9 @@ pub struct Multiply {
     value: u32,
 }
 
-impl Multiply {
-    pub fn new(value: u32) -> Self {
-        Self { value }
-    }
+arm_instruction!(Multiply);
 
+impl Multiply {
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rm = self.rm() as usize;
@@ -64,7 +61,7 @@ impl Multiply {
         }
     }
 
-    pub fn disassemble(&self) -> String {
+    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let s = if self.sets_flags() { "S" } else { "" };
         let rd = self.rd();
@@ -75,11 +72,6 @@ impl Multiply {
             true => format!("MLA{}{} {},{},{},{}", cond, s, rd, rm, rs, rn),
             false => format!("MUL{}{} {},{},{}", cond, s, rd, rm, rs),
         }
-    }
-
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
     }
 
     #[inline]
@@ -110,16 +102,5 @@ impl Multiply {
     #[inline]
     pub fn accumulate(&self) -> bool {
         self.value.bit(21)
-    }
-}
-
-impl fmt::Display for Multiply {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = "Multiply";
-        write!(
-            f,
-            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-            name, self.value, self.value
-        )
     }
 }

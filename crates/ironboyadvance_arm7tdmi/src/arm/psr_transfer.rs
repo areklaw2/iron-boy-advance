@@ -1,9 +1,8 @@
-use core::fmt;
-
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
-    Condition, CpuAction, CpuMode, Register,
+    CpuAction, CpuMode, Register,
+    arm::arm_instruction,
     barrel_shifter::ror,
     cpu::Arm7tdmiCpu,
     memory::{MemoryAccess, MemoryInterface},
@@ -15,11 +14,9 @@ pub struct PsrTransfer {
     value: u32,
 }
 
-impl PsrTransfer {
-    pub fn new(value: u32) -> Self {
-        Self { value }
-    }
+arm_instruction!(PsrTransfer);
 
+impl PsrTransfer {
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let is_spsr = self.is_spsr();
         match self.value.bits(16..=21) as u8 == 0xF {
@@ -129,11 +126,6 @@ impl PsrTransfer {
     }
 
     #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
-    }
-
-    #[inline]
     pub fn rd(&self) -> Register {
         self.value.bits(12..=15).into()
     }
@@ -161,16 +153,5 @@ impl PsrTransfer {
     #[inline]
     pub fn is_spsr(&self) -> bool {
         self.value.bit(22)
-    }
-}
-
-impl fmt::Display for PsrTransfer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = "PsrTransfer";
-        write!(
-            f,
-            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-            name, self.value, self.value
-        )
     }
 }

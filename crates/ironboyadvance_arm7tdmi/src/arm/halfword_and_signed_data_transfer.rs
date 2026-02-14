@@ -1,9 +1,8 @@
-use core::fmt;
-
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
-    Condition, CpuAction, Register,
+    CpuAction, Register,
+    arm::arm_instruction,
     cpu::{Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
@@ -13,11 +12,9 @@ pub struct HalfwordAndSignedDataTransfer {
     value: u32,
 }
 
-impl HalfwordAndSignedDataTransfer {
-    pub fn new(value: u32) -> Self {
-        Self { value }
-    }
+arm_instruction!(HalfwordAndSignedDataTransfer);
 
+impl HalfwordAndSignedDataTransfer {
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rn = self.rn() as usize;
@@ -125,7 +122,7 @@ impl HalfwordAndSignedDataTransfer {
         }
     }
 
-    pub fn disassemble(&self) -> String {
+    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let pre_index = self.pre_index();
         let add = if self.add() { "+" } else { "-" };
@@ -165,11 +162,6 @@ impl HalfwordAndSignedDataTransfer {
             true => format!("LDR{}{} {},{}", cond, sh, rd, address),
             false => format!("STR{}{} {},{}", cond, sh, rd, address),
         }
-    }
-
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
     }
 
     #[inline]
@@ -230,16 +222,5 @@ impl HalfwordAndSignedDataTransfer {
     #[inline]
     pub fn halfword(&self) -> bool {
         self.value.bit(5)
-    }
-}
-
-impl fmt::Display for HalfwordAndSignedDataTransfer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = "HalfwordAndSignedDataTransfer";
-        write!(
-            f,
-            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-            name, self.value, self.value
-        )
     }
 }

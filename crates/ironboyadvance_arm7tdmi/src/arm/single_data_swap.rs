@@ -1,9 +1,8 @@
-use core::fmt;
-
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
-    Condition, CpuAction, Register,
+    CpuAction, Register,
+    arm::arm_instruction,
     cpu::{Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
@@ -13,12 +12,10 @@ pub struct SingleDataSwap {
     value: u32,
 }
 
-impl SingleDataSwap {
-    pub fn new(value: u32) -> Self {
-        Self { value }
-    }
+arm_instruction!(SingleDataSwap);
 
-    pub fn execute_single_data_swap<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl SingleDataSwap {
+    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rn = self.rn() as usize;
         let rm = self.rm() as usize;
@@ -52,18 +49,13 @@ impl SingleDataSwap {
         }
     }
 
-    pub fn disassemble_single_data_swap(&self) -> String {
+    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let byte = if self.byte() { "B" } else { "" };
         let rd = self.rd();
         let rm = self.rm();
         let rn = self.rn();
         format!("SWP{}{} {},{},[{}]", cond, byte, rd, rm, rn)
-    }
-
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
     }
 
     #[inline]
@@ -84,16 +76,5 @@ impl SingleDataSwap {
     #[inline]
     pub fn byte(&self) -> bool {
         self.value.bit(22)
-    }
-}
-
-impl fmt::Display for SingleDataSwap {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = "SingleDataSwap";
-        write!(
-            f,
-            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-            name, self.value, self.value
-        )
     }
 }

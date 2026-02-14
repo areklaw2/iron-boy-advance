@@ -1,9 +1,8 @@
-use core::fmt;
-
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
-    Condition, CpuAction, Register,
+    CpuAction, Register,
+    arm::arm_instruction,
     barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
@@ -14,11 +13,9 @@ pub struct SingleDataTransfer {
     value: u32,
 }
 
-impl SingleDataTransfer {
-    pub fn new(value: u32) -> Self {
-        Self { value }
-    }
+arm_instruction!(SingleDataTransfer);
 
+impl SingleDataTransfer {
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rn = self.rn() as usize;
@@ -93,7 +90,7 @@ impl SingleDataTransfer {
         }
     }
 
-    pub fn disassemble(&self) -> String {
+    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let pre_index = self.pre_index();
         let t = if pre_index { "" } else { "T" };
@@ -129,11 +126,6 @@ impl SingleDataTransfer {
             true => format!("LDR{}{}{} {},{}", cond, byte, t, rd, address),
             false => format!("STR{}{}{} {},{}", cond, byte, t, rd, address),
         }
-    }
-
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
     }
 
     #[inline]
@@ -194,16 +186,5 @@ impl SingleDataTransfer {
     #[inline]
     pub fn load(&self) -> bool {
         self.value.bit(20)
-    }
-}
-
-impl fmt::Display for SingleDataTransfer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = "SingleDataTransfer";
-        write!(
-            f,
-            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-            name, self.value, self.value
-        )
     }
 }

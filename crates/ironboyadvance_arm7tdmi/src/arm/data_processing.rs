@@ -1,10 +1,9 @@
-use core::fmt;
-
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
-    Condition, CpuAction, DataProcessingOpcode, Register,
+    CpuAction, DataProcessingOpcode, Register,
     alu::*,
+    arm::arm_instruction,
     barrel_shifter::*,
     cpu::{Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
@@ -17,11 +16,9 @@ pub struct DataProcessing {
     value: u32,
 }
 
-impl DataProcessing {
-    pub fn new(value: u32) -> Self {
-        Self { value }
-    }
+arm_instruction!(DataProcessing);
 
+impl DataProcessing {
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let mut cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
         let rn = self.rn() as usize;
@@ -99,7 +96,7 @@ impl DataProcessing {
         cpu_action
     }
 
-    pub fn disassemble(&self) -> String {
+    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let opcode = self.opcode();
         let s = if self.sets_flags() { "S" } else { "" };
@@ -130,11 +127,6 @@ impl DataProcessing {
             CMP | CMN | TEQ | TST => format!("{opcode}{cond} {rn},{operand_2}"),
             _ => format!("{opcode}{cond}{s} {rd},{rn},{operand_2}"),
         }
-    }
-
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
     }
 
     #[inline]
@@ -198,16 +190,5 @@ impl DataProcessing {
     #[inline]
     pub fn immediate(&self) -> u32 {
         self.value.bits(0..=7)
-    }
-}
-
-impl fmt::Display for DataProcessing {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = "DataProcessing";
-        write!(
-            f,
-            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-            name, self.value, self.value
-        )
     }
 }

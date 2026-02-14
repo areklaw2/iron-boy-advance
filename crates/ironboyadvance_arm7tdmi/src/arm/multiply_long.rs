@@ -1,10 +1,9 @@
-use core::fmt;
-
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
-    Condition, CpuAction, Register,
+    CpuAction, Register,
     alu::multiplier_array_cycles,
+    arm::arm_instruction,
     cpu::{Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
@@ -14,11 +13,9 @@ pub struct MultiplyLong {
     value: u32,
 }
 
-impl MultiplyLong {
-    pub fn new(value: u32) -> Self {
-        Self { value }
-    }
+arm_instruction!(MultiplyLong);
 
+impl MultiplyLong {
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd_lo = self.rd_lo() as usize;
         let rd_hi = self.rd_hi() as usize;
@@ -76,7 +73,7 @@ impl MultiplyLong {
         }
     }
 
-    pub fn disassemble(&self) -> String {
+    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let s = if self.sets_flags() { "S" } else { "" };
         let rd_hi = self.rd_hi();
@@ -91,11 +88,6 @@ impl MultiplyLong {
             (false, false) => format!("SMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
             (false, true) => format!("SMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
         }
-    }
-
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
     }
 
     #[inline]
@@ -131,16 +123,5 @@ impl MultiplyLong {
     #[inline]
     pub fn unsigned(&self) -> bool {
         self.value.bit(22)
-    }
-}
-
-impl fmt::Display for MultiplyLong {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = "MultiplyLong";
-        write!(
-            f,
-            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-            name, self.value, self.value
-        )
     }
 }

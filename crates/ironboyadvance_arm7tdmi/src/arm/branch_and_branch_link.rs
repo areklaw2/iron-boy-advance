@@ -1,9 +1,8 @@
-use core::fmt;
-
 use ironboyadvance_utils::bit::BitOps;
 
 use crate::{
-    Condition, CpuAction,
+    CpuAction,
+    arm::arm_instruction,
     cpu::{Arm7tdmiCpu, LR},
     memory::MemoryInterface,
 };
@@ -13,11 +12,9 @@ pub struct BranchAndBranchWithLink {
     value: u32,
 }
 
-impl BranchAndBranchWithLink {
-    pub fn new(value: u32) -> Self {
-        Self { value }
-    }
+arm_instruction!(BranchAndBranchWithLink);
 
+impl BranchAndBranchWithLink {
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         if self.link() {
             cpu.set_register(LR, cpu.pc() - 4)
@@ -29,16 +26,11 @@ impl BranchAndBranchWithLink {
         CpuAction::PipelineFlush
     }
 
-    pub fn disassemble(&self) -> String {
+    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let link = if self.link() { "L" } else { "" };
         let expression = self.offset();
         format!("B{link}{cond} 0x{expression:08X}")
-    }
-
-    #[inline]
-    pub fn cond(&self) -> Condition {
-        self.value.bits(28..=31).into()
     }
 
     #[inline]
@@ -49,16 +41,5 @@ impl BranchAndBranchWithLink {
     #[inline]
     fn offset(&self) -> u32 {
         self.value.bits(0..=23)
-    }
-}
-
-impl fmt::Display for BranchAndBranchWithLink {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = "BranchAndBranchWithLink";
-        write!(
-            f,
-            "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-            name, self.value, self.value
-        )
     }
 }
