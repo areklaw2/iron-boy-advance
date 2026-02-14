@@ -9,6 +9,7 @@ pub enum BgMode {
     Mode3,
     Mode4,
     Mode5,
+    Prohibited,
 }
 
 impl BgMode {
@@ -21,7 +22,7 @@ impl BgMode {
             0x3 => Mode3,
             0x4 => Mode4,
             0x5 => Mode5,
-            _ => unimplemented!(),
+            _ => Prohibited,
         }
     }
 
@@ -64,11 +65,11 @@ impl RegisterOps<u16> for LcdControl {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct LcdStatus {
-    #[bits(1, access = ro)]
+    #[bits(1)]
     v_blank: bool,
-    #[bits(1, access = ro)]
+    #[bits(1)]
     h_blank: bool,
-    #[bits(1, access = ro)]
+    #[bits(1)]
     v_counter: bool,
     v_blank_irq_enable: bool,
     h_blank_irq_enable: bool,
@@ -85,11 +86,13 @@ impl RegisterOps<u16> for LcdStatus {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.set_bits(bits & 0xFF38);
     }
 }
 
-// TOOD: add enums as needed
+// https://rust-console.github.io/gbatek-gbaonly/#--lcd-io-bg-control
+// reread section for screen size stuff
+
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct BgControl {
@@ -109,6 +112,25 @@ pub struct BgControl {
 }
 
 impl RegisterOps<u16> for BgControl {
+    fn register(&self) -> u16 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u16) {
+        self.set_bits(bits);
+    }
+}
+
+#[bitfield(u16)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct BgScrolling {
+    #[bits(9)]
+    offset: u16,
+    #[bits(7)]
+    not_used: u8,
+}
+
+impl RegisterOps<u16> for BgScrolling {
     fn register(&self) -> u16 {
         self.into_bits()
     }
