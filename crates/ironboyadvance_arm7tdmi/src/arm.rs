@@ -13,6 +13,7 @@ use crate::{
     memory::MemoryInterface,
 };
 
+// Explore turning these into bitfields
 pub mod block_data_transfer;
 pub mod branch_and_branch_link;
 pub mod branch_and_exchange;

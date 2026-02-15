@@ -37,7 +37,7 @@ pub enum GbaError {
 
 pub struct GameBoyAdvance {
     arm7tdmi: Arm7tdmiCpu<SystemBus>,
-    // may end making a common cpu trait
+    // may end up making a common cpu trait
     // sharp_sm83: SharpSm83Cpu<SystemBus>,
     scheduler: Rc<RefCell<Scheduler>>,
     rom_name: String,

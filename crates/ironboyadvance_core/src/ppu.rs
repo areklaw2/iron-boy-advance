@@ -38,6 +38,10 @@ pub struct Ppu {
     win_y_dimensions: [WindowDimension; 2],
     win_inside: WindowInside,
     win_outside: WindowOutside,
+    mosiac_size: MosiacSize,
+    color_special_effects_selection: ColorSpecialEffectsSelection,
+    alpha_blending_coefficients: AlphaBlendingCoefficients,
+    brightness_coefficient: BrightnessCoefficient,
     interrupt_flags: Rc<RefCell<Interrupt>>,
     scheduler: Rc<RefCell<Scheduler>>,
 }
@@ -60,6 +64,10 @@ impl Ppu {
             win_y_dimensions: [WindowDimension::from_bits(0); 2],
             win_inside: WindowInside::from_bits(0),
             win_outside: WindowOutside::from_bits(0),
+            mosiac_size: MosiacSize::from_bits(0),
+            color_special_effects_selection: ColorSpecialEffectsSelection::from_bits(0),
+            alpha_blending_coefficients: AlphaBlendingCoefficients::from_bits(0),
+            brightness_coefficient: BrightnessCoefficient::from_bits(0),
             interrupt_flags,
             scheduler,
         }
@@ -84,19 +92,14 @@ impl SystemMemoryAccess for Ppu {
             0x0400000C..=0x0400000D => self.bg_controls[2].read_byte(address),
             0x0400000E..=0x0400000F => self.bg_controls[3].read_byte(address),
             // BG0HOFS, BG0VOFS, BG1HOFS, BG1VOFS, BG2HOFS, BG2VOFS, BG3HOFS, BG3VOFS
-            0x04000010..=0x0400001F => 0xFF,
-            // BG2PA, BG2PB, BG2PC, BG2PD
-            0x04000020..=0x04000027 => 0xFF,
-            // BG2X_L, BG2X_H, BG2Y_L, BG2Y_H
-            0x04000028..=0x0400002F => 0xFF,
-            // BG3PA, BG3PB, BG3PC, BG3PD
-            0x04000030..=0x04000037 => 0xFF,
-            // BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
-            0x04000038..=0x0400003F => 0xFF,
-            // WIN0H, WIN1H, WIN0V, WIN1V
-            0x04000040..=0x04000047 => 0xFF,
-            //WININ, WINOUT
-            0x04000048..=0x0400004B => 0xFF,
+            // BG2PA, BG2PB, BG2PC, BG2PD, BG2X_L, BG2X_H, BG2Y_L, BG2Y_H
+            // BG3PA, BG3PB, BG3PC, BG3PD, BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
+            // WIN0H, WIN1H, WIN0V, WIN1V, WININ, WINOUT, MOSIAC
+            0x04000010..=0x0400004F => 0xFF,
+            // BLDCNT, BLDALPHA, BLDY,
+            0x04000050..=0x04000051 => self.color_special_effects_selection.read_byte(address),
+            0x04000052..=0x04000053 => self.alpha_blending_coefficients.read_byte(address),
+            0x04000054..=0x04000057 => self.brightness_coefficient.read_byte(address),
             _ => panic!("Invalid byte read for Ppu Register: {:#010X}", address),
         }
     }
@@ -147,10 +150,15 @@ impl SystemMemoryAccess for Ppu {
             0x04000042..=0x04000043 => self.win_x_dimensions[1].write_byte(address, value),
             0x04000044..=0x04000045 => self.win_y_dimensions[0].write_byte(address, value),
             0x04000046..=0x04000047 => self.win_y_dimensions[1].write_byte(address, value),
-            //WININ, WINOUT
+            // WININ, WINOUT
             0x04000048..=0x04000049 => self.win_inside.write_byte(address, value),
             0x0400004A..=0x0400004B => self.win_outside.write_byte(address, value),
-
+            // MOSIAC
+            0x0400004C..=0x0400004F => self.mosiac_size.write_byte(address, value),
+            // BLDCNT, BLDALPHA, BLDY,
+            0x04000050..=0x04000051 => self.color_special_effects_selection.write_byte(address, value),
+            0x04000052..=0x04000053 => self.alpha_blending_coefficients.write_byte(address, value),
+            0x04000054..=0x04000057 => self.brightness_coefficient.write_byte(address, value),
             _ => panic!("Invalid byte write for Ppu Register: {:#010X}", address),
         }
     }
