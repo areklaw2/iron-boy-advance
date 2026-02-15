@@ -42,6 +42,9 @@ pub struct Ppu {
     color_special_effects_selection: ColorSpecialEffectsSelection,
     alpha_blending_coefficients: AlphaBlendingCoefficients,
     brightness_coefficient: BrightnessCoefficient,
+    pallete_ram: Vec<u8>,
+    vram: Vec<u8>,
+    oam: Vec<u8>,
     interrupt_flags: Rc<RefCell<Interrupt>>,
     scheduler: Rc<RefCell<Scheduler>>,
 }
@@ -68,6 +71,9 @@ impl Ppu {
             color_special_effects_selection: ColorSpecialEffectsSelection::from_bits(0),
             alpha_blending_coefficients: AlphaBlendingCoefficients::from_bits(0),
             brightness_coefficient: BrightnessCoefficient::from_bits(0),
+            pallete_ram: vec![0; 0x400],
+            vram: vec![0; 0x18000],
+            oam: vec![0; 0x400],
             interrupt_flags,
             scheduler,
         }
@@ -81,7 +87,7 @@ impl SystemMemoryAccess for Ppu {
             0x04000000..=0x04000001 => self.lcd_control.read_byte(address),
             // Green Swap
             0x04000002 => self.green_swap as u8,
-            0x04000003 => 0xFF, //TODO: confirm this is fine
+            0x04000003 => 0,
             // DISPSTAT
             0x04000004..=0x04000005 => self.lcd_status.read_byte(address),
             // VCOUNT
@@ -95,11 +101,19 @@ impl SystemMemoryAccess for Ppu {
             // BG2PA, BG2PB, BG2PC, BG2PD, BG2X_L, BG2X_H, BG2Y_L, BG2Y_H
             // BG3PA, BG3PB, BG3PC, BG3PD, BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
             // WIN0H, WIN1H, WIN0V, WIN1V, WININ, WINOUT, MOSIAC
-            0x04000010..=0x0400004F => 0xFF,
+            0x04000010..=0x0400004F => 0,
             // BLDCNT, BLDALPHA, BLDY,
             0x04000050..=0x04000051 => self.color_special_effects_selection.read_byte(address),
             0x04000052..=0x04000053 => self.alpha_blending_coefficients.read_byte(address),
             0x04000054..=0x04000057 => self.brightness_coefficient.read_byte(address),
+            // Access Memory
+            0x05000000..=0x05FFFFFF => self.pallete_ram[(address & 0x3FF) as usize],
+            0x06000000..=0x06FFFFFF => {
+                let offset = (address & 0x1FFFF) as usize; // 128KB mirror
+                let index = if offset >= 0x18000 { offset - 0x8000 } else { offset };
+                self.vram[index]
+            }
+            0x07000000..=0x07FFFFFF => self.oam[(address & 0x3FF) as usize],
             _ => panic!("Invalid byte read for Ppu Register: {:#010X}", address),
         }
     }
@@ -159,6 +173,14 @@ impl SystemMemoryAccess for Ppu {
             0x04000050..=0x04000051 => self.color_special_effects_selection.write_byte(address, value),
             0x04000052..=0x04000053 => self.alpha_blending_coefficients.write_byte(address, value),
             0x04000054..=0x04000057 => self.brightness_coefficient.write_byte(address, value),
+            // Access Memory
+            0x05000000..=0x05FFFFFF => self.pallete_ram[(address & 0x3FF) as usize] = value,
+            0x06000000..=0x06FFFFFF => {
+                let offset = (address & 0x1FFFF) as usize; // 128KB mirror
+                let index = if offset >= 0x18000 { offset - 0x8000 } else { offset };
+                self.vram[index] = value;
+            }
+            0x07000000..=0x07FFFFFF => self.oam[(address & 0x3FF) as usize] = value,
             _ => panic!("Invalid byte write for Ppu Register: {:#010X}", address),
         }
     }

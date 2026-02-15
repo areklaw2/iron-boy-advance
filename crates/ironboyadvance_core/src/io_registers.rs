@@ -41,11 +41,15 @@ impl SystemMemoryAccess for IoRegisters {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // PPU
-            0x04000000..=0x04000056 => self.ppu.read_8(address),
+            0x04000000..=0x04000057 => self.ppu.read_8(address),
             // Interrupt Control
-            0x04000200..=0x04000203 | 0x04000208 => self.interrupt_controller.read_8(address),
+            0x04000200..=0x04000203 | 0x04000208..=0x0400020B => self.interrupt_controller.read_8(address),
             // System Control
-            0x04000204..=0x04000205 | 0x04000300 => self.system_controller.read_8(address),
+            0x04000204..=0x04000207 | 0x04000300..=0x04000301 => self.system_controller.read_8(address),
+            // Access Memory
+            0x05000000..=0x05FFFFFF => self.ppu.read_8(address),
+            0x06000000..=0x06FFFFFF => self.ppu.read_8(address),
+            0x07000000..=0x07FFFFFF => self.ppu.read_8(address),
             _ => {
                 debug!("Read byte not implemented for I/O register: {:#010X}", address);
                 0
@@ -56,11 +60,15 @@ impl SystemMemoryAccess for IoRegisters {
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
             // PPU
-            0x04000000..=0x04000005 | 0x04000008..=0x04000056 => self.ppu.write_8(address, value),
+            0x04000000..=0x04000005 | 0x04000008..=0x04000057 => self.ppu.write_8(address, value),
             // Interrupt Control
-            0x04000200..=0x04000203 | 0x04000208 => self.interrupt_controller.write_8(address, value),
+            0x04000200..=0x04000203 | 0x04000208..=0x0400020B => self.interrupt_controller.write_8(address, value),
             // System Control
-            0x04000204..=0x04000205 | 0x04000300..=0x04000301 => self.system_controller.write_8(address, value),
+            0x04000204..=0x04000207 | 0x04000300..=0x04000301 => self.system_controller.write_8(address, value),
+            // Access Memory
+            0x05000000..=0x05FFFFFF => self.ppu.write_8(address, value),
+            0x06000000..=0x06FFFFFF => self.ppu.write_8(address, value),
+            0x07000000..=0x07FFFFFF => self.ppu.write_8(address, value),
             _ => debug!(
                 "Write byte not implemented for I/O register: {:#010X}, value: {:#04X}",
                 address, value

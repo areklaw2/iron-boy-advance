@@ -25,10 +25,6 @@ pub struct SystemBus {
     wram_board: Vec<u8>,
     wram_chip: Vec<u8>,
     io_registers: IoRegisters, //TODO: make getter
-    // TODO: Probably need to add this to ppu
-    pallete_ram: Vec<u8>,
-    vram: Vec<u8>,
-    oam: Vec<u8>,
     cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler>>,
 }
@@ -76,9 +72,9 @@ impl SystemMemoryAccess for SystemBus {
             WRAM_BOARD_BASE => self.wram_board[(address & 0x3FFFF) as usize],
             WRAM_CHIP_BASE => self.wram_chip[(address & 0x7FFF) as usize],
             IO_REGISTERS_BASE => self.io_registers.read_8(address), // theres mirrors for this see GBATEK
-            PALETTE_RAM_BASE => self.pallete_ram[(address & 0x3FF) as usize],
-            VRAM_BASE => self.vram[(address & 0x17FFF) as usize],
-            OAM_BASE => self.oam[(address & 0x3FF) as usize],
+            PALETTE_RAM_BASE => self.io_registers.read_8(address),
+            VRAM_BASE => self.io_registers.read_8(address),
+            OAM_BASE => self.io_registers.read_8(address),
             ROM_WS0_LO | ROM_WS0_HI => self.cartridge.read_8(address),
             ROM_WS1_LO | ROM_WS1_HI => self.cartridge.read_8(address),
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_8(address),
@@ -93,9 +89,9 @@ impl SystemMemoryAccess for SystemBus {
             WRAM_BOARD_BASE => self.wram_board[(address & 0x3FFFF) as usize] = value,
             WRAM_CHIP_BASE => self.wram_chip[(address & 0x7FFF) as usize] = value,
             IO_REGISTERS_BASE => self.io_registers.write_8(address, value), // theres mirrors for this see GBATEK
-            PALETTE_RAM_BASE => self.pallete_ram[(address & 0x3FF) as usize] = value,
-            VRAM_BASE => self.vram[(address & 0x17FFF) as usize] = value,
-            OAM_BASE => self.oam[(address & 0x3FF) as usize] = value,
+            PALETTE_RAM_BASE => self.io_registers.write_8(address, value),
+            VRAM_BASE => self.io_registers.write_8(address, value),
+            OAM_BASE => self.io_registers.write_8(address, value),
             ROM_WS0_LO | ROM_WS0_HI => self.cartridge.write_8(address, value),
             ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_8(address, value),
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_8(address, value),
@@ -112,9 +108,6 @@ impl SystemBus {
             wram_board: vec![0; 0x40000],
             wram_chip: vec![0; 0x8000],
             io_registers: IoRegisters::new(scheduler.clone()),
-            pallete_ram: vec![0; 0x400],
-            vram: vec![0; 0x18000],
-            oam: vec![0; 0x400],
             cartridge,
             scheduler,
         }

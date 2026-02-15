@@ -119,7 +119,7 @@ impl ClockCycleLuts {
     }
 }
 
-#[bitfield(u16)]
+#[bitfield(u32)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 struct WaitStateControl {
     #[bits(2)]
@@ -135,17 +135,18 @@ struct WaitStateControl {
     ws2_second_access: bool,
     #[bits(2)]
     phi_terminal_output: u8,
-    _reserved: bool,
+    not_used0: bool,
     game_pak_prefetch_buffer_enable: bool,
     game_pak_type_flag: bool,
+    not_used1: u16,
 }
 
-impl RegisterOps<u16> for WaitStateControl {
-    fn register(&self) -> u16 {
+impl RegisterOps<u32> for WaitStateControl {
+    fn register(&self) -> u32 {
         self.into_bits()
     }
 
-    fn write_register(&mut self, bits: u16) {
+    fn write_register(&mut self, bits: u32) {
         self.set_bits(bits);
     }
 }
@@ -199,9 +200,10 @@ impl SystemMemoryAccess for SystemController {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // WAITCNT
-            0x04000204..=0x04000205 => self.waitstate_control.read_byte(address),
+            0x04000204..=0x04000207 => self.waitstate_control.read_byte(address),
             // POSTFLG
             0x04000300 => self.post_flag as u8,
+            0x04000301 => 0,
             _ => panic!("Invalid byte read for SystemController: {:#010X}", address),
         }
     }
@@ -209,9 +211,11 @@ impl SystemMemoryAccess for SystemController {
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
             // WAITCNT
-            0x04000204..=0x04000205 => {
+            0x04000204..=0x04000207 => {
                 self.waitstate_control.write_byte(address, value);
-                self.cycle_luts.update_wait_states(&self.waitstate_control);
+                if (0x04000204..=0x04000205).contains(&address) {
+                    self.cycle_luts.update_wait_states(&self.waitstate_control);
+                }
             }
             // POSTFLG
             0x04000300 => self.post_flag = value & 0x1 != 0,
