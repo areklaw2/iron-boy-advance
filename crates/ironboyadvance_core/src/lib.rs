@@ -16,6 +16,7 @@ mod bios;
 mod cartridge;
 mod interrupt_control;
 mod io_registers;
+mod memory;
 mod ppu;
 mod scheduler;
 mod system_bus;

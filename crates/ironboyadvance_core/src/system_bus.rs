@@ -2,7 +2,10 @@ use std::{cell::RefCell, rc::Rc};
 
 use ironboyadvance_arm7tdmi::memory::{MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
 
-use crate::{bios::Bios, cartridge::Cartridge, io_registers::IoRegisters, scheduler::Scheduler, system_control::HaltMode};
+use crate::{
+    bios::Bios, cartridge::Cartridge, io_registers::IoRegisters, memory::Memory, scheduler::Scheduler,
+    system_control::HaltMode,
+};
 
 pub const BIOS_BASE: u32 = 0x0000_0000;
 pub const WRAM_BOARD_BASE: u32 = 0x0200_0000;
@@ -22,8 +25,7 @@ pub const SRAM_HI: u32 = 0x0F00_0000;
 
 pub struct SystemBus {
     bios: Bios,
-    wram_board: Vec<u8>,
-    wram_chip: Vec<u8>,
+    memory: Memory,
     io_registers: IoRegisters, //TODO: make getter
     cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler>>,
@@ -69,8 +71,8 @@ impl SystemMemoryAccess for SystemBus {
     fn read_8(&self, address: u32) -> u8 {
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.read_8(address),
-            WRAM_BOARD_BASE => self.wram_board[(address & 0x3FFFF) as usize],
-            WRAM_CHIP_BASE => self.wram_chip[(address & 0x7FFF) as usize],
+            WRAM_BOARD_BASE => self.memory.read_8(address),
+            WRAM_CHIP_BASE => self.memory.read_8(address),
             IO_REGISTERS_BASE => self.io_registers.read_8(address), // theres mirrors for this see GBATEK
             PALETTE_RAM_BASE => self.io_registers.read_8(address),
             VRAM_BASE => self.io_registers.read_8(address),
@@ -86,8 +88,8 @@ impl SystemMemoryAccess for SystemBus {
     fn write_8(&mut self, address: u32, value: u8) {
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.write_8(address, value),
-            WRAM_BOARD_BASE => self.wram_board[(address & 0x3FFFF) as usize] = value,
-            WRAM_CHIP_BASE => self.wram_chip[(address & 0x7FFF) as usize] = value,
+            WRAM_BOARD_BASE => self.memory.write_8(address, value),
+            WRAM_CHIP_BASE => self.memory.write_8(address, value),
             IO_REGISTERS_BASE => self.io_registers.write_8(address, value), // theres mirrors for this see GBATEK
             PALETTE_RAM_BASE => self.io_registers.write_8(address, value),
             VRAM_BASE => self.io_registers.write_8(address, value),
@@ -105,8 +107,7 @@ impl SystemBus {
     pub fn new(cartridge: Cartridge, bios: Bios, scheduler: Rc<RefCell<Scheduler>>) -> Self {
         SystemBus {
             bios,
-            wram_board: vec![0; 0x40000],
-            wram_chip: vec![0; 0x8000],
+            memory: Memory::new(),
             io_registers: IoRegisters::new(scheduler.clone()),
             cartridge,
             scheduler,
