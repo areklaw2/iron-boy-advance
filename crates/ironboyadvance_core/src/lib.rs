@@ -109,9 +109,9 @@ impl GameBoyAdvance {
         while let Some((event, timestamp)) = scheduler.pop() {
             let future_event: Option<(EventType, usize)> = match event {
                 EventType::FrameComplete => return true,
-                //TODO: write handlers for events
+                EventType::InterruptPending => None,
                 EventType::Timer(_timer_event) => None,
-                EventType::Ppu(_ppu_event) => None,
+                EventType::Ppu(ppu_event) => Some(self.arm7tdmi.bus_mut().ppu_mut().handle_event(ppu_event)),
                 EventType::Apu(_apu_event) => None,
             };
 

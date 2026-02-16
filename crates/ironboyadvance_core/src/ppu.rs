@@ -2,23 +2,32 @@ use std::{cell::RefCell, rc::Rc};
 
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
-use crate::{interrupt_control::Interrupt, io_registers::RegisterOps, ppu::registers::*, scheduler::Scheduler};
+use crate::{
+    interrupt_control::Interrupt,
+    io_registers::RegisterOps,
+    ppu::registers::*,
+    scheduler::{
+        Scheduler,
+        event::{EventType, FutureEvent, PpuEvent},
+    },
+};
 
-pub const CYCLES_PER_PIXEL: u32 = 4;
+const CYCLES_PER_PIXEL: usize = 4;
 
-pub const HDRAW_PIXELS: u32 = 240;
-pub const HBLANK_PIXELS: u32 = 68;
+const HDRAW_PIXELS: usize = 240;
+const HBLANK_PIXELS: usize = 68;
 
-pub const HDRAW_CYCLES: u32 = HDRAW_PIXELS * CYCLES_PER_PIXEL;
-pub const HBLANK_CYCLES: u32 = HBLANK_PIXELS * CYCLES_PER_PIXEL;
-pub const CYCLES_PER_SCANLINE: u32 = HDRAW_CYCLES + HBLANK_CYCLES;
+const HBLANK_FLAG_LAG: usize = 46;
+pub const HDRAW_CYCLES: usize = HDRAW_PIXELS * CYCLES_PER_PIXEL + HBLANK_FLAG_LAG;
+pub const HBLANK_CYCLES: usize = HBLANK_PIXELS * CYCLES_PER_PIXEL - HBLANK_FLAG_LAG;
+pub const CYCLES_PER_SCANLINE: usize = HDRAW_CYCLES + HBLANK_CYCLES;
 
-pub const VDRAW_SCANLINES: u32 = 160;
-pub const VBLANK_SCANLINES: u32 = 68;
-pub const VDRAW_CYCLES: u32 = VDRAW_SCANLINES * CYCLES_PER_SCANLINE;
-pub const VBLANK_CYCLES: u32 = VBLANK_SCANLINES * CYCLES_PER_SCANLINE;
+pub const VDRAW_SCANLINES: usize = 160;
+pub const VBLANK_SCANLINES: usize = 68;
+pub const VDRAW_CYCLES: usize = VDRAW_SCANLINES * CYCLES_PER_SCANLINE;
+pub const VBLANK_CYCLES: usize = VBLANK_SCANLINES * CYCLES_PER_SCANLINE;
 
-pub const CYCLES_PER_FRAME: usize = VDRAW_CYCLES as usize + VBLANK_CYCLES as usize;
+pub const CYCLES_PER_FRAME: usize = VDRAW_CYCLES + VBLANK_CYCLES;
 
 mod registers;
 
@@ -183,5 +192,25 @@ impl SystemMemoryAccess for Ppu {
             0x07000000..=0x07FFFFFF => self.oam[(address & 0x3FF) as usize] = value,
             _ => panic!("Invalid byte write for Ppu Register: {:#010X}", address),
         }
+    }
+}
+
+impl Ppu {
+    pub fn handle_event(&mut self, event: PpuEvent) -> FutureEvent {
+        let (next_event, delta_time) = match event {
+            PpuEvent::HDraw => self.handle_hdraw_end(),
+            PpuEvent::HBlank => todo!(),
+            PpuEvent::VDraw => todo!(),
+            PpuEvent::VBlank => todo!(),
+        };
+
+        (EventType::Ppu(event), delta_time)
+    }
+
+    fn handle_hdraw_end(&mut self) -> (PpuEvent, usize) {
+        self.lcd_status.set_h_blank(true);
+
+        // DMA here?
+        (PpuEvent::HBlank, HBLANK_CYCLES)
     }
 }

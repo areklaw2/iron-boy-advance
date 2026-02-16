@@ -16,11 +16,10 @@ use crate::{
 };
 
 #[derive(Getters, MutGetters, Setters)]
+#[getset(get = "pub", get_mut = "pub")]
 pub struct IoRegisters {
     ppu: Ppu,
-    #[getset(get = "pub", get_mut = "pub")]
     interrupt_controller: InterruptController,
-    #[getset(get = "pub", get_mut = "pub")]
     system_controller: SystemController,
 }
 

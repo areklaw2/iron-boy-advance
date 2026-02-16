@@ -1,9 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
+use getset::{Getters, MutGetters};
 use ironboyadvance_arm7tdmi::memory::{MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
 
 use crate::{
-    bios::Bios, cartridge::Cartridge, io_registers::IoRegisters, memory::Memory, scheduler::Scheduler,
+    bios::Bios, cartridge::Cartridge, io_registers::IoRegisters, memory::Memory, ppu::Ppu, scheduler::Scheduler,
     system_control::HaltMode,
 };
 
@@ -23,10 +24,12 @@ pub const ROM_WS2_HI: u32 = 0x0D00_0000;
 pub const SRAM_LO: u32 = 0x0E00_0000;
 pub const SRAM_HI: u32 = 0x0F00_0000;
 
+#[derive(Getters, MutGetters)]
 pub struct SystemBus {
     bios: Bios,
     memory: Memory,
-    io_registers: IoRegisters, //TODO: make getter
+    #[getset(get = "pub", get_mut = "pub")]
+    io_registers: IoRegisters,
     cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler>>,
 }
@@ -131,5 +134,9 @@ impl SystemBus {
 
     pub fn un_halt(&mut self) {
         self.io_registers.system_controller_mut().set_halt_mode(HaltMode::Running);
+    }
+
+    pub fn ppu_mut(&mut self) -> &mut Ppu {
+        self.io_registers.ppu_mut()
     }
 }

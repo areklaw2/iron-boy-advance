@@ -2,7 +2,10 @@ use std::cmp::Ordering;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum PpuEvent {
-    None, //TODO: add ppu events
+    HDraw,
+    HBlank,
+    VDraw,
+    VBlank,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -18,6 +21,7 @@ pub enum TimerEvent {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum EventType {
     FrameComplete,
+    InterruptPending,
     Ppu(PpuEvent),
     Apu(ApuEvent),
     Timer(TimerEvent),
