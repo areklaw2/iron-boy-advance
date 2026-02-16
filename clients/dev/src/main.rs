@@ -55,7 +55,7 @@ fn initilize_logger() {
         .create(true)
         .write(true)
         .truncate(true)
-        .open("../../ironboyadvance.log")
+        .open("ironboyadvance.log")
         .expect("Failed to create log file");
 
     tracing_subscriber::registry()
