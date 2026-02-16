@@ -27,6 +27,8 @@ mod system_control;
 
 pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 
+pub use ppu::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+
 #[derive(Error, Debug)]
 pub enum GbaError {
     #[error("Failed to load cartridge: {0}")]
@@ -123,6 +125,10 @@ impl GameBoyAdvance {
             }
         }
         false
+    }
+
+    pub fn frame_buffer(&self) -> &[u32] {
+        self.arm7tdmi.bus().io_registers().ppu().frame_buffer()
     }
 }
 

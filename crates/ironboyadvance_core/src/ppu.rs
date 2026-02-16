@@ -1,3 +1,4 @@
+use getset::Getters;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
 use crate::{
@@ -13,19 +14,24 @@ const HBLANK_PIXELS: usize = 68;
 const HBLANK_FLAG_LAG: usize = 46;
 
 pub const HDRAW_CYCLES: usize = HDRAW_PIXELS * CYCLES_PER_PIXEL + HBLANK_FLAG_LAG;
-pub const HBLANK_CYCLES: usize = HBLANK_PIXELS * CYCLES_PER_PIXEL - HBLANK_FLAG_LAG;
+const HBLANK_CYCLES: usize = HBLANK_PIXELS * CYCLES_PER_PIXEL - HBLANK_FLAG_LAG;
 const CYCLES_PER_SCANLINE: usize = HDRAW_CYCLES + HBLANK_CYCLES;
 
 const VDRAW_SCANLINES: usize = 160;
 const VBLANK_SCANLINES: usize = 68;
-pub const VDRAW_CYCLES: usize = VDRAW_SCANLINES * CYCLES_PER_SCANLINE;
-pub const VBLANK_CYCLES: usize = VBLANK_SCANLINES * CYCLES_PER_SCANLINE;
+const VDRAW_CYCLES: usize = VDRAW_SCANLINES * CYCLES_PER_SCANLINE;
+const VBLANK_CYCLES: usize = VBLANK_SCANLINES * CYCLES_PER_SCANLINE;
 
 const MAX_V_COUNT: usize = VDRAW_SCANLINES + VBLANK_SCANLINES - 1;
+const PIXEL_PER_FRAME: usize = HDRAW_PIXELS * VDRAW_SCANLINES;
+
 pub const CYCLES_PER_FRAME: usize = VDRAW_CYCLES + VBLANK_CYCLES;
+pub const VIEWPORT_WIDTH: usize = HDRAW_PIXELS;
+pub const VIEWPORT_HEIGHT: usize = VDRAW_SCANLINES;
 
 mod registers;
 
+#[derive(Getters)]
 pub struct Ppu {
     lcd_control: LcdControl,
     green_swap: bool,
@@ -49,6 +55,8 @@ pub struct Ppu {
     pallete_ram: Vec<u8>,
     vram: Vec<u8>,
     oam: Vec<u8>,
+    #[getset(get = "pub")]
+    frame_buffer: [u32; PIXEL_PER_FRAME],
 }
 
 impl Ppu {
@@ -76,6 +84,7 @@ impl Ppu {
             pallete_ram: vec![0; 0x400],
             vram: vec![0; 0x18000],
             oam: vec![0; 0x400],
+            frame_buffer: [0; PIXEL_PER_FRAME],
         }
     }
 }
@@ -276,6 +285,33 @@ impl Ppu {
     }
 
     fn render_scanline(&mut self) {
-        todo!()
+        if self.lcd_control.forced_blank() {
+            let start = self.v_count as usize * HDRAW_PIXELS;
+            self.frame_buffer[start..start + HDRAW_PIXELS].fill(0x7FFF);
+            return;
+        }
+
+        match self.lcd_control.bg_mode() {
+            BgMode::Mode4 => self.render_mode4_scanline(),
+            _ => {}
+        }
     }
+
+    fn render_mode4_scanline(&mut self) {
+        let frame_start = if self.lcd_control.display_frame_select() { 0xA000 } else { 0 };
+        let vram_row = frame_start + (self.v_count as usize) * HDRAW_PIXELS;
+        let frame_buffer_row = (self.v_count as usize) * HDRAW_PIXELS;
+        for x in 0..HDRAW_PIXELS {
+            let palette_index = self.vram[vram_row + x] as usize;
+            let color = u16::from_le_bytes([self.pallete_ram[palette_index * 2], self.pallete_ram[palette_index * 2 + 1]]);
+            self.frame_buffer[frame_buffer_row + x] = bgr555_to_rgb888(color);
+        }
+    }
+}
+
+fn bgr555_to_rgb888(color: u16) -> u32 {
+    let r = (color & 0x1F) as u32;
+    let g = ((color >> 5) & 0x1F) as u32;
+    let b = ((color >> 10) & 0x1F) as u32;
+    (r << 19) | (g << 11) | (b << 3)
 }

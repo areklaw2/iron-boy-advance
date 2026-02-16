@@ -2,6 +2,7 @@ use bitfields::bitfield;
 
 use crate::io_registers::RegisterOps;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BgMode {
     Mode0,
     Mode1,

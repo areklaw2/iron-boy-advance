@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive"] }
 ironboyadvance_core = { path = "../../crates/ironboyadvance_core" }
+clap = { version = "4.5.23", features = ["derive"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+thiserror = "2.0.3"
+sdl2 = { version = "0.38.0", features = ["image", "ttf"] }
+getset = "0.1.6"
