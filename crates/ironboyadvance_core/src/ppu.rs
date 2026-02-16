@@ -209,9 +209,11 @@ impl Ppu {
     fn handle_hdraw_complete(&mut self) -> Vec<FutureEvent> {
         let mut events = vec![];
         self.lcd_status.set_h_blank_flag(true);
+
         if self.lcd_status.h_blank_irq_enable() {
             events.push((EventType::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
+
         events.push((EventType::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
         events
     }
@@ -229,9 +231,11 @@ impl Ppu {
             events.push((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         } else {
             self.lcd_status.set_v_blank_flag(true);
+
             if self.lcd_status.v_blank_irq_enable() {
                 events.push((EventType::Interrupt(InterruptEvent::LcdVBlank), 0));
             }
+
             events.push((EventType::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
         }
         events
@@ -240,9 +244,11 @@ impl Ppu {
     fn handle_vblank_hdraw_complete(&mut self) -> Vec<FutureEvent> {
         let mut events = vec![];
         self.lcd_status.set_h_blank_flag(true);
+
         if self.lcd_status.h_blank_irq_enable() {
             events.push((EventType::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
+
         events.push((EventType::Ppu(PpuEvent::VBlankHBlank), HBLANK_CYCLES));
         events
     }
@@ -255,11 +261,13 @@ impl Ppu {
             if let Some(v_count_match) = self.set_v_count(self.v_count + 1) {
                 events.push((EventType::Interrupt(v_count_match), 0));
             }
+
             events.push((EventType::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
         } else {
             if let Some(v_count_match) = self.set_v_count(0) {
                 events.push((EventType::Interrupt(v_count_match), 0));
             }
+
             self.lcd_status.set_v_blank_flag(false);
             self.render_scanline();
             events.push((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
