@@ -1,5 +1,3 @@
-use core::fmt;
-
 use crate::{
     CpuAction,
     cpu::{Arm7tdmiCpu, Instruction},
@@ -43,18 +41,6 @@ macro_rules! thumb_instruction {
         impl $name {
             pub fn new(value: u16) -> Self {
                 Self { value }
-            }
-        }
-
-        impl core::fmt::Display for $name {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                write!(
-                    f,
-                    "ThumbInstruction: name: {:?}, bits: {} -> (0x{:04X})",
-                    stringify!($name),
-                    self.value,
-                    self.value
-                )
             }
         }
     };
@@ -138,33 +124,6 @@ impl Instruction for ThumbInstruction {
             Self::UnconditionalBranch(i) => i.disassemble(cpu),
             Self::LongBranchWithLink(i) => i.disassemble(cpu),
             Self::Undefined(i) => i.disassemble(cpu),
-        }
-    }
-}
-
-impl fmt::Display for ThumbInstruction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MoveShiftedRegister(i) => i.fmt(f),
-            Self::AddSubtract(i) => i.fmt(f),
-            Self::MoveCompareAddSubtractImmediate(i) => i.fmt(f),
-            Self::AluOperations(i) => i.fmt(f),
-            Self::HiRegisterOperationsBranchExchange(i) => i.fmt(f),
-            Self::PcRelativeLoad(i) => i.fmt(f),
-            Self::LoadStoreRegisterOffset(i) => i.fmt(f),
-            Self::LoadStoreSignExtendedByteHalfword(i) => i.fmt(f),
-            Self::LoadStoreImmediateOffset(i) => i.fmt(f),
-            Self::LoadStoreHalfword(i) => i.fmt(f),
-            Self::SpRelativeLoadStore(i) => i.fmt(f),
-            Self::LoadAddress(i) => i.fmt(f),
-            Self::AddOffsetToSp(i) => i.fmt(f),
-            Self::PushPopRegisters(i) => i.fmt(f),
-            Self::MultipleLoadStore(i) => i.fmt(f),
-            Self::ConditionalBranch(i) => i.fmt(f),
-            Self::SoftwareInterrupt(i) => i.fmt(f),
-            Self::UnconditionalBranch(i) => i.fmt(f),
-            Self::LongBranchWithLink(i) => i.fmt(f),
-            Self::Undefined(i) => i.fmt(f),
         }
     }
 }

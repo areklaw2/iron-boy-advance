@@ -1,6 +1,7 @@
 use crate::{CpuAction, Exception, cpu::Arm7tdmiCpu, memory::MemoryInterface, thumb::thumb_instruction};
 
 #[derive(Debug, Clone, Copy)]
+#[allow(unused)]
 pub struct Undefined {
     value: u16,
 }

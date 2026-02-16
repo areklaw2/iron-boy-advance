@@ -1,5 +1,3 @@
-use core::fmt;
-
 use crate::{
     Condition, CpuAction,
     arm::{
@@ -38,18 +36,6 @@ macro_rules! arm_instruction {
             pub fn cond(&self) -> crate::Condition {
                 use ironboyadvance_utils::bit::BitOps;
                 self.value.bits(28..=31).into()
-            }
-        }
-
-        impl core::fmt::Display for $name {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                write!(
-                    f,
-                    "ArmInstruction: name: {:?}, bits: {} -> (0x{:08X})",
-                    stringify!($name),
-                    self.value,
-                    self.value
-                )
             }
         }
     };
@@ -130,25 +116,6 @@ impl Instruction for ArmInstruction {
             Self::BlockDataTransfer(i) => i.disassemble(cpu),
             Self::BranchAndBranchWithLink(i) => i.disassemble(cpu),
             Self::SoftwareInterrupt(i) => i.disassemble(cpu),
-        }
-    }
-}
-
-impl fmt::Display for ArmInstruction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::DataProcessing(i) => i.fmt(f),
-            Self::PsrTransfer(i) => i.fmt(f),
-            Self::Multiply(i) => i.fmt(f),
-            Self::MultiplyLong(i) => i.fmt(f),
-            Self::SingleDataSwap(i) => i.fmt(f),
-            Self::BranchAndExchange(i) => i.fmt(f),
-            Self::HalfwordAndSignedDataTransfer(i) => i.fmt(f),
-            Self::SingleDataTransfer(i) => i.fmt(f),
-            Self::Undefined(i) => i.fmt(f),
-            Self::BlockDataTransfer(i) => i.fmt(f),
-            Self::BranchAndBranchWithLink(i) => i.fmt(f),
-            Self::SoftwareInterrupt(i) => i.fmt(f),
         }
     }
 }

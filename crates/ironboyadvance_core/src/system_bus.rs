@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use getset::{Getters, MutGetters};
 use ironboyadvance_arm7tdmi::memory::{MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
+use tracing::debug;
 
 use crate::{
     bios::Bios,
@@ -92,7 +93,10 @@ impl SystemMemoryAccess for SystemBus {
             ROM_WS1_LO | ROM_WS1_HI => self.cartridge.read_8(address),
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_8(address),
             SRAM_LO | SRAM_HI => self.cartridge.read_8(address),
-            _ => panic!("Unused: {:08X}", address),
+            _ => {
+                debug!("Unused: {:08X}", address);
+                0
+            }
         }
     }
 

@@ -19,7 +19,7 @@ impl SystemMemoryAccess for Memory {
         match address {
             0x02000000..=0x02FFFFFF => self.wram_board[(address & 0x3FFFF) as usize],
             0x03000000..=0x03FFFFFF => self.wram_chip[(address & 0x7FFF) as usize],
-            _ => panic!("Unused: {:08X}", address),
+            _ => panic!("Invalid byte read for Memory: {:08X}", address),
         }
     }
 
@@ -27,7 +27,7 @@ impl SystemMemoryAccess for Memory {
         match address {
             0x02000000..=0x02FFFFFF => self.wram_board[(address & 0x3FFFF) as usize] = value,
             0x03000000..=0x03FFFFFF => self.wram_chip[(address & 0x7FFF) as usize] = value,
-            _ => panic!("Unused: {:08X}", address),
+            _ => panic!("Invalid byte write for Memory: {:08X}", address),
         }
     }
 }

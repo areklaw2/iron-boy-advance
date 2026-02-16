@@ -51,7 +51,7 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     }
 
     fn load_32(&mut self, address: u32, access: u8) -> u32 {
-        self.bus.load_32(address, access)
+        self.bus.load_32(address & !3, access)
     }
 
     fn store_8(&mut self, address: u32, value: u8, access: u8) {
@@ -63,7 +63,7 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     }
 
     fn store_32(&mut self, address: u32, value: u32, access: u8) {
-        self.bus.store_32(address, value, access);
+        self.bus.store_32(address & !3, value, access);
     }
 
     fn idle_cycle(&mut self) {
@@ -128,7 +128,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.dissassembled_instruction = instruction.disassemble(self);
 
                 if self.show_logs {
-                    debug!("{}", instruction);
                     debug!("{}", self.dissassembled_instruction);
                 }
 
@@ -149,13 +148,12 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             CpuState::Thumb => {
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
-                self.pipeline[1] = self.load_32(pc, self.next_memory_access);
+                self.pipeline[1] = self.load_16(pc, self.next_memory_access);
                 let lut_index = (instruction) as u16 >> 6;
                 let instruction = (self.thumb_lut[lut_index as usize])(instruction as u16);
                 self.dissassembled_instruction = instruction.disassemble(self);
 
                 if self.show_logs {
-                    debug!("{}", instruction);
                     debug!("{}", self.dissassembled_instruction);
                 }
 
