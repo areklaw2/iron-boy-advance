@@ -64,11 +64,8 @@ impl RegisterOps<u16> for LcdControl {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct LcdStatus {
-    #[bits(1)]
     v_blank: bool,
-    #[bits(1)]
     h_blank: bool,
-    #[bits(1)]
     v_counter: bool,
     v_blank_irq_enable: bool,
     h_blank_irq_enable: bool,
@@ -123,7 +120,7 @@ pub struct BgOffset {
     #[bits(9)]
     offset: u16,
     #[bits(7)]
-    not_used: u8,
+    not_used_9_15: u8,
 }
 
 impl RegisterOps<u16> for BgOffset {
@@ -142,10 +139,9 @@ pub struct BgReferencePoint {
     fractional_portion: u8,
     #[bits(19)]
     interger_portion: u32,
-    #[bits(1)]
     sign: bool,
     #[bits(4)]
-    not_used: u8,
+    not_used_28_31: u8,
 }
 
 impl RegisterOps<u32> for BgReferencePoint {
@@ -164,7 +160,6 @@ pub struct BgAffineParameter {
     fractional_portion: u8,
     #[bits(7)]
     interger_portion: u8,
-    #[bits(1)]
     sign: bool,
 }
 
@@ -198,34 +193,22 @@ impl RegisterOps<u16> for WindowDimension {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct WindowInside {
-    #[bits(1)]
     window_0_bg0_enable: bool,
-    #[bits(1)]
     window_0_bg1_enable: bool,
-    #[bits(1)]
     window_0_bg2_enable: bool,
-    #[bits(1)]
     window_0_bg3_enable: bool,
-    #[bits(1)]
     window_0_obj_enable: bool,
-    #[bits(1)]
     window_0_color_special_effect: bool,
     #[bits(2)]
-    not_used0: u8,
-    #[bits(1)]
+    not_used_6_7: u8,
     window_1_bg0_enable: bool,
-    #[bits(1)]
     window_1_bg1_enable: bool,
-    #[bits(1)]
     window_1_bg2_enable: bool,
-    #[bits(1)]
     window_1_bg3_enable: bool,
-    #[bits(1)]
     window_1_obj_enable: bool,
-    #[bits(1)]
     window_1_color_special_effect: bool,
     #[bits(2)]
-    not_used1: u8,
+    not_used_14_15: u8,
 }
 
 impl RegisterOps<u16> for WindowInside {
@@ -241,34 +224,22 @@ impl RegisterOps<u16> for WindowInside {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct WindowOutside {
-    #[bits(1)]
     outside_bg0_enable: bool,
-    #[bits(1)]
     outside_bg1_enable: bool,
-    #[bits(1)]
     outside_bg2_enable: bool,
-    #[bits(1)]
     outside_bg3_enable: bool,
-    #[bits(1)]
     outside_obj_enable: bool,
-    #[bits(1)]
     outside_color_special_effect: bool,
     #[bits(2)]
-    not_used0: u8,
-    #[bits(1)]
+    not_used_6_7: u8,
     obj_window_bg0_enable: bool,
-    #[bits(1)]
     obj_window_bg1_enable: bool,
-    #[bits(1)]
     obj_window_bg2_enable: bool,
-    #[bits(1)]
     obj_window_bg3_enable: bool,
-    #[bits(1)]
     obj_window_obj_enable: bool,
-    #[bits(1)]
     obj_window_color_special_effect: bool,
     #[bits(2)]
-    not_used1: u8,
+    not_used_14_15: u8,
 }
 
 impl RegisterOps<u16> for WindowOutside {
@@ -292,7 +263,7 @@ pub struct MosiacSize {
     obj_mosaic_h_size: u8, // (minus 1)
     #[bits(4)]
     obj_mosaic_v_size: u8, // (minus 1)
-    not_used: u16,
+    not_used_16_31: u16,
 }
 
 impl RegisterOps<u32> for MosiacSize {
@@ -331,34 +302,22 @@ impl ColorSpecialEffect {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ColorSpecialEffectsSelection {
-    #[bits(1)]
     bg0_1st_target_pixel: bool,
-    #[bits(1)]
     bg1_1st_target_pixel: bool,
-    #[bits(1)]
     bg2_1st_target_pixel: bool,
-    #[bits(1)]
     bg3_1st_target_pixel: bool,
-    #[bits(1)]
     obj_1st_target_pixel: bool,
-    #[bits(1)]
     bd_1st_target_pixel: bool,
     #[bits(2)]
     color_special_effect: ColorSpecialEffect,
-    #[bits(1)]
     bg0_2nd_target_pixel: bool,
-    #[bits(1)]
     bg1_2nd_target_pixel: bool,
-    #[bits(1)]
     bg2_2nd_target_pixel: bool,
-    #[bits(1)]
     bg3_2nd_target_pixel: bool,
-    #[bits(1)]
     obj_2nd_target_pixel: bool,
-    #[bits(1)]
     bd_2nd_target_pixel: bool,
     #[bits(2)]
-    not_used: u8,
+    not_used_14_15: u8,
 }
 
 impl RegisterOps<u16> for ColorSpecialEffectsSelection {
@@ -381,7 +340,7 @@ pub struct AlphaBlendingCoefficients {
     #[bits(5)]
     evb_coefficient: u8,
     #[bits(3)]
-    not_used1: u8,
+    not_used_13_15: u8,
 }
 
 impl RegisterOps<u16> for AlphaBlendingCoefficients {
@@ -400,7 +359,7 @@ pub struct BrightnessCoefficient {
     #[bits(5)]
     evy_coefficient: u8,
     #[bits(27)]
-    not_used: u32,
+    not_used_5_31: u32,
 }
 
 impl RegisterOps<u32> for BrightnessCoefficient {
