@@ -23,7 +23,7 @@ pub struct Interrupt {
     keypad: bool,
     gamepak: bool,
     #[bits(2)]
-    _reserved: u8,
+    not_used_14_15: u8,
 }
 
 impl RegisterOps<u16> for Interrupt {
@@ -41,7 +41,7 @@ impl RegisterOps<u16> for Interrupt {
 pub struct InterruptMasterEnable {
     interrupts_enabled: bool,
     #[bits(31)]
-    not_used: u32,
+    not_used_1_31: u32,
 }
 
 impl RegisterOps<u32> for InterruptMasterEnable {
