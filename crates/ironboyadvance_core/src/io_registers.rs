@@ -45,7 +45,8 @@ impl SystemMemoryAccess for IoRegisters {
             // Interrupt Control
             0x04000200..=0x04000203 | 0x04000208..=0x0400020B => self.interrupt_controller.read_8(address),
             // System Control
-            0x04000204..=0x04000207 | 0x04000300..=0x04000301 => self.system_controller.read_8(address),
+            0x04000204..=0x04000207 | 0x04000300..=0x04000301 | 0x04000410 => self.system_controller.read_8(address),
+            0x04000000..=0x04FFFFFF => self.system_controller.read_8(address), // Mirroring for 0x04000800
             // Access Memory
             0x05000000..=0x05FFFFFF => self.ppu.read_8(address),
             0x06000000..=0x06FFFFFF => self.ppu.read_8(address),
@@ -64,7 +65,8 @@ impl SystemMemoryAccess for IoRegisters {
             // Interrupt Control
             0x04000200..=0x04000203 | 0x04000208..=0x0400020B => self.interrupt_controller.write_8(address, value),
             // System Control
-            0x04000204..=0x04000207 | 0x04000300..=0x04000301 => self.system_controller.write_8(address, value),
+            0x04000204..=0x04000207 | 0x04000300..=0x04000301 | 0x04000410 => self.system_controller.write_8(address, value),
+            0x04000000..=0x04FFFFFF => self.system_controller.write_8(address, value), // Mirroring for 0x04000800
             // Access Memory
             0x05000000..=0x05FFFFFF => self.ppu.write_8(address, value),
             0x06000000..=0x06FFFFFF => self.ppu.write_8(address, value),

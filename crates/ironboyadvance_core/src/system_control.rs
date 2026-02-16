@@ -1,6 +1,7 @@
 use bitfields::bitfield;
 use getset::{CopyGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess};
+use tracing::debug;
 
 use crate::{
     io_registers::RegisterOps,
@@ -79,7 +80,7 @@ impl ClockCycleLuts {
         }
     }
 
-    fn update_wait_states(&mut self, waitcnt: &WaitStateControl) {
+    fn update_gamepak_wait_states(&mut self, waitcnt: &WaitStateControl) {
         let ws0_first_access = waitcnt.ws0_first_access() as usize;
         let ws1_first_access = waitcnt.ws1_first_access() as usize;
         let ws2_first_access = waitcnt.ws2_first_access() as usize;
@@ -117,6 +118,14 @@ impl ClockCycleLuts {
             self.s_cycles_32_lut[INDEX_SRAM_LO + i] = 1 + GAMEPAK_NON_SEQUENTIAL_CYCLES[sram_wait_control];
         }
     }
+
+    fn update_wram_wait_states(&mut self, wait_control_wram: u8) {
+        let wait_state = 0x0F - wait_control_wram as usize;
+        self.n_cycles_32_lut[INDEX_WRAM_BOARD] = 2 * (1 + wait_state);
+        self.s_cycles_32_lut[INDEX_WRAM_BOARD] = 2 * (1 + wait_state);
+        self.n_cycles_16_lut[INDEX_WRAM_BOARD] = 1 + wait_state;
+        self.s_cycles_16_lut[INDEX_WRAM_BOARD] = 1 + wait_state;
+    }
 }
 
 #[bitfield(u32)]
@@ -135,13 +144,39 @@ struct WaitStateControl {
     ws2_second_access: bool,
     #[bits(2)]
     phi_terminal_output: u8,
-    not_used0: bool,
+    not_used_13: bool,
     game_pak_prefetch_buffer_enable: bool,
     game_pak_type_flag: bool,
-    not_used1: u16,
+    not_used_16_31: u16,
 }
 
 impl RegisterOps<u32> for WaitStateControl {
+    fn register(&self) -> u32 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u32) {
+        self.set_bits(bits);
+    }
+}
+
+#[bitfield(u32)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+struct InternalMemoryControl {
+    disable_32k_256k_wram: bool,
+    #[bits(3)]
+    unknown_1_3: u8,
+    _unknown_4: bool,
+    enable_256k_wram: bool,
+    #[bits(18)]
+    _unknown_6_23: u32,
+    #[bits(4)]
+    wait_control_wram: u8,
+    #[bits(4)]
+    unknown_28_31: u8,
+}
+
+impl RegisterOps<u32> for InternalMemoryControl {
     fn register(&self) -> u32 {
         self.into_bits()
     }
@@ -167,6 +202,7 @@ pub struct SystemController {
     post_flag: bool,
     #[getset(get_copy = "pub", set = "pub")]
     halt_mode: HaltMode,
+    internal_memory_control: InternalMemoryControl,
 }
 
 impl SystemController {
@@ -177,6 +213,7 @@ impl SystemController {
             post_flag: false,
             //TODO: see if i can refactor this out once i have hardware implemented
             halt_mode: HaltMode::Running,
+            internal_memory_control: InternalMemoryControl::from_bits(0x0D000020),
         }
     }
 
@@ -203,7 +240,19 @@ impl SystemMemoryAccess for SystemController {
             0x04000204..=0x04000207 => self.waitstate_control.read_byte(address),
             // POSTFLG
             0x04000300 => self.post_flag as u8,
+            // HALTCNT
             0x04000301 => 0,
+            // Undocumented - Purpose Unknown
+            0x04000410 => 0,
+            // Undocumented - Internal Memory Control
+            0x04000800..=0x04FFFFFF => {
+                if (0x0800..=0x0803).contains(&(address & 0xFFFF)) {
+                    self.internal_memory_control.read_byte(address)
+                } else {
+                    debug!("Read byte from unused I/O: {:#010X}", address);
+                    0
+                }
+            }
             _ => panic!("Invalid byte read for SystemController: {:#010X}", address),
         }
     }
@@ -214,7 +263,7 @@ impl SystemMemoryAccess for SystemController {
             0x04000204..=0x04000207 => {
                 self.waitstate_control.write_byte(address, value);
                 if (0x04000204..=0x04000205).contains(&address) {
-                    self.cycle_luts.update_wait_states(&self.waitstate_control);
+                    self.cycle_luts.update_gamepak_wait_states(&self.waitstate_control);
                 }
             }
             // POSTFLG
@@ -224,6 +273,20 @@ impl SystemMemoryAccess for SystemController {
                 true => todo!("Stopped"),
                 false => self.halt_mode = HaltMode::Halted,
             },
+            // Undocumented - Purpose Unknown
+            0x04000410 => {}
+            // Undocumented - Internal Memory Control
+            0x04000800..=0x04FFFFFF => {
+                if (0x0800..=0x0803).contains(&(address & 0xFFFF)) {
+                    self.internal_memory_control.write_byte(address, value);
+                    if address & 0xFFFF == 0x0803 {
+                        self.cycle_luts
+                            .update_wram_wait_states(self.internal_memory_control.wait_control_wram());
+                    }
+                } else {
+                    debug!("Write byte to unused I/O: {:#010X}", address);
+                }
+            }
             _ => panic!("Invalid byte write in SystemController: {:#010X}", address),
         }
     }
@@ -231,7 +294,7 @@ impl SystemMemoryAccess for SystemController {
 
 #[cfg(test)]
 mod tests {
-    use crate::{system_control::ClockCycleLuts, system_control::WaitStateControl};
+    use super::*;
 
     #[test]
     fn clock_cycles() {
@@ -253,7 +316,7 @@ mod tests {
             [1, 1, 6, 1, 1, 2, 2, 1, 6, 6, 10, 10, 18, 18, 5, 5]
         );
 
-        clock_cycle_luts.update_wait_states(&WaitStateControl::from_bits(0b100001100010111));
+        clock_cycle_luts.update_gamepak_wait_states(&WaitStateControl::from_bits(0b100001100010111));
         assert_eq!(
             clock_cycle_luts.n_cycles_16_lut,
             [1, 1, 3, 1, 1, 1, 1, 1, 4, 4, 5, 5, 9, 9, 9, 9]
@@ -270,5 +333,37 @@ mod tests {
             clock_cycle_luts.s_cycles_32_lut,
             [1, 1, 6, 1, 1, 2, 2, 1, 4, 4, 10, 10, 18, 18, 9, 9]
         );
+    }
+
+    #[test]
+    fn wram_wait_states_default() {
+        let clock_cycle_luts = ClockCycleLuts::new();
+        // Default: 0x0D (13) -> 15 - 13 = 2 waitstates -> 3/3/6 cycles
+        assert_eq!(clock_cycle_luts.n_cycles_16_lut[INDEX_WRAM_BOARD], 3);
+        assert_eq!(clock_cycle_luts.s_cycles_16_lut[INDEX_WRAM_BOARD], 3);
+        assert_eq!(clock_cycle_luts.n_cycles_32_lut[INDEX_WRAM_BOARD], 6);
+        assert_eq!(clock_cycle_luts.s_cycles_32_lut[INDEX_WRAM_BOARD], 6);
+    }
+
+    #[test]
+    fn wram_wait_states_fastest() {
+        let mut clock_cycle_luts = ClockCycleLuts::new();
+        // 0x0E (14) -> 15 - 14 = 1 waitstate -> 2/2/4 cycles
+        clock_cycle_luts.update_wram_wait_states(0x0E);
+        assert_eq!(clock_cycle_luts.n_cycles_16_lut[INDEX_WRAM_BOARD], 2);
+        assert_eq!(clock_cycle_luts.s_cycles_16_lut[INDEX_WRAM_BOARD], 2);
+        assert_eq!(clock_cycle_luts.n_cycles_32_lut[INDEX_WRAM_BOARD], 4);
+        assert_eq!(clock_cycle_luts.s_cycles_32_lut[INDEX_WRAM_BOARD], 4);
+    }
+
+    #[test]
+    fn wram_wait_states_slowest() {
+        let mut clock_cycle_luts = ClockCycleLuts::new();
+        // 0x00 (0) -> 15 - 0 = 15 waitstates -> 16/16/32 cycles
+        clock_cycle_luts.update_wram_wait_states(0x00);
+        assert_eq!(clock_cycle_luts.n_cycles_16_lut[INDEX_WRAM_BOARD], 16);
+        assert_eq!(clock_cycle_luts.s_cycles_16_lut[INDEX_WRAM_BOARD], 16);
+        assert_eq!(clock_cycle_luts.n_cycles_32_lut[INDEX_WRAM_BOARD], 32);
+        assert_eq!(clock_cycle_luts.s_cycles_32_lut[INDEX_WRAM_BOARD], 32);
     }
 }
