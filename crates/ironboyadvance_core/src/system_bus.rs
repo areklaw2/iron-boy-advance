@@ -8,9 +8,10 @@ use crate::{
     cartridge::Cartridge,
     io_registers::IoRegisters,
     memory::Memory,
+    ppu::HDRAW_CYCLES,
     scheduler::{
         Scheduler,
-        event::{FutureEvent, InterruptEvent, PpuEvent},
+        event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
     },
     system_control::HaltMode,
 };
@@ -115,10 +116,14 @@ impl SystemMemoryAccess for SystemBus {
 
 impl SystemBus {
     pub fn new(cartridge: Cartridge, bios: Bios, scheduler: Rc<RefCell<Scheduler>>) -> Self {
+        scheduler
+            .borrow_mut()
+            .schedule((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
+
         SystemBus {
             bios,
             memory: Memory::new(),
-            io_registers: IoRegisters::new(scheduler.clone()),
+            io_registers: IoRegisters::new(),
             cartridge,
             scheduler,
         }

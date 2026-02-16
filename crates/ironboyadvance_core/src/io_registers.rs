@@ -1,14 +1,10 @@
-use std::{
-    cell::RefCell,
-    ops::{BitAnd, BitOr, Not, Shl, Shr},
-    rc::Rc,
-};
+use std::ops::{BitAnd, BitOr, Not, Shl, Shr};
 
 use getset::{Getters, MutGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use tracing::debug;
 
-use crate::{interrupt_control::InterruptController, ppu::Ppu, scheduler::Scheduler, system_control::SystemController};
+use crate::{interrupt_control::InterruptController, ppu::Ppu, system_control::SystemController};
 
 #[derive(Getters, MutGetters, Setters)]
 #[getset(get = "pub", get_mut = "pub")]
@@ -19,9 +15,9 @@ pub struct IoRegisters {
 }
 
 impl IoRegisters {
-    pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
+    pub fn new() -> Self {
         IoRegisters {
-            ppu: Ppu::new(scheduler.clone()),
+            ppu: Ppu::new(),
             interrupt_controller: InterruptController::new(),
             system_controller: SystemController::new(),
         }

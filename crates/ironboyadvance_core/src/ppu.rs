@@ -1,29 +1,23 @@
-use std::{cell::RefCell, rc::Rc};
-
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
 use crate::{
-    interrupt_control::Interrupt,
     io_registers::RegisterOps,
     ppu::registers::*,
-    scheduler::{
-        Scheduler,
-        event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
-    },
+    scheduler::event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
 };
 
 const CYCLES_PER_PIXEL: usize = 4;
 
 const HDRAW_PIXELS: usize = 240;
 const HBLANK_PIXELS: usize = 68;
-
 const HBLANK_FLAG_LAG: usize = 46;
+
 pub const HDRAW_CYCLES: usize = HDRAW_PIXELS * CYCLES_PER_PIXEL + HBLANK_FLAG_LAG;
 pub const HBLANK_CYCLES: usize = HBLANK_PIXELS * CYCLES_PER_PIXEL - HBLANK_FLAG_LAG;
-pub const CYCLES_PER_SCANLINE: usize = HDRAW_CYCLES + HBLANK_CYCLES;
+const CYCLES_PER_SCANLINE: usize = HDRAW_CYCLES + HBLANK_CYCLES;
 
-pub const VDRAW_SCANLINES: usize = 160;
-pub const VBLANK_SCANLINES: usize = 68;
+const VDRAW_SCANLINES: usize = 160;
+const VBLANK_SCANLINES: usize = 68;
 pub const VDRAW_CYCLES: usize = VDRAW_SCANLINES * CYCLES_PER_SCANLINE;
 pub const VBLANK_CYCLES: usize = VBLANK_SCANLINES * CYCLES_PER_SCANLINE;
 
@@ -54,11 +48,10 @@ pub struct Ppu {
     pallete_ram: Vec<u8>,
     vram: Vec<u8>,
     oam: Vec<u8>,
-    scheduler: Rc<RefCell<Scheduler>>,
 }
 
 impl Ppu {
-    pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
+    pub fn new() -> Self {
         Self {
             lcd_control: LcdControl::from_bits(0),
             green_swap: false,
@@ -82,7 +75,6 @@ impl Ppu {
             pallete_ram: vec![0; 0x400],
             vram: vec![0; 0x18000],
             oam: vec![0; 0x400],
-            scheduler,
         }
     }
 }

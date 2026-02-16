@@ -27,14 +27,10 @@ pub enum PpuEvent {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum ApuEvent {
-    None, //TODO: add apu events
-}
+pub enum ApuEvent {}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum TimerEvent {
-    None, //TODO: add timer events
-}
+pub enum TimerEvent {}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum EventType {
