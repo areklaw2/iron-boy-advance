@@ -8,12 +8,7 @@ use getset::{Getters, MutGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use tracing::debug;
 
-use crate::{
-    interrupt_control::{Interrupt, InterruptController},
-    ppu::Ppu,
-    scheduler::Scheduler,
-    system_control::SystemController,
-};
+use crate::{interrupt_control::InterruptController, ppu::Ppu, scheduler::Scheduler, system_control::SystemController};
 
 #[derive(Getters, MutGetters, Setters)]
 #[getset(get = "pub", get_mut = "pub")]
@@ -25,10 +20,9 @@ pub struct IoRegisters {
 
 impl IoRegisters {
     pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
-        let interrupt_flags = Rc::new(RefCell::new(Interrupt::from_bits(0)));
         IoRegisters {
-            ppu: Ppu::new(scheduler.clone(), interrupt_flags.clone()),
-            interrupt_controller: InterruptController::new(interrupt_flags.clone()),
+            ppu: Ppu::new(scheduler.clone()),
+            interrupt_controller: InterruptController::new(),
             system_controller: SystemController::new(),
         }
     }

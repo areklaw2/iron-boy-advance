@@ -1,6 +1,24 @@
 use std::cmp::Ordering;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum InterruptEvent {
+    LcdVBlank,
+    LcdHBlank,
+    LcdVCounterMatch,
+    Timer0Overflow,
+    Timer1Overflow,
+    Timer2Overflow,
+    Timer3Overflow,
+    SerialCommunication,
+    Dma0Overflow,
+    Dma1Overflow,
+    Dma2Overflow,
+    Dma3Overflow,
+    Keypad,
+    GamePak,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum PpuEvent {
     HDraw,
     HBlank,
@@ -21,7 +39,7 @@ pub enum TimerEvent {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum EventType {
     FrameComplete,
-    InterruptPending,
+    Interrupt(InterruptEvent),
     Ppu(PpuEvent),
     Apu(ApuEvent),
     Timer(TimerEvent),

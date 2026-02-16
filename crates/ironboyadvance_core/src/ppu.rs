@@ -8,7 +8,7 @@ use crate::{
     ppu::registers::*,
     scheduler::{
         Scheduler,
-        event::{EventType, FutureEvent, PpuEvent},
+        event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
     },
 };
 
@@ -54,12 +54,11 @@ pub struct Ppu {
     pallete_ram: Vec<u8>,
     vram: Vec<u8>,
     oam: Vec<u8>,
-    interrupt_flags: Rc<RefCell<Interrupt>>,
     scheduler: Rc<RefCell<Scheduler>>,
 }
 
 impl Ppu {
-    pub fn new(scheduler: Rc<RefCell<Scheduler>>, interrupt_flags: Rc<RefCell<Interrupt>>) -> Self {
+    pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
         Self {
             lcd_control: LcdControl::from_bits(0),
             green_swap: false,
@@ -83,7 +82,6 @@ impl Ppu {
             pallete_ram: vec![0; 0x400],
             vram: vec![0; 0x18000],
             oam: vec![0; 0x400],
-            interrupt_flags,
             scheduler,
         }
     }
@@ -196,21 +194,23 @@ impl SystemMemoryAccess for Ppu {
 }
 
 impl Ppu {
-    pub fn handle_event(&mut self, event: PpuEvent) -> FutureEvent {
-        let (next_event, delta_time) = match event {
+    pub fn handle_event(&mut self, event: PpuEvent) -> Vec<FutureEvent> {
+        match event {
             PpuEvent::HDraw => self.handle_hdraw_end(),
             PpuEvent::HBlank => todo!(),
             PpuEvent::VDraw => todo!(),
             PpuEvent::VBlank => todo!(),
-        };
-
-        (EventType::Ppu(event), delta_time)
+        }
     }
 
-    fn handle_hdraw_end(&mut self) -> (PpuEvent, usize) {
+    fn handle_hdraw_end(&mut self) -> Vec<FutureEvent> {
         self.lcd_status.set_h_blank(true);
 
+        let mut events = vec![(EventType::Ppu(PpuEvent::HBlank), HBLANK_CYCLES)];
+        if self.lcd_status.h_blank_irq_enable() {
+            events.push((EventType::Interrupt(InterruptEvent::LcdHBlank), 0));
+        }
         // DMA here?
-        (PpuEvent::HBlank, HBLANK_CYCLES)
+        events
     }
 }

@@ -7,7 +7,10 @@ use crate::{
     bios::{Bios, BiosError},
     cartridge::{Cartridge, CartridgeError},
     ppu::CYCLES_PER_FRAME,
-    scheduler::{Scheduler, event::EventType},
+    scheduler::{
+        Scheduler,
+        event::{EventType, FutureEvent},
+    },
     system_bus::SystemBus,
     system_control::HaltMode,
 };
@@ -107,15 +110,15 @@ impl GameBoyAdvance {
     fn handle_events(&mut self) -> bool {
         let mut scheduler = self.scheduler.borrow_mut();
         while let Some((event, timestamp)) = scheduler.pop() {
-            let future_event: Option<(EventType, usize)> = match event {
+            let future_events: Vec<FutureEvent> = match event {
                 EventType::FrameComplete => return true,
-                EventType::InterruptPending => None,
-                EventType::Timer(_timer_event) => None,
-                EventType::Ppu(ppu_event) => Some(self.arm7tdmi.bus_mut().ppu_mut().handle_event(ppu_event)),
-                EventType::Apu(_apu_event) => None,
+                EventType::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
+                EventType::Timer(_timer_event) => vec![],
+                EventType::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event),
+                EventType::Apu(_apu_event) => vec![],
             };
 
-            if let Some((event_type, time)) = future_event {
+            for (event_type, time) in future_events {
                 scheduler.schedule_at_timestamp(event_type, timestamp + time);
             }
         }

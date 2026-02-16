@@ -4,7 +4,14 @@ use getset::{Getters, MutGetters};
 use ironboyadvance_arm7tdmi::memory::{MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
 
 use crate::{
-    bios::Bios, cartridge::Cartridge, io_registers::IoRegisters, memory::Memory, ppu::Ppu, scheduler::Scheduler,
+    bios::Bios,
+    cartridge::Cartridge,
+    io_registers::IoRegisters,
+    memory::Memory,
+    scheduler::{
+        Scheduler,
+        event::{FutureEvent, InterruptEvent, PpuEvent},
+    },
     system_control::HaltMode,
 };
 
@@ -128,6 +135,11 @@ impl SystemBus {
         self.io_registers.interrupt_controller().interrupt_pending()
     }
 
+    pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) -> Vec<FutureEvent> {
+        self.io_registers.interrupt_controller_mut().raise_interrupt(interrupt_event);
+        vec![] // returning empty vec to satisfy caller
+    }
+
     pub fn halt_mode(&self) -> HaltMode {
         self.io_registers.system_controller().halt_mode()
     }
@@ -136,7 +148,7 @@ impl SystemBus {
         self.io_registers.system_controller_mut().set_halt_mode(HaltMode::Running);
     }
 
-    pub fn ppu_mut(&mut self) -> &mut Ppu {
-        self.io_registers.ppu_mut()
+    pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent) -> Vec<FutureEvent> {
+        self.io_registers.ppu_mut().handle_event(ppu_event)
     }
 }
