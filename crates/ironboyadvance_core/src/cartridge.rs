@@ -59,7 +59,7 @@ impl SystemMemoryAccess for Cartridge {
             ROM_WS0_LO | ROM_WS0_HI => self.data[(address - ROM_WS0_LO) as usize],
             ROM_WS1_LO | ROM_WS1_HI => self.data[(address - ROM_WS1_LO) as usize],
             ROM_WS2_LO | ROM_WS2_HI => self.data[(address - ROM_WS2_LO) as usize],
-            SRAM_LO | SRAM_HI => self.data[(address - SRAM_LO) as usize],
+            SRAM_LO | SRAM_HI => self.data[(address & 0xFFFF) as usize],
             _ => panic!("Read to address {:08X} invalid", address),
         }
     }
@@ -69,7 +69,7 @@ impl SystemMemoryAccess for Cartridge {
             ROM_WS0_LO | ROM_WS0_HI => self.data[(address - ROM_WS0_LO) as usize] = value,
             ROM_WS1_LO | ROM_WS1_HI => self.data[(address - ROM_WS1_LO) as usize] = value,
             ROM_WS2_LO | ROM_WS2_HI => self.data[(address - ROM_WS2_LO) as usize] = value,
-            SRAM_LO | SRAM_HI => self.data[(address - SRAM_LO) as usize] = value,
+            SRAM_LO | SRAM_HI => self.data[(address & 0xFFFF) as usize] = value,
             _ => panic!("Write to address {:08X} invalid", address),
         }
     }

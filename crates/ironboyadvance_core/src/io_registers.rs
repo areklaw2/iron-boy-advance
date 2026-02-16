@@ -22,7 +22,6 @@ pub struct IoRegisters {
     interrupt_controller: InterruptController,
     #[getset(get = "pub", get_mut = "pub")]
     system_controller: SystemController,
-    data: Vec<u8>,
 }
 
 impl IoRegisters {
@@ -32,7 +31,6 @@ impl IoRegisters {
             ppu: Ppu::new(scheduler.clone(), interrupt_flags.clone()),
             interrupt_controller: InterruptController::new(interrupt_flags.clone()),
             system_controller: SystemController::new(),
-            data: vec![0; 0x400],
         }
     }
 }
