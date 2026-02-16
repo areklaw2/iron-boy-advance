@@ -22,8 +22,8 @@ pub enum InterruptEvent {
 pub enum PpuEvent {
     HDraw,
     HBlank,
-    VDraw,
-    VBlank,
+    VBlankHDraw,
+    VBlankHBlank,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]

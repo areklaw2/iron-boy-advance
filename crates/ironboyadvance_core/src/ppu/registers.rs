@@ -64,9 +64,9 @@ impl RegisterOps<u16> for LcdControl {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct LcdStatus {
-    v_blank: bool,
-    h_blank: bool,
-    v_counter: bool,
+    v_blank_flag: bool,
+    h_blank_flag: bool,
+    v_counter_flag: bool,
     v_blank_irq_enable: bool,
     h_blank_irq_enable: bool,
     v_counter_irq_enable: bool,

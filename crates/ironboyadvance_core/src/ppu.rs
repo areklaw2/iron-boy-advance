@@ -21,6 +21,7 @@ const VBLANK_SCANLINES: usize = 68;
 pub const VDRAW_CYCLES: usize = VDRAW_SCANLINES * CYCLES_PER_SCANLINE;
 pub const VBLANK_CYCLES: usize = VBLANK_SCANLINES * CYCLES_PER_SCANLINE;
 
+const MAX_V_COUNT: usize = VDRAW_SCANLINES + VBLANK_SCANLINES - 1;
 pub const CYCLES_PER_FRAME: usize = VDRAW_CYCLES + VBLANK_CYCLES;
 
 mod registers;
@@ -29,7 +30,7 @@ pub struct Ppu {
     lcd_control: LcdControl,
     green_swap: bool,
     lcd_status: LcdStatus,
-    vertical_counter: u8,
+    v_count: u8,
     bg_controls: [BgControl; 4],
     bg_x_offsets: [BgOffset; 4],
     bg_y_offsets: [BgOffset; 4],
@@ -56,7 +57,7 @@ impl Ppu {
             lcd_control: LcdControl::from_bits(0),
             green_swap: false,
             lcd_status: LcdStatus::from_bits(0),
-            vertical_counter: 0,
+            v_count: 0,
             bg_controls: [BgControl::from_bits(0); 4],
             bg_x_offsets: [BgOffset::from_bits(0); 4],
             bg_y_offsets: [BgOffset::from_bits(0); 4],
@@ -90,7 +91,7 @@ impl SystemMemoryAccess for Ppu {
             // DISPSTAT
             0x04000004..=0x04000005 => self.lcd_status.read_byte(address),
             // VCOUNT
-            0x04000006..=0x04000007 => (self.vertical_counter as u16).read_byte(address),
+            0x04000006..=0x04000007 => (self.v_count as u16).read_byte(address),
             // BG0CNT, BG1CNT, BG2CNT, BG3CNT
             0x04000008..=0x04000009 => self.bg_controls[0].read_byte(address),
             0x0400000A..=0x0400000B => self.bg_controls[1].read_byte(address),
@@ -186,23 +187,87 @@ impl SystemMemoryAccess for Ppu {
 }
 
 impl Ppu {
-    pub fn handle_event(&mut self, event: PpuEvent) -> Vec<FutureEvent> {
-        match event {
-            PpuEvent::HDraw => self.handle_hdraw_end(),
-            PpuEvent::HBlank => todo!(),
-            PpuEvent::VDraw => todo!(),
-            PpuEvent::VBlank => todo!(),
+    fn set_v_count(&mut self, value: u8) -> Option<InterruptEvent> {
+        self.v_count = value;
+        let is_match = self.lcd_status.v_count_setting() == self.v_count;
+        self.lcd_status.set_v_counter_flag(is_match);
+        match self.lcd_status.v_counter_irq_enable() && self.lcd_status.v_counter_flag() {
+            true => Some(InterruptEvent::LcdVCounterMatch),
+            false => None,
         }
     }
 
-    fn handle_hdraw_end(&mut self) -> Vec<FutureEvent> {
-        self.lcd_status.set_h_blank(true);
+    pub fn handle_event(&mut self, event: PpuEvent) -> Vec<FutureEvent> {
+        match event {
+            PpuEvent::HDraw => self.handle_hdraw_complete(),
+            PpuEvent::HBlank => self.handle_hblank_complete(),
+            PpuEvent::VBlankHDraw => self.handle_vblank_hdraw_complete(),
+            PpuEvent::VBlankHBlank => self.handle_vblank_hblank_complete(),
+        }
+    }
 
-        let mut events = vec![(EventType::Ppu(PpuEvent::HBlank), HBLANK_CYCLES)];
+    fn handle_hdraw_complete(&mut self) -> Vec<FutureEvent> {
+        let mut events = vec![];
+        self.lcd_status.set_h_blank_flag(true);
         if self.lcd_status.h_blank_irq_enable() {
             events.push((EventType::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
-        // DMA here?
+        events.push((EventType::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
         events
+    }
+
+    fn handle_hblank_complete(&mut self) -> Vec<FutureEvent> {
+        let mut events = vec![];
+        if let Some(v_count_match) = self.set_v_count(self.v_count + 1) {
+            events.push((EventType::Interrupt(v_count_match), 0));
+        }
+
+        self.lcd_status.set_h_blank_flag(false);
+
+        if (self.v_count as usize) < VDRAW_SCANLINES {
+            self.render_scanline();
+            events.push((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
+        } else {
+            self.lcd_status.set_v_blank_flag(true);
+            if self.lcd_status.v_blank_irq_enable() {
+                events.push((EventType::Interrupt(InterruptEvent::LcdVBlank), 0));
+            }
+            events.push((EventType::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
+        }
+        events
+    }
+
+    fn handle_vblank_hdraw_complete(&mut self) -> Vec<FutureEvent> {
+        let mut events = vec![];
+        self.lcd_status.set_h_blank_flag(true);
+        if self.lcd_status.h_blank_irq_enable() {
+            events.push((EventType::Interrupt(InterruptEvent::LcdHBlank), 0));
+        }
+        events.push((EventType::Ppu(PpuEvent::VBlankHBlank), HBLANK_CYCLES));
+        events
+    }
+
+    fn handle_vblank_hblank_complete(&mut self) -> Vec<FutureEvent> {
+        let mut events = vec![];
+        self.lcd_status.set_h_blank_flag(false);
+
+        if (self.v_count as usize) < MAX_V_COUNT {
+            if let Some(v_count_match) = self.set_v_count(self.v_count + 1) {
+                events.push((EventType::Interrupt(v_count_match), 0));
+            }
+            events.push((EventType::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
+        } else {
+            if let Some(v_count_match) = self.set_v_count(0) {
+                events.push((EventType::Interrupt(v_count_match), 0));
+            }
+            self.lcd_status.set_v_blank_flag(false);
+            self.render_scanline();
+            events.push((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
+        }
+        events
+    }
+
+    fn render_scanline(&mut self) {
+        todo!()
     }
 }
