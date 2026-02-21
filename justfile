@@ -1,5 +1,5 @@
-dev rom:
-  cargo run --bin dev -- --rom {{rom}} --logs
+dev rom *flags:
+  cargo run --bin dev -- --rom {{rom}} {{flags}}
 
-dev-bios bios rom:
-  cargo run --bin dev -- --bios {{bios}} --rom {{rom}} --logs
+dev-bios bios rom *flags:
+  cargo run --bin dev -- --bios {{bios}} --rom {{rom}} {{flags}}

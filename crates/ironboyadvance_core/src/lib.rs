@@ -98,7 +98,7 @@ impl GameBoyAdvance {
             .schedule_at_timestamp(EventType::FrameComplete, end_time);
 
         'events: loop {
-            while self.scheduler.borrow().timestamp() <= self.scheduler.borrow().timestamp_of_next_event() {
+            while self.scheduler.borrow().timestamp() < self.scheduler.borrow().timestamp_of_next_event() {
                 self.cycle();
             }
 
