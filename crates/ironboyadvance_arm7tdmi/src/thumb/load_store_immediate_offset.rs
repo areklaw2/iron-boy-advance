@@ -16,7 +16,7 @@ thumb_instruction!(LoadStoreImmediateOffset);
 
 impl LoadStoreImmediateOffset {
     pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let immediate = self.offset() * 4;
+        let immediate = if self.byte() { self.offset() } else { self.offset() * 4 };
         let rb_value = cpu.register(self.rb() as usize);
         let address = rb_value.wrapping_add(immediate as u32);
 

@@ -49,3 +49,4 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
 - ARM7TDMI Single Step Test :white_check_mark:
 - gba-tests
   - arm :white_check_mark:
+  - thumb :white_check_mark:
