@@ -50,7 +50,7 @@ pub struct GameBoyAdvance {
 }
 
 impl GameBoyAdvance {
-    pub fn new(rom_path: PathBuf, bios_path: PathBuf, show_logs: bool, skip_bios: bool) -> Result<GameBoyAdvance, GbaError> {
+    pub fn new(rom_path: PathBuf, bios_path: Option<PathBuf>, show_logs: bool) -> Result<GameBoyAdvance, GbaError> {
         let rom_name = rom_path
             .file_name()
             .and_then(|name| name.to_str())
@@ -60,6 +60,7 @@ impl GameBoyAdvance {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         let cartridge = Cartridge::load(rom_path)?;
         let bios = Bios::load(bios_path)?;
+        let skip_bios = !bios.loaded();
         let gba = GameBoyAdvance {
             arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone()), show_logs, skip_bios),
             scheduler,
@@ -129,37 +130,5 @@ impl GameBoyAdvance {
 
     pub fn frame_buffer(&self) -> &[u32] {
         self.arm7tdmi.bus().io_registers().ppu().frame_buffer()
-    }
-}
-
-pub struct GameBoyAdvanceBuilder {
-    rom_path: PathBuf,
-    bios_path: PathBuf,
-    show_logs: bool,
-    skip_bios: bool,
-}
-
-impl GameBoyAdvanceBuilder {
-    pub fn new(rom_path: PathBuf, bios_path: PathBuf) -> Self {
-        Self {
-            rom_path,
-            bios_path,
-            show_logs: false,
-            skip_bios: false,
-        }
-    }
-
-    pub fn show_logs(mut self, show_logs: bool) -> Self {
-        self.show_logs = show_logs;
-        self
-    }
-
-    pub fn skip_bios(mut self, skip_bios: bool) -> Self {
-        self.skip_bios = skip_bios;
-        self
-    }
-
-    pub fn build(self) -> Result<GameBoyAdvance, GbaError> {
-        GameBoyAdvance::new(self.rom_path, self.bios_path, self.show_logs, self.skip_bios)
     }
 }

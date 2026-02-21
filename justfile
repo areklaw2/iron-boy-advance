@@ -1,2 +1,5 @@
-dev bios rom:
-  cargo run --bin dev -- --bios {{bios}} --rom {{rom}} --skip-bios --logs
+dev rom:
+  cargo run --bin dev -- --rom {{rom}} --logs
+
+dev-bios bios rom:
+  cargo run --bin dev -- --bios {{bios}} --rom {{rom}} --logs

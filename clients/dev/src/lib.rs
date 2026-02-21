@@ -1,4 +1,4 @@
-use ironboyadvance_core::{GameBoyAdvance, GameBoyAdvanceBuilder, GbaError};
+use ironboyadvance_core::{GameBoyAdvance, GbaError};
 
 use sdl2::{
     EventPump,
@@ -38,12 +38,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(
-        rom_path: String,
-        bios_path: String,
-        skip_bios: bool,
-        show_logs: bool,
-    ) -> Result<Application, ApplicationError> {
+    pub fn new(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Result<Application, ApplicationError> {
         if show_logs {
             initilize_logger();
         }
@@ -52,10 +47,12 @@ impl Application {
         let window_manager = WindowManager::new(&sdl_context)?;
         let event_pump = sdl_context.event_pump().map_err(ApplicationError::EventPumpError)?;
 
-        let game_boy_advance = GameBoyAdvanceBuilder::new(rom_path.into(), bios_path.into())
-            .show_logs(show_logs)
-            .skip_bios(skip_bios)
-            .build()?;
+        let bios_path = match bios_path {
+            Some(bios_path) => Some(bios_path.into()),
+            None => None,
+        };
+
+        let game_boy_advance = GameBoyAdvance::new(rom_path.into(), bios_path, show_logs)?;
 
         Ok(Self {
             game_boy_advance,

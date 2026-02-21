@@ -102,13 +102,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     pub(crate) fn load_signed_16(&mut self, address: u32, access_pattern: u8) -> u32 {
+        let value = self.load_16(address, access_pattern);
         match address & 0x1 != 0 {
-            true => {
-                let mut value = self.load_8(address, access_pattern);
-                value = value.rotate_right(8);
-                value as i8 as i32 as u32
-            }
-            false => self.load_16(address, access_pattern) as i16 as i32 as u32,
+            true => (value >> 8) as i8 as i32 as u32,
+            false => value as i16 as i32 as u32,
         }
     }
 
