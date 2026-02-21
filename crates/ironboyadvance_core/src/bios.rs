@@ -38,7 +38,6 @@ impl SystemMemoryAccess for Bios {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             0..=0x3FFF => self.data[address as usize],
-            4000..=0x01FFFFFF => 0,
             _ => panic!("Invalid byte read for Bios: {:08X}", address),
         }
     }

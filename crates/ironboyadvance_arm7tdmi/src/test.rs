@@ -264,6 +264,7 @@ mod tests {
             serde_json::from_str(&test_json).map_err(|e| format!("Failed to parse {:?}: {}", file_path, e))?;
 
         let mut cpu = Arm7tdmiCpu::new(TestBus::default(), false, true);
+        cpu.set_bios_protection(false);
 
         for test in tests {
             let test_bus = TestBus::new(test.base_addr[0], test.opcode, test.transactions.clone());

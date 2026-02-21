@@ -13,6 +13,7 @@ use super::{CpuMode, CpuState, psr::ProgramStatusRegister};
 pub(crate) const SP: usize = 13;
 pub(crate) const LR: usize = 14;
 pub(crate) const PC: usize = 15;
+const BIOS_END: u32 = 0x3FFF;
 
 pub(crate) trait Instruction {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
@@ -38,20 +39,45 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     arm_lut: [ArmInstructionFactory; 4096],
     thumb_lut: [ThumbInstructionFactory; 1024],
     dissassembled_instruction: String,
+    bios_last_fetch: u32,
+    bios_protection: bool,
     show_logs: bool,
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     fn load_8(&mut self, address: u32, access: u8) -> u32 {
+        if self.bios_protection && address <= BIOS_END {
+            let is_instruction = access & (MemoryAccess::Instruction as u8) != 0;
+            if is_instruction || self.general_registers[PC] <= BIOS_END {
+                self.bios_last_fetch = self.bus.load_32(address & !3, access);
+            }
+            return (self.bios_last_fetch >> ((address & 3) * 8)) & 0xFF;
+        }
         self.bus.load_8(address, access)
     }
 
     fn load_16(&mut self, address: u32, access: u8) -> u32 {
-        self.bus.load_16(address & !1, access)
+        let aligned = address & !1;
+        if self.bios_protection && aligned <= BIOS_END {
+            let is_instruction = access & (MemoryAccess::Instruction as u8) != 0;
+            if is_instruction || self.general_registers[PC] <= BIOS_END {
+                self.bios_last_fetch = self.bus.load_32(aligned & !3, access);
+            }
+            return (self.bios_last_fetch >> ((aligned & 2) * 8)) & 0xFFFF;
+        }
+        self.bus.load_16(aligned, access)
     }
 
     fn load_32(&mut self, address: u32, access: u8) -> u32 {
-        self.bus.load_32(address & !3, access)
+        let aligned = address & !3;
+        if self.bios_protection && aligned <= BIOS_END {
+            let is_instruction = access & (MemoryAccess::Instruction as u8) != 0;
+            if is_instruction || self.general_registers[PC] <= BIOS_END {
+                self.bios_last_fetch = self.bus.load_32(aligned, access);
+            }
+            return self.bios_last_fetch;
+        }
+        self.bus.load_32(aligned, access)
     }
 
     fn store_8(&mut self, address: u32, value: u8, access: u8) {
@@ -88,6 +114,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             arm_lut: [|v| ArmInstruction::Undefined(arm::undefined::Undefined::new(v)); 4096],
             thumb_lut: [|v| ThumbInstruction::Undefined(thumb::undefined::Undefined::new(v)); 1024],
             dissassembled_instruction: String::new(),
+            bios_last_fetch: 0xE129F000,
+            bios_protection: true,
             show_logs,
         };
 

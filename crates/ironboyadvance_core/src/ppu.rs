@@ -287,7 +287,7 @@ impl Ppu {
     fn render_scanline(&mut self) {
         if self.lcd_control.forced_blank() {
             let start = self.v_count as usize * HDRAW_PIXELS;
-            self.frame_buffer[start..start + HDRAW_PIXELS].fill(0x7FFF);
+            self.frame_buffer[start..start + HDRAW_PIXELS].fill(bgr555_to_rgb888(0x7FFF));
             return;
         }
 
