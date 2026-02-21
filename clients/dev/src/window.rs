@@ -53,7 +53,11 @@ impl WindowManager {
 
         let video_subsystem = sdl_context.video().map_err(WindowError::VideoSubsystemError)?;
         let window = video_subsystem
-            .window("Iron Boy", (VIEWPORT_WIDTH as u32) * SCALE, (VIEWPORT_HEIGHT as u32) * SCALE)
+            .window(
+                "Iron Boy Advance",
+                (VIEWPORT_WIDTH as u32) * SCALE,
+                (VIEWPORT_HEIGHT as u32) * SCALE,
+            )
             .position_centered()
             .resizable()
             .opengl()

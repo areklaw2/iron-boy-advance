@@ -113,6 +113,34 @@ impl From<u32> for Register {
     }
 }
 
+impl Register {
+    pub const fn from_bits(bits: u32) -> Self {
+        use Register::*;
+        match bits {
+            0b0000 => R0,
+            0b0001 => R1,
+            0b0010 => R2,
+            0b0011 => R3,
+            0b0100 => R4,
+            0b0101 => R5,
+            0b0110 => R6,
+            0b0111 => R7,
+            0b1000 => R8,
+            0b1001 => R9,
+            0b1010 => R10,
+            0b1011 => R11,
+            0b1100 => R12,
+            0b1101 => R13,
+            0b1110 => R14,
+            _ => R15,
+        }
+    }
+
+    pub const fn into_bits(self) -> u32 {
+        self as u32
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(crate) enum LoRegister {
     R0,
@@ -210,6 +238,34 @@ impl From<u32> for Condition {
             0b1110 => AL,
             _ => unreachable!(),
         }
+    }
+}
+
+impl Condition {
+    pub const fn from_bits(bits: u32) -> Self {
+        use Condition::*;
+        match bits {
+            0b0000 => EQ,
+            0b0001 => NE,
+            0b0010 => CS,
+            0b0011 => CC,
+            0b0100 => MI,
+            0b0101 => PL,
+            0b0110 => VS,
+            0b0111 => VC,
+            0b1000 => HI,
+            0b1001 => LS,
+            0b1010 => GE,
+            0b1011 => LT,
+            0b1100 => GT,
+            0b1101 => LE,
+            0b1110 => AL,
+            _ => unreachable!(),
+        }
+    }
+
+    pub const fn into_bits(self) -> u32 {
+        self as u32
     }
 }
 

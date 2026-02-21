@@ -141,7 +141,7 @@ fn decode_arm(index: u32) -> ArmInstructionFactory {
                     false => |value| ArmInstruction::DataProcessing(DataProcessing::new(value)),
                 }
             } else if pattern & 0x0FF000F0 == 0x01200010 {
-                |value| ArmInstruction::BranchAndExchange(BranchAndExchange::new(value))
+                |value| ArmInstruction::BranchAndExchange(BranchAndExchange::from_bits(value))
             } else if pattern & 0x010000F0 == 0x00000090 {
                 match pattern.bit(23) {
                     true => |value| ArmInstruction::MultiplyLong(MultiplyLong::new(value)),
