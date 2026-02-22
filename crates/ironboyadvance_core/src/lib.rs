@@ -17,7 +17,7 @@ use crate::{
     ppu::CYCLES_PER_FRAME,
     scheduler::{
         Scheduler,
-        event::{EventType, FutureEvent},
+        event::{EventType, FutureEvent, InterruptEvent},
     },
     system_bus::SystemBus,
     system_control::HaltMode,
@@ -101,9 +101,7 @@ impl GameBoyAdvance {
         }
     }
 
-    pub fn run(&mut self, overshoot: usize, buttons: &HashSet<KeypadButton>) -> usize {
-        self.arm7tdmi.bus_mut().handle_pressed_buttons(buttons);
-
+    pub fn run(&mut self, overshoot: usize) -> usize {
         let start_time = self.scheduler.borrow().timestamp();
         let end_time = start_time + CYCLES_PER_FRAME - overshoot;
 
@@ -144,6 +142,14 @@ impl GameBoyAdvance {
 
     pub fn frame_buffer(&self) -> &[u32] {
         self.arm7tdmi.bus().io_registers().ppu().frame_buffer()
+    }
+
+    pub fn handle_pressed_buttons(&mut self, buttons: &HashSet<KeypadButton>) {
+        let keypad = self.arm7tdmi.bus_mut().io_registers_mut().keypad_mut();
+        keypad.set_pressed_keys(buttons);
+        if keypad.keypad_interrupt_raised() {
+            self.arm7tdmi.bus_mut().raise_interrupt(InterruptEvent::Keypad);
+        }
     }
 }
 

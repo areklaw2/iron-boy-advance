@@ -35,16 +35,8 @@ impl RegisterOps<u16> for KeyInput {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 struct KeyControl {
-    a: bool,
-    b: bool,
-    select: bool,
-    start: bool,
-    right: bool,
-    left: bool,
-    up: bool,
-    down: bool,
-    r: bool,
-    l: bool,
+    #[bits(10)]
+    buttons: u16,
     #[bits(4)]
     not_used_10_13: u8,
     irq_enable_flag: bool,

@@ -161,14 +161,4 @@ impl SystemBus {
     pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent) -> Vec<FutureEvent> {
         self.io_registers.ppu_mut().handle_event(ppu_event)
     }
-
-    pub fn handle_pressed_buttons(&mut self, buttons: &HashSet<KeypadButton>) {
-        let keypad = self.io_registers.keypad_mut();
-        keypad.set_pressed_keys(buttons);
-        if keypad.keypad_interrupt_raised() {
-            self.io_registers
-                .interrupt_controller_mut()
-                .raise_interrupt(InterruptEvent::Keypad)
-        }
-    }
 }

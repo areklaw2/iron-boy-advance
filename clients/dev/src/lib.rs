@@ -97,6 +97,7 @@ impl Application {
                     } => {
                         if let Some(button) = keycode_to_button(keycode) {
                             self.pressed_keys.insert(button);
+                            self.game_boy_advance.handle_pressed_buttons(&self.pressed_keys);
                         }
                     }
                     Event::KeyUp {
@@ -104,6 +105,7 @@ impl Application {
                     } => {
                         if let Some(button) = keycode_to_button(keycode) {
                             self.pressed_keys.remove(&button);
+                            self.game_boy_advance.handle_pressed_buttons(&self.pressed_keys);
                         }
                     }
                     _ => {}
@@ -117,7 +119,7 @@ impl Application {
     }
 
     fn run_game_boy(&mut self) -> Result<(), ApplicationError> {
-        self.overshoot = self.game_boy_advance.run(self.overshoot, &self.pressed_keys);
+        self.overshoot = self.game_boy_advance.run(self.overshoot);
         let fps = self.frame_timer.fps();
         self.window_manager
             .render_screen(self.game_boy_advance.frame_buffer(), Some(fps))?;

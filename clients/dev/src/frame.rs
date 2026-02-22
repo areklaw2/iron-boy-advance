@@ -24,10 +24,12 @@ impl FrameTimer {
     }
 
     pub fn slow_frame(&mut self) {
-        // slows frame rate down to the expected fps
-        let time_elapsed = self.frame_clock.elapsed();
-        if time_elapsed < FRAME_DURATION {
-            std::thread::sleep(FRAME_DURATION - time_elapsed);
+        let target = self.frame_clock + FRAME_DURATION;
+        while std::time::Instant::now() < target {
+            let remaining = target - std::time::Instant::now();
+            if remaining > std::time::Duration::from_millis(1) {
+                std::thread::sleep(std::time::Duration::from_micros(100));
+            }
         }
         self.frame_clock = std::time::Instant::now();
     }
