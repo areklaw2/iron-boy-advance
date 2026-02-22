@@ -3,6 +3,7 @@ mod tests {
     use rayon::prelude::*;
     use serde::Deserialize;
     use serde_repr::Deserialize_repr;
+    use std::collections::{HashMap, VecDeque};
     use std::fs;
     use std::path::PathBuf;
 
@@ -75,141 +76,71 @@ mod tests {
         initial_state: State,
         #[serde(rename = "final")]
         final_state: State,
-        transactions: Vec<Transaction>,
+        transactions: VecDeque<Transaction>,
         opcode: u32,
         base_addr: [u32; 1],
     }
 
     #[allow(unused)]
     struct TestBus {
-        data: Vec<u8>,
+        data: HashMap<u32, u8>,
         base_address: u32,
         opcode: u32,
-        transactions: Vec<Transaction>,
+        transactions: VecDeque<Transaction>,
+    }
+
+    impl TestBus {
+        fn take_read_transaction(&mut self, access_pattern: u8) -> Transaction {
+            let access = decompose_access_pattern(access_pattern);
+            let kind = match access.contains(&MemoryAccess::Instruction) {
+                true => TransactionKind::InstructionRead,
+                false => TransactionKind::GeneralRead,
+            };
+
+            let index = self
+                .transactions
+                .iter()
+                .position(|t| t.kind == kind)
+                .expect("No transaction found");
+            self.transactions.remove(index).unwrap()
+        }
+
+        fn take_write_transaction(&mut self) -> Transaction {
+            let index = self
+                .transactions
+                .iter()
+                .position(|t| t.kind == TransactionKind::Write)
+                .expect("No transaction found");
+            self.transactions.remove(index).unwrap()
+        }
     }
 
     impl MemoryInterface for TestBus {
         fn load_8(&mut self, _address: u32, access_pattern: u8) -> u32 {
-            let access = decompose_access_pattern(access_pattern);
-            let is_instruction_read = access.contains(&MemoryAccess::Instruction);
-            let mut transaction_index = None;
-            for (i, transaction) in self.transactions.iter().enumerate() {
-                if is_instruction_read && transaction.kind == TransactionKind::InstructionRead {
-                    transaction_index = Some(i);
-                    break;
-                } else if !is_instruction_read && transaction.kind == TransactionKind::GeneralRead {
-                    transaction_index = Some(i);
-                    break;
-                }
-            }
-
-            match transaction_index {
-                Some(index) => {
-                    let transaction = self.transactions.remove(index);
-                    transaction.data
-                }
-                None => panic!("No transaction found"),
-            }
+            self.take_read_transaction(access_pattern).data
         }
 
         fn load_16(&mut self, _address: u32, access_pattern: u8) -> u32 {
-            let access = decompose_access_pattern(access_pattern);
-            let is_instruction_read = access.contains(&MemoryAccess::Instruction);
-            let mut transaction_index = None;
-            for (i, transaction) in self.transactions.iter().enumerate() {
-                if is_instruction_read && transaction.kind == TransactionKind::InstructionRead {
-                    transaction_index = Some(i);
-                    break;
-                } else if !is_instruction_read && transaction.kind == TransactionKind::GeneralRead {
-                    transaction_index = Some(i);
-                    break;
-                }
-            }
-
-            match transaction_index {
-                Some(index) => {
-                    let transaction = self.transactions.remove(index);
-                    transaction.data
-                }
-                None => panic!("No transaction found"),
-            }
+            self.take_read_transaction(access_pattern).data
         }
 
         fn load_32(&mut self, _address: u32, access_pattern: u8) -> u32 {
-            let access = decompose_access_pattern(access_pattern);
-            let is_instruction_read = access.contains(&MemoryAccess::Instruction);
-            let mut transaction_index = None;
-            for (i, transaction) in self.transactions.iter().enumerate() {
-                if is_instruction_read && transaction.kind == TransactionKind::InstructionRead {
-                    transaction_index = Some(i);
-                    break;
-                } else if !is_instruction_read && transaction.kind == TransactionKind::GeneralRead {
-                    transaction_index = Some(i);
-                    break;
-                }
-            }
-
-            match transaction_index {
-                Some(index) => {
-                    let transaction = self.transactions.remove(index);
-                    transaction.data
-                }
-                None => panic!("No transaction found"),
-            }
+            self.take_read_transaction(access_pattern).data
         }
 
         fn store_8(&mut self, _address: u32, value: u8, _access_pattern: u8) {
-            let mut transaction_index = None;
-            for (i, transaction) in self.transactions.iter().enumerate() {
-                if transaction.kind == TransactionKind::Write {
-                    transaction_index = Some(i);
-                    break;
-                }
-            }
-
-            match transaction_index {
-                Some(index) => {
-                    let transaction = self.transactions.remove(index);
-                    assert_eq!(value, transaction.data as u8);
-                }
-                None => panic!("No transaction found"),
-            }
+            let transaction = self.take_write_transaction();
+            assert_eq!(value, transaction.data as u8);
         }
 
         fn store_16(&mut self, _address: u32, value: u16, _access_pattern: u8) {
-            let mut transaction_index = None;
-            for (i, transaction) in self.transactions.iter().enumerate() {
-                if transaction.kind == TransactionKind::Write {
-                    transaction_index = Some(i);
-                    break;
-                }
-            }
-
-            match transaction_index {
-                Some(index) => {
-                    let transaction = self.transactions.remove(index);
-                    assert_eq!(value, transaction.data as u16);
-                }
-                None => panic!("No transaction found"),
-            }
+            let transaction = self.take_write_transaction();
+            assert_eq!(value, transaction.data as u16);
         }
 
         fn store_32(&mut self, _address: u32, value: u32, _access_pattern: u8) {
-            let mut transaction_index = None;
-            for (i, transaction) in self.transactions.iter().enumerate() {
-                if transaction.kind == TransactionKind::Write {
-                    transaction_index = Some(i);
-                    break;
-                }
-            }
-
-            match transaction_index {
-                Some(index) => {
-                    let transaction = self.transactions.remove(index);
-                    assert_eq!(value, transaction.data);
-                }
-                None => panic!("No transaction found"),
-            }
+            let transaction = self.take_write_transaction();
+            assert_eq!(value, transaction.data);
         }
 
         fn idle_cycle(&mut self) {}
@@ -217,19 +148,22 @@ mod tests {
 
     impl SystemMemoryAccess for TestBus {
         fn read_8(&self, address: u32) -> u8 {
-            self.data[address as usize]
+            match self.data.get(&address) {
+                Some(value) => *value,
+                None => 0,
+            }
         }
 
         fn write_8(&mut self, address: u32, value: u8) {
-            self.data[address as usize] = value
+            self.data.insert(address, value);
         }
     }
 
     #[allow(dead_code)]
     impl TestBus {
-        pub fn new(base_address: u32, opcode: u32, transactions: Vec<Transaction>) -> Self {
+        pub fn new(base_address: u32, opcode: u32, transactions: VecDeque<Transaction>) -> Self {
             TestBus {
-                data: vec![0; 0xFFFFFFFF],
+                data: HashMap::new(),
                 base_address,
                 opcode,
                 transactions,
@@ -267,7 +201,7 @@ mod tests {
         cpu.set_bios_protection(false);
 
         for test in tests {
-            let test_bus = TestBus::new(test.base_addr[0], test.opcode, test.transactions.clone());
+            let test_bus = TestBus::new(test.base_addr[0], test.opcode, test.transactions);
             cpu.set_bus(test_bus);
 
             let initial_state = test.initial_state;
