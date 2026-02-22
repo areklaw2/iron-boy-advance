@@ -1,5 +1,5 @@
 use crate::{
-    Condition, CpuAction,
+    BitOps, Condition, CpuAction,
     arm::{
         block_data_transfer::BlockDataTransfer, branch_and_branch_link::BranchAndBranchWithLink,
         branch_and_exchange::BranchAndExchange, data_processing::DataProcessing,
@@ -11,7 +11,6 @@ use crate::{
     memory::MemoryInterface,
 };
 
-// Explore turning these into bitfields
 pub mod block_data_transfer;
 pub mod branch_and_branch_link;
 pub mod branch_and_exchange;
@@ -34,7 +33,7 @@ macro_rules! arm_instruction {
 
             #[inline]
             pub fn cond(&self) -> crate::Condition {
-                use ironboyadvance_utils::bit::BitOps;
+                use crate::BitOps;
                 self.value.bits(28..=31).into()
             }
         }
@@ -42,7 +41,6 @@ macro_rules! arm_instruction {
 }
 
 pub(crate) use arm_instruction;
-use ironboyadvance_utils::bit::BitOps;
 
 pub type ArmInstructionFactory = fn(u32) -> ArmInstruction;
 
@@ -141,7 +139,7 @@ fn decode_arm(index: u32) -> ArmInstructionFactory {
                     false => |value| ArmInstruction::DataProcessing(DataProcessing::new(value)),
                 }
             } else if pattern & 0x0FF000F0 == 0x01200010 {
-                |value| ArmInstruction::BranchAndExchange(BranchAndExchange::from_bits(value))
+                |value| ArmInstruction::BranchAndExchange(BranchAndExchange::new(value))
             } else if pattern & 0x010000F0 == 0x00000090 {
                 match pattern.bit(23) {
                     true => |value| ArmInstruction::MultiplyLong(MultiplyLong::new(value)),

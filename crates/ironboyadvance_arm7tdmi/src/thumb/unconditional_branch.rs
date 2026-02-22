@@ -1,4 +1,4 @@
-use ironboyadvance_utils::bit::BitOps;
+use crate::BitOps;
 
 use crate::{CpuAction, cpu::Arm7tdmiCpu, memory::MemoryInterface, thumb::thumb_instruction};
 

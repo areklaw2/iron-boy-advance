@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 ironboyadvance_arm7tdmi = { path = "../ironboyadvance_arm7tdmi" }
 ironboyadvance_sharp_sm83 = { path = "../ironboyadvance_sharp_sm83" }
-ironboyadvance_utils = { path = "../ironboyadvance_utils" }
 thiserror = { workspace = true }
 bitfields = { workspace = true }
 getset = { workspace = true }

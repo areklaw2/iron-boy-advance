@@ -215,7 +215,6 @@ version = "0.1.0"
 dependencies = [
  "bitfields",
  "getset",
- "ironboyadvance_utils",
  "rayon",
  "serde",
  "serde_json",
@@ -232,7 +231,6 @@ dependencies = [
  "getset",
  "ironboyadvance_arm7tdmi",
  "ironboyadvance_sharp_sm83",
- "ironboyadvance_utils",
  "thiserror",
  "tracing",
  "tracing-subscriber",
@@ -240,10 +238,6 @@ dependencies = [
 
 [[package]]
 name = "ironboyadvance_sharp_sm83"
-version = "0.1.0"
-
-[[package]]
-name = "ironboyadvance_utils"
 version = "0.1.0"
 
 [[package]]

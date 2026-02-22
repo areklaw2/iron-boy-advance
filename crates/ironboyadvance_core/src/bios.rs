@@ -1,9 +1,9 @@
-use std::path::PathBuf;
-
 use getset::CopyGetters;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
-use ironboyadvance_utils::read_file;
+use std::path::PathBuf;
 use thiserror::Error;
+
+use crate::read_file;
 
 #[derive(Error, Debug)]
 pub enum BiosError {

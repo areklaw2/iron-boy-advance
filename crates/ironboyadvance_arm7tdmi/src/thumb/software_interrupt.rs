@@ -1,11 +1,6 @@
-use ironboyadvance_utils::bit::BitOps;
+use crate::BitOps;
 
-use crate::{
-    CpuAction, Exception,
-    cpu::Arm7tdmiCpu,
-    memory::MemoryInterface,
-    thumb::thumb_instruction,
-};
+use crate::{CpuAction, Exception, cpu::Arm7tdmiCpu, memory::MemoryInterface, thumb::thumb_instruction};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SoftwareInterrupt {

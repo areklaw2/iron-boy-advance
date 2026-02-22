@@ -2,11 +2,11 @@ use std::path::PathBuf;
 
 use header::Header;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
-use ironboyadvance_utils::read_file;
 use thiserror::Error;
 
 use crate::{
     cartridge::header::HeaderError,
+    read_file,
     system_bus::{ROM_WS0_HI, ROM_WS0_LO, ROM_WS1_HI, ROM_WS1_LO, ROM_WS2_HI, ROM_WS2_LO, SRAM_HI, SRAM_LO},
 };
 

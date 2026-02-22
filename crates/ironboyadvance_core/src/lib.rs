@@ -1,4 +1,10 @@
-use std::{cell::RefCell, path::PathBuf, rc::Rc};
+use std::{
+    cell::RefCell,
+    fs::File,
+    io::{self, Read},
+    path::PathBuf,
+    rc::Rc,
+};
 
 use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
 use thiserror::Error;
@@ -131,4 +137,11 @@ impl GameBoyAdvance {
     pub fn frame_buffer(&self) -> &[u32] {
         self.arm7tdmi.bus().io_registers().ppu().frame_buffer()
     }
+}
+
+pub fn read_file(filename: &PathBuf) -> io::Result<Vec<u8>> {
+    let mut buffer = Vec::new();
+    let mut file = File::open(filename)?;
+    file.read_to_end(&mut buffer)?;
+    Ok(buffer)
 }

@@ -1,4 +1,4 @@
-use ironboyadvance_utils::bit::BitOps;
+use crate::BitOps;
 
 use crate::{CpuAction, Exception, arm::arm_instruction, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
