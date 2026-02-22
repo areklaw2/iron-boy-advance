@@ -1,11 +1,13 @@
 use std::{
     cell::RefCell,
+    collections::HashSet,
     fs::File,
     io::{self, Read},
     path::PathBuf,
     rc::Rc,
 };
 
+use getset::Getters;
 use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
 use thiserror::Error;
 
@@ -25,6 +27,7 @@ mod bios;
 mod cartridge;
 mod interrupt_control;
 mod io_registers;
+mod keypad;
 mod memory;
 mod ppu;
 mod scheduler;
@@ -33,6 +36,7 @@ mod system_control;
 
 pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 
+pub use keypad::KeypadButton;
 pub use ppu::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 
 #[derive(Error, Debug)]
@@ -47,11 +51,13 @@ pub enum GbaError {
     InvalidRomPath,
 }
 
+#[derive(Getters)]
 pub struct GameBoyAdvance {
     arm7tdmi: Arm7tdmiCpu<SystemBus>,
     // may end up making a common cpu trait
     // sharp_sm83: SharpSm83Cpu<SystemBus>,
     scheduler: Rc<RefCell<Scheduler>>,
+    #[getset(get = "pub")]
     rom_name: String,
 }
 
@@ -95,7 +101,9 @@ impl GameBoyAdvance {
         }
     }
 
-    pub fn run(&mut self, overshoot: usize) -> usize {
+    pub fn run(&mut self, overshoot: usize, buttons: &HashSet<KeypadButton>) -> usize {
+        self.arm7tdmi.bus_mut().handle_pressed_buttons(buttons);
+
         let start_time = self.scheduler.borrow().timestamp();
         let end_time = start_time + CYCLES_PER_FRAME - overshoot;
 

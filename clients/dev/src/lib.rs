@@ -1,4 +1,6 @@
-use ironboyadvance_core::{GameBoyAdvance, GbaError};
+use std::collections::HashSet;
+
+use ironboyadvance_core::{GameBoyAdvance, GbaError, KeypadButton};
 
 use sdl2::{
     EventPump,
@@ -35,6 +37,7 @@ pub struct Application {
     event_pump: EventPump,
     frame_timer: FrameTimer,
     overshoot: usize,
+    pressed_keys: HashSet<KeypadButton>,
 }
 
 impl Application {
@@ -43,10 +46,6 @@ impl Application {
             initilize_logger();
         }
 
-        let sdl_context = sdl2::init().map_err(ApplicationError::SdlInitError)?;
-        let window_manager = WindowManager::new(&sdl_context)?;
-        let event_pump = sdl_context.event_pump().map_err(ApplicationError::EventPumpError)?;
-
         let bios_path = match bios_path {
             Some(bios_path) => Some(bios_path.into()),
             None => None,
@@ -54,12 +53,17 @@ impl Application {
 
         let game_boy_advance = GameBoyAdvance::new(rom_path.into(), bios_path, show_logs)?;
 
+        let sdl_context = sdl2::init().map_err(ApplicationError::SdlInitError)?;
+        let window_manager = WindowManager::new(&sdl_context, game_boy_advance.rom_name())?;
+        let event_pump = sdl_context.event_pump().map_err(ApplicationError::EventPumpError)?;
+
         Ok(Self {
             game_boy_advance,
             window_manager,
             event_pump,
             frame_timer: FrameTimer::new(),
             overshoot: 0,
+            pressed_keys: HashSet::new(),
         })
     }
 
@@ -88,12 +92,20 @@ impl Application {
                             break 'game;
                         }
                     }
-                    Event::KeyDown { keycode, .. } => match keycode {
-                        _ => {}
-                    },
-                    Event::KeyUp { keycode, .. } => match keycode {
-                        _ => {}
-                    },
+                    Event::KeyDown {
+                        keycode: Some(keycode), ..
+                    } => {
+                        if let Some(button) = keycode_to_button(keycode) {
+                            self.pressed_keys.insert(button);
+                        }
+                    }
+                    Event::KeyUp {
+                        keycode: Some(keycode), ..
+                    } => {
+                        if let Some(button) = keycode_to_button(keycode) {
+                            self.pressed_keys.remove(&button);
+                        }
+                    }
                     _ => {}
                 };
             }
@@ -105,12 +117,28 @@ impl Application {
     }
 
     fn run_game_boy(&mut self) -> Result<(), ApplicationError> {
-        self.overshoot = self.game_boy_advance.run(self.overshoot);
+        self.overshoot = self.game_boy_advance.run(self.overshoot, &self.pressed_keys);
         let fps = self.frame_timer.fps();
         self.window_manager
             .render_screen(self.game_boy_advance.frame_buffer(), Some(fps))?;
         self.frame_timer.slow_frame();
         self.frame_timer.count_frame();
         Ok(())
+    }
+}
+
+fn keycode_to_button(keycode: Keycode) -> Option<KeypadButton> {
+    match keycode {
+        Keycode::X => Some(KeypadButton::A),
+        Keycode::Z => Some(KeypadButton::B),
+        Keycode::Backspace => Some(KeypadButton::Select),
+        Keycode::Return => Some(KeypadButton::Start),
+        Keycode::Up => Some(KeypadButton::Up),
+        Keycode::Left => Some(KeypadButton::Left),
+        Keycode::Down => Some(KeypadButton::Down),
+        Keycode::Right => Some(KeypadButton::Right),
+        Keycode::S => Some(KeypadButton::R),
+        Keycode::A => Some(KeypadButton::L),
+        _ => None,
     }
 }

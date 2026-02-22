@@ -4,12 +4,13 @@ use getset::{Getters, MutGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use tracing::debug;
 
-use crate::{interrupt_control::InterruptController, ppu::Ppu, system_control::SystemController};
+use crate::{interrupt_control::InterruptController, keypad::Keypad, ppu::Ppu, system_control::SystemController};
 
 #[derive(Getters, MutGetters, Setters)]
 #[getset(get = "pub", get_mut = "pub")]
 pub struct IoRegisters {
     ppu: Ppu,
+    keypad: Keypad,
     interrupt_controller: InterruptController,
     system_controller: SystemController,
 }
@@ -18,6 +19,7 @@ impl IoRegisters {
     pub fn new() -> Self {
         IoRegisters {
             ppu: Ppu::new(),
+            keypad: Keypad::new(),
             interrupt_controller: InterruptController::new(),
             system_controller: SystemController::new(),
         }
@@ -29,6 +31,8 @@ impl SystemMemoryAccess for IoRegisters {
         match address {
             // PPU
             0x04000000..=0x04000057 => self.ppu.read_8(address),
+            // Keypad
+            0x04000130..=0x04000133 => self.keypad.read_8(address),
             // Interrupt Control
             0x04000200..=0x04000203 | 0x04000208..=0x0400020B => self.interrupt_controller.read_8(address),
             // System Control
@@ -49,6 +53,8 @@ impl SystemMemoryAccess for IoRegisters {
         match address {
             // PPU
             0x04000000..=0x04000005 | 0x04000008..=0x04000057 => self.ppu.write_8(address, value),
+            // Keypad
+            0x04000130..=0x04000133 => self.keypad.write_8(address, value),
             // Interrupt Control
             0x04000200..=0x04000203 | 0x04000208..=0x0400020B => self.interrupt_controller.write_8(address, value),
             // System Control

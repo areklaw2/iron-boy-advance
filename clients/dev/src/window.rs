@@ -47,14 +47,14 @@ pub struct WindowManager {
 }
 
 impl WindowManager {
-    pub fn new(sdl_context: &Sdl) -> Result<WindowManager, WindowError> {
+    pub fn new(sdl_context: &Sdl, rom_name: &str) -> Result<WindowManager, WindowError> {
         image::init(InitFlag::PNG).map_err(WindowError::ImageInitError)?;
         let ttf_context = ttf::init().map_err(WindowError::TtfInitError)?;
 
         let video_subsystem = sdl_context.video().map_err(WindowError::VideoSubsystemError)?;
         let window = video_subsystem
             .window(
-                "Iron Boy Advance",
+                format!("Iron Boy Advance - {}", rom_name).as_str(),
                 (VIEWPORT_WIDTH as u32) * SCALE,
                 (VIEWPORT_HEIGHT as u32) * SCALE,
             )

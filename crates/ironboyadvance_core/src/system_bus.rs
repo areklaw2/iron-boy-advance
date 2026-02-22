@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use getset::{Getters, MutGetters};
 use ironboyadvance_arm7tdmi::memory::{MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
@@ -8,6 +8,7 @@ use crate::{
     bios::Bios,
     cartridge::Cartridge,
     io_registers::IoRegisters,
+    keypad::KeypadButton,
     memory::Memory,
     ppu::HDRAW_CYCLES,
     scheduler::{
@@ -159,5 +160,15 @@ impl SystemBus {
 
     pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent) -> Vec<FutureEvent> {
         self.io_registers.ppu_mut().handle_event(ppu_event)
+    }
+
+    pub fn handle_pressed_buttons(&mut self, buttons: &HashSet<KeypadButton>) {
+        let keypad = self.io_registers.keypad_mut();
+        keypad.set_pressed_keys(buttons);
+        if keypad.keypad_interrupt_raised() {
+            self.io_registers
+                .interrupt_controller_mut()
+                .raise_interrupt(InterruptEvent::Keypad)
+        }
     }
 }
