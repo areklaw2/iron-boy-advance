@@ -1,10 +1,8 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, Register,
+    BitOps, CpuAction, Register,
     alu::multiplier_array_cycles,
     arm::arm_instruction,
-    cpu::{Arm7tdmiCpu, PC},
+    cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -15,8 +13,8 @@ pub struct Multiply {
 
 arm_instruction!(Multiply);
 
-impl Multiply {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for Multiply {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rm = self.rm() as usize;
         let rs = self.rs() as usize;
@@ -61,7 +59,7 @@ impl Multiply {
         }
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let s = if self.sets_flags() { "S" } else { "" };
         let rd = self.rd();
@@ -73,7 +71,9 @@ impl Multiply {
             false => format!("MUL{}{} {},{},{}", cond, s, rd, rm, rs),
         }
     }
+}
 
+impl Multiply {
     #[inline]
     pub fn rn(&self) -> Register {
         self.value.bits(12..=15).into()

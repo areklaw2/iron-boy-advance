@@ -1,4 +1,9 @@
-use crate::{CpuAction, Exception, cpu::Arm7tdmiCpu, memory::MemoryInterface, thumb::thumb_instruction};
+use crate::{
+    CpuAction, Exception,
+    cpu::{Arm7tdmiCpu, Instruction},
+    memory::MemoryInterface,
+    thumb::thumb_instruction,
+};
 
 #[derive(Debug, Clone, Copy)]
 #[allow(unused)]
@@ -8,13 +13,13 @@ pub struct Undefined {
 
 thumb_instruction!(Undefined);
 
-impl Undefined {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for Undefined {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         cpu.exception(Exception::Undefined);
         CpuAction::PipelineFlush
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         "Undefined".into()
     }
 }

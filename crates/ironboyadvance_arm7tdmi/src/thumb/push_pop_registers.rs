@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
-    cpu::{Arm7tdmiCpu, LR, PC, SP},
+    BitOps, CpuAction, LoRegister,
+    cpu::{Arm7tdmiCpu, Instruction, LR, PC, SP},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct PushPopRegisters {
 
 thumb_instruction!(PushPopRegisters);
 
-impl PushPopRegisters {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for PushPopRegisters {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let mut address = cpu.register(SP);
         let register_list = self.register_list();
         let store_lr_load_pc = self.store_lr_load_pc();
@@ -82,7 +80,7 @@ impl PushPopRegisters {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let load = self.load();
         let store_lr_load_pc = self.store_lr_load_pc();
         let register_list = self
@@ -99,7 +97,9 @@ impl PushPopRegisters {
             (true, true) => format!("POP {{{},pc}}", register_list),
         }
     }
+}
 
+impl PushPopRegisters {
     #[inline]
     pub fn register_list(&self) -> Vec<usize> {
         (0..=7).filter(|&i| self.value.bit(i)).collect()

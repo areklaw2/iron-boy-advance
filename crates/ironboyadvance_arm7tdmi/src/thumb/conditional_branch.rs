@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    Condition, CpuAction,
-    cpu::Arm7tdmiCpu,
+    BitOps, Condition, CpuAction,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct ConditionalBranch {
 
 thumb_instruction!(ConditionalBranch);
 
-impl ConditionalBranch {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for ConditionalBranch {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let condition = self.cond();
         if !cpu.is_condition_met(condition) {
             CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
@@ -27,12 +25,14 @@ impl ConditionalBranch {
         }
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let offset = self.offset();
         format!("B{} #{}", cond, offset)
     }
+}
 
+impl ConditionalBranch {
     #[inline]
     pub fn offset(&self) -> u16 {
         self.value.bits(0..=7)

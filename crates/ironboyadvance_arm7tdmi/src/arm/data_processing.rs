@@ -1,11 +1,9 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, DataProcessingOpcode, Register,
+    BitOps, CpuAction, DataProcessingOpcode, Register,
     alu::*,
     arm::arm_instruction,
     barrel_shifter::*,
-    cpu::{Arm7tdmiCpu, PC},
+    cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -18,8 +16,8 @@ pub struct DataProcessing {
 
 arm_instruction!(DataProcessing);
 
-impl DataProcessing {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for DataProcessing {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let mut cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
         let rn = self.rn() as usize;
         let mut operand1 = cpu.register(rn);
@@ -96,7 +94,7 @@ impl DataProcessing {
         cpu_action
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let opcode = self.opcode();
         let s = if self.sets_flags() { "S" } else { "" };
@@ -128,7 +126,9 @@ impl DataProcessing {
             _ => format!("{opcode}{cond}{s} {rd},{rn},{operand_2}"),
         }
     }
+}
 
+impl DataProcessing {
     #[inline]
     pub fn rn(&self) -> Register {
         self.value.bits(16..=19).into()

@@ -1,9 +1,7 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, Register,
+    BitOps, CpuAction, Register,
     arm::arm_instruction,
-    cpu::{Arm7tdmiCpu, PC},
+    cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -14,8 +12,8 @@ pub struct HalfwordAndSignedDataTransfer {
 
 arm_instruction!(HalfwordAndSignedDataTransfer);
 
-impl HalfwordAndSignedDataTransfer {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for HalfwordAndSignedDataTransfer {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rn = self.rn() as usize;
 
@@ -122,7 +120,7 @@ impl HalfwordAndSignedDataTransfer {
         }
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let pre_index = self.pre_index();
         let add = if self.add() { "+" } else { "-" };
@@ -163,7 +161,9 @@ impl HalfwordAndSignedDataTransfer {
             false => format!("STR{}{} {},{}", cond, sh, rd, address),
         }
     }
+}
 
+impl HalfwordAndSignedDataTransfer {
     #[inline]
     pub fn rn(&self) -> Register {
         self.value.bits(16..=19).into()

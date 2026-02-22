@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
-    cpu::Arm7tdmiCpu,
+    BitOps, CpuAction, LoRegister,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct LoadStoreSignExtendedByteHalfword {
 
 thumb_instruction!(LoadStoreSignExtendedByteHalfword);
 
-impl LoadStoreSignExtendedByteHalfword {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for LoadStoreSignExtendedByteHalfword {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let ro_value = cpu.register(self.ro() as usize);
         let rb_value = cpu.register(self.rb() as usize);
         let address = rb_value.wrapping_add(ro_value);
@@ -48,7 +46,7 @@ impl LoadStoreSignExtendedByteHalfword {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let ro = self.ro();
         let rb = self.rb();
         let rd = self.rd();
@@ -61,7 +59,9 @@ impl LoadStoreSignExtendedByteHalfword {
             (true, true) => format!("LDSH {}, [{},{}]", rd, rb, ro),
         }
     }
+}
 
+impl LoadStoreSignExtendedByteHalfword {
     #[inline]
     pub fn rd(&self) -> LoRegister {
         self.value.bits(0..=2).into()

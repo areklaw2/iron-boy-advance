@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction,
-    cpu::{Arm7tdmiCpu, SP},
+    BitOps, CpuAction,
+    cpu::{Arm7tdmiCpu, Instruction, SP},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct AddOffsetToSp {
 
 thumb_instruction!(AddOffsetToSp);
 
-impl AddOffsetToSp {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for AddOffsetToSp {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let offset = self.offset() * 4;
         let sp_value = cpu.register(SP);
         let value = match self.signed() {
@@ -26,12 +24,14 @@ impl AddOffsetToSp {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let offset = self.offset();
         let signed = if self.signed() { "-" } else { "" };
         format!("ADD sp, {}{}", signed, offset)
     }
+}
 
+impl AddOffsetToSp {
     #[inline]
     pub fn offset(&self) -> u16 {
         self.value.bits(0..=6)

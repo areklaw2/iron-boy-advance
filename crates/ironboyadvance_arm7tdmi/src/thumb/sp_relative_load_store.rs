@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
-    cpu::{Arm7tdmiCpu, SP},
+    BitOps, CpuAction, LoRegister,
+    cpu::{Arm7tdmiCpu, Instruction, SP},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct SpRelativeLoadStore {
 
 thumb_instruction!(SpRelativeLoadStore);
 
-impl SpRelativeLoadStore {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for SpRelativeLoadStore {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let immediate = self.offset() * 4;
         let sp_value = cpu.register(SP);
         let address = sp_value.wrapping_add(immediate as u32);
@@ -35,7 +33,7 @@ impl SpRelativeLoadStore {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let offset = self.offset();
         let rd = self.rd();
         match self.load() {
@@ -43,7 +41,9 @@ impl SpRelativeLoadStore {
             false => format!("STRH {}, [sp,#{}]", rd, offset),
         }
     }
+}
 
+impl SpRelativeLoadStore {
     #[inline]
     pub fn offset(&self) -> u16 {
         self.value.bits(0..=7)

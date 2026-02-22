@@ -1,9 +1,7 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, CpuMode, Register,
+    BitOps, CpuAction, CpuMode, Register,
     arm::arm_instruction,
-    cpu::{Arm7tdmiCpu, PC},
+    cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -14,8 +12,8 @@ pub struct BlockDataTransfer {
 
 arm_instruction!(BlockDataTransfer);
 
-impl BlockDataTransfer {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for BlockDataTransfer {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let mut register_list = self.register_list();
         let rn = self.rn() as usize;
         let mut address = cpu.register(rn);
@@ -127,7 +125,7 @@ impl BlockDataTransfer {
         action
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let pre_index = self.pre_index();
         let add = self.add();
@@ -179,7 +177,9 @@ impl BlockDataTransfer {
 
         format!("{} {}{},({}){}", mnemonic, rn, write_back, register_list, load_psr_force_user)
     }
+}
 
+impl BlockDataTransfer {
     #[inline]
     pub fn rn(&self) -> Register {
         self.value.bits(16..=19).into()

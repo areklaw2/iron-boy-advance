@@ -1,9 +1,7 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction,
+    BitOps, CpuAction,
     arm::arm_instruction,
-    cpu::{Arm7tdmiCpu, LR},
+    cpu::{Arm7tdmiCpu, Instruction, LR},
     memory::MemoryInterface,
 };
 
@@ -14,8 +12,8 @@ pub struct BranchAndBranchWithLink {
 
 arm_instruction!(BranchAndBranchWithLink);
 
-impl BranchAndBranchWithLink {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for BranchAndBranchWithLink {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         if self.link() {
             cpu.set_register(LR, cpu.pc() - 4)
         }
@@ -26,13 +24,15 @@ impl BranchAndBranchWithLink {
         CpuAction::PipelineFlush
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let link = if self.link() { "L" } else { "" };
         let expression = self.offset();
         format!("B{link}{cond} 0x{expression:08X}")
     }
+}
 
+impl BranchAndBranchWithLink {
     #[inline]
     fn link(&self) -> bool {
         self.value.bit(24)

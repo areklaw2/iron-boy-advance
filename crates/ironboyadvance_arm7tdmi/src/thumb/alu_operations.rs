@@ -1,10 +1,8 @@
-use crate::BitOps;
-
 use crate::{
-    AluOperationsOpcode, CpuAction, LoRegister,
+    AluOperationsOpcode, BitOps, CpuAction, LoRegister,
     alu::*,
     barrel_shifter::{asr, lsl, lsr, ror},
-    cpu::Arm7tdmiCpu,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -16,8 +14,8 @@ pub struct AluOperations {
 
 thumb_instruction!(AluOperations);
 
-impl AluOperations {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for AluOperations {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         use AluOperationsOpcode::*;
         let rd = self.rd() as usize;
         let operand1 = cpu.register(rd);
@@ -103,13 +101,15 @@ impl AluOperations {
         access
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let rd = self.rd();
         let rs = self.rs();
         let opcode = AluOperationsOpcode::from(self.opcode());
         format!("{} {},{}", opcode, rd, rs)
     }
+}
 
+impl AluOperations {
     #[inline]
     pub fn rd(&self) -> LoRegister {
         self.value.bits(0..=2).into()

@@ -3,7 +3,7 @@ use crate::BitOps;
 use crate::{
     CpuAction, Register,
     arm::arm_instruction,
-    cpu::{Arm7tdmiCpu, PC},
+    cpu::{Instruction, Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -14,8 +14,8 @@ pub struct SingleDataSwap {
 
 arm_instruction!(SingleDataSwap);
 
-impl SingleDataSwap {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for SingleDataSwap {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rn = self.rn() as usize;
         let rm = self.rm() as usize;
@@ -49,7 +49,7 @@ impl SingleDataSwap {
         }
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let byte = if self.byte() { "B" } else { "" };
         let rd = self.rd();
@@ -57,7 +57,9 @@ impl SingleDataSwap {
         let rn = self.rn();
         format!("SWP{}{} {},{},[{}]", cond, byte, rd, rm, rn)
     }
+}
 
+impl SingleDataSwap {
     #[inline]
     pub fn rn(&self) -> Register {
         self.value.bits(16..=19).into()

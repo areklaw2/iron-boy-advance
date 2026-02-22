@@ -1,9 +1,7 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister, MovCmpAddSubImmediateOpcode,
+    BitOps, CpuAction, LoRegister, MovCmpAddSubImmediateOpcode,
     alu::{add, cmp, mov, sub},
-    cpu::Arm7tdmiCpu,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -15,8 +13,8 @@ pub struct MoveCompareAddSubtractImmediate {
 
 thumb_instruction!(MoveCompareAddSubtractImmediate);
 
-impl MoveCompareAddSubtractImmediate {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for MoveCompareAddSubtractImmediate {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         use MovCmpAddSubImmediateOpcode::*;
         let rd = self.rd() as usize;
         let operand1 = cpu.register(rd);
@@ -36,13 +34,15 @@ impl MoveCompareAddSubtractImmediate {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let rd = self.rd();
         let offset = self.offset();
         let opcode = MovCmpAddSubImmediateOpcode::from(self.opcode());
         format!("{} {},#{}", opcode, rd, offset)
     }
+}
 
+impl MoveCompareAddSubtractImmediate {
     #[inline]
     pub fn offset(&self) -> u16 {
         self.value.bits(0..=7)

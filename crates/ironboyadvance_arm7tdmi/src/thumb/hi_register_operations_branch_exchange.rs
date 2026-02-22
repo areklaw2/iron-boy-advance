@@ -1,9 +1,7 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, CpuState, HiRegOpsBxOpcode, HiRegister, LoRegister,
+    BitOps, CpuAction, CpuState, HiRegOpsBxOpcode, HiRegister, LoRegister,
     alu::{add, cmp, mov},
-    cpu::{Arm7tdmiCpu, PC},
+    cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -15,8 +13,8 @@ pub struct HiRegisterOperationsBranchExchange {
 
 thumb_instruction!(HiRegisterOperationsBranchExchange);
 
-impl HiRegisterOperationsBranchExchange {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for HiRegisterOperationsBranchExchange {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         use HiRegOpsBxOpcode::*;
         let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
         let destination = match self.h1() {
@@ -67,7 +65,7 @@ impl HiRegisterOperationsBranchExchange {
         action
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let destination = match self.h1() {
             true => self.hd().to_string(),
             false => self.rd().to_string(),
@@ -81,7 +79,9 @@ impl HiRegisterOperationsBranchExchange {
         let opcode = HiRegOpsBxOpcode::from(self.opcode());
         format!("{} {},{}", opcode, destination, source)
     }
+}
 
+impl HiRegisterOperationsBranchExchange {
     #[inline]
     pub fn rd(&self) -> LoRegister {
         self.value.bits(0..=2).into()

@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
-    cpu::Arm7tdmiCpu,
+    BitOps, CpuAction, LoRegister,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct MultipleLoadStore {
 
 thumb_instruction!(MultipleLoadStore);
 
-impl MultipleLoadStore {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for MultipleLoadStore {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rb = self.rb() as usize;
         let mut address = cpu.register(rb);
         let register_list = self.register_list();
@@ -68,7 +66,7 @@ impl MultipleLoadStore {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let rb = self.rb();
         let load = self.load();
         let register_list = self
@@ -83,7 +81,9 @@ impl MultipleLoadStore {
             false => format!("STMIA {}!,{{{}}}", rb, register_list),
         }
     }
+}
 
+impl MultipleLoadStore {
     #[inline]
     pub fn register_list(&self) -> Vec<usize> {
         (0..=7).filter(|&i| self.value.bit(i)).collect()

@@ -1,9 +1,7 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
+    BitOps, CpuAction, LoRegister,
     alu::{add, sub},
-    cpu::Arm7tdmiCpu,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -15,8 +13,8 @@ pub struct AddSubtract {
 
 thumb_instruction!(AddSubtract);
 
-impl AddSubtract {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for AddSubtract {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let operand1 = cpu.register(self.rs() as usize);
         let operand2 = match self.is_immediate() {
@@ -33,7 +31,7 @@ impl AddSubtract {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let rs = self.rs();
         let rd = self.rd();
         let is_immediate = self.is_immediate();
@@ -47,7 +45,9 @@ impl AddSubtract {
         };
         format!("{} {},{},{}", opcode, rd, rs, operand)
     }
+}
 
+impl AddSubtract {
     #[inline]
     pub fn rd(&self) -> LoRegister {
         self.value.bits(0..=2).into()

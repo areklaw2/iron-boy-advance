@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
-    cpu::{Arm7tdmiCpu, PC},
+    BitOps, CpuAction, LoRegister,
+    cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct PcRelativeLoad {
 
 thumb_instruction!(PcRelativeLoad);
 
-impl PcRelativeLoad {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for PcRelativeLoad {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let offset = self.offset();
         let address = (cpu.register(PC) & !0x2).wrapping_add((offset << 2) as u32);
         let value = cpu.load_32(address, MemoryAccess::NonSequential as u8);
@@ -24,12 +22,14 @@ impl PcRelativeLoad {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let rd = self.rd();
         let offset = self.offset();
         format!("LDR {},[PC, #{}]", rd, offset)
     }
+}
 
+impl PcRelativeLoad {
     #[inline]
     pub fn offset(&self) -> u16 {
         self.value.bits(0..=7)

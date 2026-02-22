@@ -1,9 +1,7 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
+    BitOps, CpuAction, LoRegister,
     barrel_shifter::{ShiftType, asr, lsl, lsr},
-    cpu::Arm7tdmiCpu,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -15,8 +13,8 @@ pub struct MoveShiftedRegister {
 
 thumb_instruction!(MoveShiftedRegister);
 
-impl MoveShiftedRegister {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for MoveShiftedRegister {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rs = self.rs() as usize;
         let offset5 = self.offset() as u32;
@@ -38,14 +36,16 @@ impl MoveShiftedRegister {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let shift_type = self.opcode();
         let offset5 = self.offset();
         let rs = self.rs();
         let rd = self.rd();
         format!("{} {},{},#{}", shift_type, rd, rs, offset5)
     }
+}
 
+impl MoveShiftedRegister {
     #[inline]
     pub fn rd(&self) -> LoRegister {
         self.value.bits(0..=2).into()

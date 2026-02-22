@@ -4,7 +4,7 @@ use crate::{
     CpuAction, Register,
     arm::arm_instruction,
     barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
-    cpu::{Arm7tdmiCpu, PC},
+    cpu::{Instruction, Arm7tdmiCpu, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -15,8 +15,8 @@ pub struct SingleDataTransfer {
 
 arm_instruction!(SingleDataTransfer);
 
-impl SingleDataTransfer {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for SingleDataTransfer {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rn = self.rn() as usize;
 
@@ -90,7 +90,7 @@ impl SingleDataTransfer {
         }
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let pre_index = self.pre_index();
         let t = if pre_index { "" } else { "T" };
@@ -127,7 +127,9 @@ impl SingleDataTransfer {
             false => format!("STR{}{}{} {},{}", cond, byte, t, rd, address),
         }
     }
+}
 
+impl SingleDataTransfer {
     #[inline]
     pub fn rn(&self) -> Register {
         self.value.bits(16..=19).into()

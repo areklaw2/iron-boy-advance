@@ -1,10 +1,8 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, CpuMode, Register,
+    BitOps, CpuAction, CpuMode, Register,
     arm::arm_instruction,
     barrel_shifter::ror,
-    cpu::Arm7tdmiCpu,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     psr::ProgramStatusRegister,
 };
@@ -16,8 +14,8 @@ pub struct PsrTransfer {
 
 arm_instruction!(PsrTransfer);
 
-impl PsrTransfer {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for PsrTransfer {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let is_spsr = self.is_spsr();
         match self.value.bits(16..=21) as u8 == 0xF {
             true => {
@@ -80,7 +78,7 @@ impl PsrTransfer {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let is_spsr = self.is_spsr();
         let psr = match is_spsr {
@@ -124,7 +122,9 @@ impl PsrTransfer {
             }
         }
     }
+}
 
+impl PsrTransfer {
     #[inline]
     pub fn rd(&self) -> Register {
         self.value.bits(12..=15).into()

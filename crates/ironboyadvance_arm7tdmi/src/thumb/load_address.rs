@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
-    cpu::{Arm7tdmiCpu, SP},
+    BitOps, CpuAction, LoRegister,
+    cpu::{Arm7tdmiCpu, Instruction, SP},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct LoadAddress {
 
 thumb_instruction!(LoadAddress);
 
-impl LoadAddress {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for LoadAddress {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let offset = self.offset() * 4;
         let value = match self.sp() {
@@ -26,13 +24,15 @@ impl LoadAddress {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let offset = self.offset();
         let rd = self.rd();
         let sp = if self.sp() { "sp" } else { "pc" };
         format!("ADD {},{},{}", rd, sp, offset)
     }
+}
 
+impl LoadAddress {
     #[inline]
     pub fn offset(&self) -> u16 {
         self.value.bits(0..=7)

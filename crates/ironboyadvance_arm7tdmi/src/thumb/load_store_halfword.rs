@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
-    cpu::Arm7tdmiCpu,
+    BitOps, CpuAction, LoRegister,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct LoadStoreHalfword {
 
 thumb_instruction!(LoadStoreHalfword);
 
-impl LoadStoreHalfword {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for LoadStoreHalfword {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let immediate = self.offset() * 2;
         let rb_value = cpu.register(self.rb() as usize);
         let address = rb_value.wrapping_add(immediate as u32);
@@ -35,7 +33,7 @@ impl LoadStoreHalfword {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let offset = self.offset();
         let rb = self.rb();
         let rd = self.rd();
@@ -44,7 +42,9 @@ impl LoadStoreHalfword {
             false => format!("STRH {}, [{},#{}]", rd, rb, offset),
         }
     }
+}
 
+impl LoadStoreHalfword {
     #[inline]
     pub fn rd(&self) -> LoRegister {
         self.value.bits(0..=2).into()

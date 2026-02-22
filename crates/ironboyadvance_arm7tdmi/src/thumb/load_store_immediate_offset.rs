@@ -1,8 +1,6 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, LoRegister,
-    cpu::Arm7tdmiCpu,
+    BitOps, CpuAction, LoRegister,
+    cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     thumb::thumb_instruction,
 };
@@ -14,8 +12,8 @@ pub struct LoadStoreImmediateOffset {
 
 thumb_instruction!(LoadStoreImmediateOffset);
 
-impl LoadStoreImmediateOffset {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for LoadStoreImmediateOffset {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let immediate = if self.byte() { self.offset() } else { self.offset() * 4 };
         let rb_value = cpu.register(self.rb() as usize);
         let address = rb_value.wrapping_add(immediate as u32);
@@ -47,7 +45,7 @@ impl LoadStoreImmediateOffset {
         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential)
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let byte = if self.byte() { "B" } else { "" };
         let offset = self.offset();
         let rb = self.rb();
@@ -58,7 +56,9 @@ impl LoadStoreImmediateOffset {
             false => format!("STR{} {}, [{},#{}]", byte, rd, rb, offset),
         }
     }
+}
 
+impl LoadStoreImmediateOffset {
     #[inline]
     pub fn rd(&self) -> LoRegister {
         self.value.bits(0..=2).into()

@@ -1,10 +1,8 @@
-use crate::BitOps;
-
 use crate::{
-    CpuAction, Register,
+    BitOps, CpuAction, Register,
     alu::multiplier_array_cycles,
     arm::arm_instruction,
-    cpu::{Arm7tdmiCpu, PC},
+    cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
@@ -15,8 +13,8 @@ pub struct MultiplyLong {
 
 arm_instruction!(MultiplyLong);
 
-impl MultiplyLong {
-    pub fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+impl Instruction for MultiplyLong {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd_lo = self.rd_lo() as usize;
         let rd_hi = self.rd_hi() as usize;
         let rm = self.rm() as usize;
@@ -73,7 +71,7 @@ impl MultiplyLong {
         }
     }
 
-    pub fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
         let s = if self.sets_flags() { "S" } else { "" };
         let rd_hi = self.rd_hi();
@@ -89,7 +87,9 @@ impl MultiplyLong {
             (false, true) => format!("SMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
         }
     }
+}
 
+impl MultiplyLong {
     #[inline]
     pub fn rd_hi(&self) -> Register {
         self.value.bits(16..=19).into()
