@@ -26,12 +26,9 @@ impl FrameTimer {
     pub fn slow_frame(&mut self) {
         let target = self.frame_clock + FRAME_DURATION;
         while std::time::Instant::now() < target {
-            let remaining = target - std::time::Instant::now();
-            if remaining > std::time::Duration::from_millis(1) {
-                std::thread::sleep(std::time::Duration::from_micros(100));
-            }
+            std::thread::yield_now();
         }
-        self.frame_clock = std::time::Instant::now();
+        self.frame_clock = target;
     }
 
     pub fn count_frame(&mut self) {

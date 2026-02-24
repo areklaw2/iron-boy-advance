@@ -1,15 +1,5 @@
 use getset::CopyGetters;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
-use std::path::PathBuf;
-use thiserror::Error;
-
-use crate::read_file;
-
-#[derive(Error, Debug)]
-pub enum BiosError {
-    #[error("Bios read failed")]
-    ReadFailure,
-}
 
 #[derive(Debug, CopyGetters)]
 pub struct Bios {
@@ -19,18 +9,12 @@ pub struct Bios {
 }
 
 impl Bios {
-    pub fn load(path: Option<PathBuf>) -> Result<Bios, BiosError> {
-        let (data, loaded) = match path {
-            Some(path) => {
-                let buffer = match read_file(&path) {
-                    Ok(buffer) => buffer.into_boxed_slice(),
-                    Err(_) => return Err(BiosError::ReadFailure),
-                };
-                (buffer, true)
-            }
-            None => (Box::new([0u8; 0x4000]) as Box<[u8]>, false),
+    pub fn load(buffer: Box<[u8]>) -> Bios {
+        let (data, loaded) = match !buffer.is_empty() {
+            true => (buffer, true),
+            false => (Box::new([0u8; 0x4000]) as Box<[u8]>, false),
         };
-        Ok(Self { data, loaded })
+        Self { data, loaded }
     }
 }
 

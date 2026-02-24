@@ -1,20 +1,12 @@
-use std::{
-    cell::RefCell,
-    collections::HashSet,
-    fs::File,
-    io::{self, Read},
-    path::PathBuf,
-    rc::Rc,
-};
+use std::{cell::RefCell, rc::Rc};
 
 use getset::Getters;
 use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
 use thiserror::Error;
 
 use crate::{
-    bios::{Bios, BiosError},
+    bios::Bios,
     cartridge::{Cartridge, CartridgeError},
-    ppu::CYCLES_PER_FRAME,
     scheduler::{
         Scheduler,
         event::{EventType, FutureEvent, InterruptEvent},
@@ -37,18 +29,12 @@ mod system_control;
 pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 
 pub use keypad::KeypadButton;
-pub use ppu::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+pub use ppu::{CYCLES_PER_FRAME, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 
 #[derive(Error, Debug)]
 pub enum GbaError {
     #[error("Failed to load cartridge: {0}")]
     CartridgeError(#[from] CartridgeError),
-    #[error("Failed to load cartridge: {0}")]
-    BiosError(#[from] BiosError),
-    #[error("Path cannot be empty")]
-    EmptyPath,
-    #[error("Unable to extract filename")]
-    InvalidRomPath,
 }
 
 #[derive(Getters)]
@@ -57,26 +43,17 @@ pub struct GameBoyAdvance {
     // may end up making a common cpu trait
     // sharp_sm83: SharpSm83Cpu<SystemBus>,
     scheduler: Rc<RefCell<Scheduler>>,
-    #[getset(get = "pub")]
-    rom_name: String,
 }
 
 impl GameBoyAdvance {
-    pub fn new(rom_path: PathBuf, bios_path: Option<PathBuf>, show_logs: bool) -> Result<GameBoyAdvance, GbaError> {
-        let rom_name = rom_path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .map(|s| s.to_string())
-            .ok_or(GbaError::InvalidRomPath)?;
-
+    pub fn new(rom_buffer: Vec<u8>, bios_buffer: Box<[u8]>, show_logs: bool) -> Result<GameBoyAdvance, GbaError> {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
-        let cartridge = Cartridge::load(rom_path)?;
-        let bios = Bios::load(bios_path)?;
+        let cartridge = Cartridge::load(rom_buffer)?;
+        let bios = Bios::load(bios_buffer);
         let skip_bios = !bios.loaded();
         let gba = GameBoyAdvance {
             arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone()), show_logs, skip_bios),
             scheduler,
-            rom_name,
         };
         Ok(gba)
     }
@@ -101,9 +78,9 @@ impl GameBoyAdvance {
         }
     }
 
-    pub fn run(&mut self, overshoot: usize) -> usize {
+    pub fn run(&mut self, cycles: usize, overshoot: usize) -> usize {
         let start_time = self.scheduler.borrow().timestamp();
-        let end_time = start_time + CYCLES_PER_FRAME - overshoot;
+        let end_time = start_time + cycles - overshoot;
 
         self.scheduler
             .borrow_mut()
@@ -119,7 +96,9 @@ impl GameBoyAdvance {
             }
         }
 
-        self.scheduler.borrow().timestamp() - start_time
+        let elapsed = self.scheduler.borrow().timestamp() - start_time;
+        let target = cycles - overshoot;
+        elapsed.saturating_sub(target)
     }
 
     fn handle_events(&mut self) -> bool {
@@ -144,18 +123,11 @@ impl GameBoyAdvance {
         self.arm7tdmi.bus().io_registers().ppu().frame_buffer()
     }
 
-    pub fn handle_pressed_buttons(&mut self, buttons: &HashSet<KeypadButton>) {
+    pub fn handle_pressed_buttons(&mut self, input: u16) {
         let keypad = self.arm7tdmi.bus_mut().io_registers_mut().keypad_mut();
-        keypad.set_pressed_keys(buttons);
+        keypad.set_key_input(input);
         if keypad.keypad_interrupt_raised() {
             self.arm7tdmi.bus_mut().raise_interrupt(InterruptEvent::Keypad);
         }
     }
-}
-
-pub fn read_file(filename: &PathBuf) -> io::Result<Vec<u8>> {
-    let mut buffer = Vec::new();
-    let mut file = File::open(filename)?;
-    file.read_to_end(&mut buffer)?;
-    Ok(buffer)
 }

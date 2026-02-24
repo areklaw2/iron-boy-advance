@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashSet, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use getset::{Getters, MutGetters};
 use ironboyadvance_arm7tdmi::memory::{MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
@@ -8,7 +8,6 @@ use crate::{
     bios::Bios,
     cartridge::Cartridge,
     io_registers::IoRegisters,
-    keypad::KeypadButton,
     memory::Memory,
     ppu::HDRAW_CYCLES,
     scheduler::{

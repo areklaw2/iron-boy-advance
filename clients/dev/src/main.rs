@@ -1,5 +1,4 @@
 use clap::{ArgAction, Parser};
-use dev::Application;
 
 #[derive(Parser)]
 #[command(name = "Iron Boy Advance")]
@@ -14,7 +13,6 @@ struct DeveloperCli {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = DeveloperCli::parse();
-    let mut application = Application::new(cli.rom, cli.bios, cli.logs)?;
-    application.run()?;
+    dev::run(cli.rom, cli.bios, cli.logs)?;
     Ok(())
 }
