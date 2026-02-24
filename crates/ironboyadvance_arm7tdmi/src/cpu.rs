@@ -153,9 +153,9 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
                 let instruction = (self.arm_lut[lut_index as usize])(instruction);
-                self.dissassembled_instruction = instruction.disassemble(self);
 
                 if self.show_logs {
+                    self.dissassembled_instruction = instruction.disassemble(self);
                     debug!("{}", self.dissassembled_instruction);
                 }
 
@@ -179,9 +179,9 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[1] = self.load_16(pc, self.next_memory_access);
                 let lut_index = (instruction) as u16 >> 6;
                 let instruction = (self.thumb_lut[lut_index as usize])(instruction as u16);
-                self.dissassembled_instruction = instruction.disassemble(self);
 
                 if self.show_logs {
+                    self.dissassembled_instruction = instruction.disassemble(self);
                     debug!("{}", self.dissassembled_instruction);
                 }
 

@@ -4,6 +4,7 @@ use ironboyadvance_core::FPS;
 const FRAME_DURATION_NANOS: f32 = 1_000_000_000.0 / FPS;
 const FRAME_DURATION: std::time::Duration = std::time::Duration::from_nanos(FRAME_DURATION_NANOS as u64);
 
+
 #[derive(CopyGetters)]
 pub struct FrameTimer {
     frame_count: u16,
@@ -25,8 +26,8 @@ impl FrameTimer {
 
     pub fn slow_frame(&mut self) {
         let target = self.frame_clock + FRAME_DURATION;
-        while std::time::Instant::now() < target {
-            std::thread::yield_now();
+        if let Some(remaining) = target.checked_duration_since(std::time::Instant::now()) {
+            std::thread::sleep(remaining);
         }
         self.frame_clock = target;
     }
