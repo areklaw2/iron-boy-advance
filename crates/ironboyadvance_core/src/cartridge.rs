@@ -1,12 +1,9 @@
-use std::path::PathBuf;
-
 use header::Header;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use thiserror::Error;
 
 use crate::{
     cartridge::header::HeaderError,
-    read_file,
     system_bus::{ROM_WS0_HI, ROM_WS0_LO, ROM_WS1_HI, ROM_WS1_LO, ROM_WS2_HI, ROM_WS2_LO, SRAM_HI, SRAM_LO},
 };
 
@@ -16,8 +13,6 @@ const MAX_CARTRIDGE_BYTES: usize = 32 * 1024 * 1024;
 
 #[derive(Error, Debug)]
 pub enum CartridgeError {
-    #[error("Cartridge read failed")]
-    ReadFailure,
     #[error("Unsupported Cartridge type")]
     InvalidCatridgeType,
     #[error("Error reading save")]
@@ -27,7 +22,7 @@ pub enum CartridgeError {
     #[error("Data with incorrect length being loaded")]
     IncorrectLengthLoaded,
     #[error("Cartridge head load failed: {0}")]
-    HeaderLoadFailer(#[from] HeaderError),
+    HeaderLoadFailure(#[from] HeaderError),
 }
 
 pub struct Cartridge {
@@ -36,12 +31,7 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn load(path: PathBuf) -> Result<Cartridge, CartridgeError> {
-        let buffer = match read_file(&path) {
-            Ok(buffer) => buffer.into_boxed_slice(),
-            Err(_) => return Err(CartridgeError::ReadFailure),
-        };
-
+    pub fn load(buffer: Vec<u8>) -> Result<Cartridge, CartridgeError> {
         let header = Header::load(&buffer[0..228])?;
         println!("Game Tile: {}", header.game_title());
         println!("Game Code: {}", header.game_code());

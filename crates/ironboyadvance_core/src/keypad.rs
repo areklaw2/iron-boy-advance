@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use bitfields::bitfield;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
@@ -53,7 +51,7 @@ impl RegisterOps<u16> for KeyControl {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum KeypadButton {
     A,
     B,
@@ -80,22 +78,8 @@ impl Keypad {
         }
     }
 
-    pub fn set_pressed_keys(&mut self, buttons: &HashSet<KeypadButton>) {
-        self.key_input = KeyInput::from_bits(0x03FF);
-        for button in buttons {
-            match button {
-                KeypadButton::A => self.key_input.set_a(false),
-                KeypadButton::B => self.key_input.set_b(false),
-                KeypadButton::Select => self.key_input.set_select(false),
-                KeypadButton::Start => self.key_input.set_start(false),
-                KeypadButton::Right => self.key_input.set_right(false),
-                KeypadButton::Left => self.key_input.set_left(false),
-                KeypadButton::Up => self.key_input.set_up(false),
-                KeypadButton::Down => self.key_input.set_down(false),
-                KeypadButton::R => self.key_input.set_r(false),
-                KeypadButton::L => self.key_input.set_l(false),
-            }
-        }
+    pub fn set_key_input(&mut self, input: u16) {
+        self.key_input = KeyInput::from_bits(input);
     }
 
     pub fn keypad_interrupt_raised(&self) -> bool {
