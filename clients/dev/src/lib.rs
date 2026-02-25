@@ -76,14 +76,9 @@ pub fn run(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Resu
         let mut overshoot = 0;
         let mut frame_timer = FrameTimer::new();
 
-        const INPUT_SUBFRAMES: usize = 4;
-        const CYCLES_PER_SUBFRAME: usize = CYCLES_PER_FRAME / INPUT_SUBFRAMES;
-
         loop {
-            for _ in 0..INPUT_SUBFRAMES {
-                gba.handle_pressed_buttons(emu_keypad.load(Ordering::Relaxed));
-                overshoot = gba.run(CYCLES_PER_SUBFRAME, overshoot);
-            }
+            gba.handle_pressed_buttons(emu_keypad.load(Ordering::Relaxed));
+            overshoot = gba.run(CYCLES_PER_FRAME, overshoot);
             let _ = frame_tx.send(gba.frame_buffer().to_vec());
             frame_timer.slow_frame();
             frame_timer.count_frame();
