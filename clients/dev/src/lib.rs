@@ -44,9 +44,7 @@ pub enum ApplicationError {
 }
 
 pub fn run(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Result<(), ApplicationError> {
-    if show_logs {
-        initilize_logger();
-    }
+    let _log_guard = if show_logs { Some(initilize_logger()) } else { None };
 
     let rom_name = Path::new(&rom_path)
         .file_name()
