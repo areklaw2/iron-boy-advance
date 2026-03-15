@@ -4,7 +4,7 @@ use crate::{
     CpuAction, Register,
     arm::arm_instruction,
     barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
-    cpu::{Instruction, Arm7tdmiCpu, PC},
+    cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 

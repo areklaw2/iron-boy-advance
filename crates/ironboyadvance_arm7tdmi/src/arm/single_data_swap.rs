@@ -3,7 +3,7 @@ use crate::BitOps;
 use crate::{
     CpuAction, Register,
     arm::arm_instruction,
-    cpu::{Instruction, Arm7tdmiCpu, PC},
+    cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
