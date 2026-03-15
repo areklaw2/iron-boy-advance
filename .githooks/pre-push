@@ -1,0 +1,17 @@
+#!/bin/sh
+
+echo "Running cargo fmt..."
+cargo fmt
+if [ $? -ne 0 ]; then
+  echo "cargo fmt failed. Push aborted."
+  exit 1
+fi
+
+echo "Running cargo clippy..."
+cargo clippy -- -D warnings
+if [ $? -ne 0 ]; then
+  echo "cargo clippy failed. Push aborted."
+  exit 1
+fi
+
+exit 0
