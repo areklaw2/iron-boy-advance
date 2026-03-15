@@ -8,6 +8,7 @@ pub struct Scheduler {
     events: BinaryHeap<Event>,
 }
 
+#[allow(unused)]
 impl Scheduler {
     pub fn new() -> Scheduler {
         Scheduler {

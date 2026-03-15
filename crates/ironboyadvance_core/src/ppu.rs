@@ -291,9 +291,8 @@ impl Ppu {
             return;
         }
 
-        match self.lcd_control.bg_mode() {
-            BgMode::Mode4 => self.render_mode4_scanline(),
-            _ => {}
+        if self.lcd_control.bg_mode() == BgMode::Mode4 {
+            self.render_mode4_scanline();
         }
     }
 

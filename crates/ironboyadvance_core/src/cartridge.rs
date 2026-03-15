@@ -25,6 +25,7 @@ pub enum CartridgeError {
     HeaderLoadFailure(#[from] HeaderError),
 }
 
+#[allow(unused)]
 pub struct Cartridge {
     header: Header,
     data: Vec<u8>,

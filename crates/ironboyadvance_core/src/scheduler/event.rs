@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 
+#[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum InterruptEvent {
     LcdVBlank,
@@ -32,6 +33,7 @@ pub enum ApuEvent {}
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum TimerEvent {}
 
+#[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum EventType {
     FrameComplete,

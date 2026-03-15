@@ -14,6 +14,7 @@ pub enum HeaderError {
     InvalidStringHeader(#[from] std::str::Utf8Error),
 }
 
+#[allow(unused)]
 pub struct Header {
     rom_entry_point: [u8; 4],
     nintendo_logo: [u8; 156],

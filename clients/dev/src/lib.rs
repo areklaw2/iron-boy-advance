@@ -136,10 +136,8 @@ pub fn run(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Resu
             frame_timer.count_frame();
             new_frame = true;
         }
-        if new_frame {
-            if let Some(ref fb) = last_frame {
-                window_manager.render_screen(fb, Some(frame_timer.fps()))?;
-            }
+        if new_frame && let Some(ref fb) = last_frame {
+            window_manager.render_screen(fb, Some(frame_timer.fps()))?;
         }
     }
 

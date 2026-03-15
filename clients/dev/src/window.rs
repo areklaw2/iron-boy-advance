@@ -19,23 +19,23 @@ const FONT_PATH: &str = "media/gbboot-alpm.ttf";
 #[derive(Error, Debug)]
 pub enum WindowError {
     #[error("Failed to create video subsystem: {0}")]
-    VideoSubsystemError(String),
+    VideoSubsystem(String),
     #[error("Failed to initialize image context: {0}")]
-    ImageInitError(String),
+    ImageInit(String),
     #[error("Failed to initialize TTF context: {0}")]
-    TtfInitError(String),
+    TtfInit(String),
     #[error("Failed to create window: {0}")]
-    WindowBuildError(#[from] sdl2::video::WindowBuildError),
+    WindowBuild(#[from] sdl2::video::WindowBuildError),
     #[error("Failed to create canvas from window: {0}")]
-    CanvasBuildError(#[from] sdl2::IntegerOrSdlError),
+    CanvasBuild(#[from] sdl2::IntegerOrSdlError),
     #[error("There was a canvas error: {0}")]
-    CanvasError(String),
+    Canvas(String),
     #[error("There was a texture error: {0}")]
-    TextureError(String),
+    Texture(String),
     #[error("Failed to load font: {0}")]
-    FontLoadError(String),
+    FontLoad(String),
     #[error("Failed to render text: {0}")]
-    TextRenderError(String),
+    TextRender(String),
 }
 
 #[derive(Getters, MutGetters)]
@@ -48,10 +48,10 @@ pub struct WindowManager {
 
 impl WindowManager {
     pub fn new(sdl_context: &Sdl, rom_name: &str) -> Result<WindowManager, WindowError> {
-        image::init(InitFlag::PNG).map_err(WindowError::ImageInitError)?;
-        let ttf_context = ttf::init().map_err(WindowError::TtfInitError)?;
+        image::init(InitFlag::PNG).map_err(WindowError::ImageInit)?;
+        let ttf_context = ttf::init().map_err(WindowError::TtfInit)?;
 
-        let video_subsystem = sdl_context.video().map_err(WindowError::VideoSubsystemError)?;
+        let video_subsystem = sdl_context.video().map_err(WindowError::VideoSubsystem)?;
         let window = video_subsystem
             .window(
                 format!("Iron Boy Advance - {}", rom_name).as_str(),
@@ -81,13 +81,13 @@ impl WindowManager {
             let mut texture = self
                 .texture_creator
                 .create_texture_streaming(PixelFormatEnum::RGB24, VIEWPORT_WIDTH as u32, VIEWPORT_HEIGHT as u32)
-                .map_err(|e| WindowError::TextureError(e.to_string()))?;
+                .map_err(|e| WindowError::Texture(e.to_string()))?;
 
             texture
                 .with_lock(None, |buffer: &mut [u8], pitch: usize| {
-                    for y in 0..VIEWPORT_HEIGHT as usize {
-                        for x in 0..VIEWPORT_WIDTH as usize {
-                            let i = y * VIEWPORT_WIDTH as usize + x;
+                    for y in 0..VIEWPORT_HEIGHT {
+                        for x in 0..VIEWPORT_WIDTH {
+                            let i = y * VIEWPORT_WIDTH + x;
                             let offset = y * pitch + x * 3;
                             let pixel = data[i];
                             buffer[offset] = ((pixel >> 16) & 0xFF) as u8; // R
@@ -96,9 +96,9 @@ impl WindowManager {
                         }
                     }
                 })
-                .map_err(WindowError::CanvasError)?;
+                .map_err(WindowError::Canvas)?;
 
-            let (window_width, window_height) = self.main_canvas.output_size().map_err(WindowError::CanvasError)?;
+            let (window_width, window_height) = self.main_canvas.output_size().map_err(WindowError::Canvas)?;
             let scale_x = window_width as f32 / VIEWPORT_WIDTH as f32;
             let scale_y = window_height as f32 / VIEWPORT_HEIGHT as f32;
             let scale = scale_x.min(scale_y);
@@ -109,9 +109,7 @@ impl WindowManager {
             let offset_y = (window_height - rendered_height) / 2;
 
             let dst_rect = Rect::new(offset_x as i32, offset_y as i32, rendered_width, rendered_height);
-            self.main_canvas
-                .copy(&texture, None, dst_rect)
-                .map_err(WindowError::CanvasError)?;
+            self.main_canvas.copy(&texture, None, dst_rect).map_err(WindowError::Canvas)?;
         }
 
         if let Some(fps_value) = fps {
@@ -126,20 +124,20 @@ impl WindowManager {
         let font = self
             .ttf_context
             .load_font(FONT_PATH, FPS_FONT_SIZE)
-            .map_err(WindowError::FontLoadError)?;
+            .map_err(WindowError::FontLoad)?;
 
         let fps_text = format!("{:.1} FPS", fps);
         let surface = font
             .render(&fps_text)
             .blended(Color::RGB(0, 255, 0))
-            .map_err(|e| WindowError::TextRenderError(e.to_string()))?;
+            .map_err(|e| WindowError::TextRender(e.to_string()))?;
 
         let texture = self
             .texture_creator
             .create_texture_from_surface(&surface)
-            .map_err(|e| WindowError::TextureError(e.to_string()))?;
+            .map_err(|e| WindowError::Texture(e.to_string()))?;
 
-        let (window_width, window_height) = self.main_canvas.output_size().map_err(WindowError::CanvasError)?;
+        let (window_width, window_height) = self.main_canvas.output_size().map_err(WindowError::Canvas)?;
         let text_width = surface.width();
         let text_height = surface.height();
 
@@ -147,9 +145,7 @@ impl WindowManager {
         let y = (window_height - text_height) as i32 - FPS_PADDING;
 
         let dst_rect = Rect::new(x, y, text_width, text_height);
-        self.main_canvas
-            .copy(&texture, None, dst_rect)
-            .map_err(WindowError::CanvasError)?;
+        self.main_canvas.copy(&texture, None, dst_rect).map_err(WindowError::Canvas)?;
 
         Ok(())
     }
