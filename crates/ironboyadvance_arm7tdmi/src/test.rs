@@ -188,6 +188,95 @@ mod tests {
         }
     }
 
+    fn read_u32(bytes: &[u8], offset: usize) -> u32 {
+        u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
+    }
+
+    fn parse_state(bytes: &[u8], ptr: usize) -> (State, usize) {
+        let full_size = read_u32(bytes, ptr) as usize;
+        let base = ptr + 8; // skip full_size(4) + pad(4)
+        let v: Vec<u32> = (0..40).map(|i| read_u32(bytes, base + i * 4)).collect();
+        let state = State {
+            r: v[0..16].try_into().unwrap(),
+            r_fiq: v[16..23].try_into().unwrap(),
+            r_svc: v[23..25].try_into().unwrap(),
+            r_abt: v[25..27].try_into().unwrap(),
+            r_irq: v[27..29].try_into().unwrap(),
+            r_und: v[29..31].try_into().unwrap(),
+            cpsr: v[31],
+            spsr: v[32..37].try_into().unwrap(),
+            pipeline: v[37..39].try_into().unwrap(),
+        };
+        (state, full_size)
+    }
+
+    fn parse_transactions(bytes: &[u8], ptr: usize) -> (VecDeque<Transaction>, usize) {
+        let full_size = read_u32(bytes, ptr) as usize;
+        let num = read_u32(bytes, ptr + 8) as usize;
+        let mut base = ptr + 12;
+        let mut transactions = VecDeque::with_capacity(num);
+        for _ in 0..num {
+            let kind = match read_u32(bytes, base) {
+                0 => TransactionKind::InstructionRead,
+                1 => TransactionKind::GeneralRead,
+                _ => TransactionKind::Write,
+            };
+            let size = match read_u32(bytes, base + 4) {
+                1 => Size::Byte,
+                2 => Size::HalfWord,
+                _ => Size::Word,
+            };
+            transactions.push_back(Transaction {
+                kind,
+                size,
+                addr: read_u32(bytes, base + 8),
+                data: read_u32(bytes, base + 12),
+                cycle: read_u32(bytes, base + 16) as u8,
+                access: read_u32(bytes, base + 20) as u8,
+            });
+            base += 24;
+        }
+        (transactions, full_size)
+    }
+
+    fn parse_opcodes(bytes: &[u8], ptr: usize) -> (u32, usize) {
+        let full_size = read_u32(bytes, ptr) as usize;
+        // skip full_size(4) + pad(4) + opcode_raw(4) = offset 12
+        let base_addr = read_u32(bytes, ptr + 12);
+        (base_addr, full_size)
+    }
+
+    fn parse_bin_file(path: &PathBuf) -> Result<Vec<Test>, String> {
+        let bytes = fs::read(path).map_err(|e| format!("Failed to read {:?}: {}", path, e))?;
+        if read_u32(&bytes, 0) != 0xD33DBAE0 {
+            return Err(format!("Bad magic in {:?}", path));
+        }
+        let num_tests = read_u32(&bytes, 4) as usize;
+        let mut ptr = 8usize;
+        let mut tests = Vec::with_capacity(num_tests);
+        for _ in 0..num_tests {
+            let full_size = read_u32(&bytes, ptr) as usize;
+            ptr += 4;
+            let (initial_state, size) = parse_state(&bytes, ptr);
+            ptr += size;
+            let (final_state, size) = parse_state(&bytes, ptr);
+            ptr += size;
+            let (transactions, size) = parse_transactions(&bytes, ptr);
+            ptr += size;
+            let (base_addr, size) = parse_opcodes(&bytes, ptr);
+            ptr += size;
+            let _ = full_size; // used for documentation; ptr advances via sub-block sizes
+            tests.push(Test {
+                initial_state,
+                final_state,
+                transactions,
+                opcode: 0,
+                base_addr: [base_addr],
+            });
+        }
+        Ok(tests)
+    }
+
     fn run_test_file(file_path: PathBuf) -> Result<(), String> {
         if file_path.extension().unwrap().to_str().unwrap() != "json" {
             return Ok(());
@@ -199,9 +288,13 @@ mod tests {
             return Ok(());
         }
 
-        let test_json = fs::read_to_string(&file_path).map_err(|e| format!("Failed to read {:?}: {}", file_path, e))?;
-        let tests: Vec<Test> =
-            serde_json::from_str(&test_json).map_err(|e| format!("Failed to parse {:?}: {}", file_path, e))?;
+        let bin_path = PathBuf::from(format!("{}.bin", file_path.display()));
+        let tests: Vec<Test> = if bin_path.exists() {
+            parse_bin_file(&bin_path)?
+        } else {
+            let test_json = fs::read_to_string(&file_path).map_err(|e| format!("Failed to read {:?}: {}", file_path, e))?;
+            serde_json::from_str(&test_json).map_err(|e| format!("Failed to parse {:?}: {}", file_path, e))?
+        };
 
         let mut cpu = Arm7tdmiCpu::new(TestBus::default(), false, true);
         cpu.set_bios_protection(false);
