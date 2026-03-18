@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
     use rayon::prelude::*;
-    use serde::Deserialize;
-    use serde_repr::Deserialize_repr;
     use std::collections::{HashMap, VecDeque};
     use std::fs;
     use std::path::PathBuf;
@@ -16,7 +14,7 @@ mod tests {
         thumb::ThumbInstruction,
     };
 
-    #[derive(Debug, Deserialize_repr, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     #[repr(u8)]
     enum TransactionKind {
         InstructionRead = 0,
@@ -24,7 +22,7 @@ mod tests {
         Write,
     }
 
-    #[derive(Debug, Deserialize_repr, Clone, Copy)]
+    #[derive(Debug, Clone, Copy)]
     #[repr(u8)]
     enum Size {
         Byte = 1,
@@ -42,7 +40,7 @@ mod tests {
         Lock = 0b1000,
     }
 
-    #[derive(Debug, Deserialize, Clone, Copy)]
+    #[derive(Debug, Clone, Copy)]
     #[allow(unused)]
     pub struct Transaction {
         kind: TransactionKind,
@@ -53,34 +51,24 @@ mod tests {
         pub access: u8,
     }
 
-    #[derive(Debug, Deserialize)]
-    #[allow(non_snake_case, unused)]
+    #[derive(Debug)]
+    #[allow(unused)]
     struct State {
-        #[serde(rename = "R")]
         r: [u32; 16],
-        #[serde(rename = "R_fiq")]
         r_fiq: [u32; 7],
-        #[serde(rename = "R_svc")]
         r_svc: [u32; 2],
-        #[serde(rename = "R_abt")]
         r_abt: [u32; 2],
-        #[serde(rename = "R_irq")]
         r_irq: [u32; 2],
-        #[serde(rename = "R_und")]
         r_und: [u32; 2],
-        #[serde(rename = "CPSR")]
         cpsr: u32,
-        #[serde(rename = "SPSR")]
         spsr: [u32; 5],
         pipeline: [u32; 2],
     }
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug)]
     #[allow(unused)]
     struct Test {
-        #[serde(rename = "initial")]
         initial_state: State,
-        #[serde(rename = "final")]
         final_state: State,
         transactions: VecDeque<Transaction>,
         opcode: u32,
@@ -278,23 +266,7 @@ mod tests {
     }
 
     fn run_test_file(file_path: PathBuf) -> Result<(), String> {
-        if file_path.extension().unwrap().to_str().unwrap() != "json" {
-            return Ok(());
-        }
-
-        // Skip coprocessor instructions
-        let skip = ["arm_cdp.json", "arm_mcr_mrc.json", "arm_stc_ldc.json"];
-        if skip.contains(&file_path.file_name().unwrap().to_str().unwrap()) {
-            return Ok(());
-        }
-
-        let bin_path = PathBuf::from(format!("{}.bin", file_path.display()));
-        let tests: Vec<Test> = if bin_path.exists() {
-            parse_bin_file(&bin_path)?
-        } else {
-            let test_json = fs::read_to_string(&file_path).map_err(|e| format!("Failed to read {:?}: {}", file_path, e))?;
-            serde_json::from_str(&test_json).map_err(|e| format!("Failed to parse {:?}: {}", file_path, e))?
-        };
+        let tests = parse_bin_file(&file_path)?;
 
         let mut cpu = Arm7tdmiCpu::new(TestBus::default(), false, true);
         cpu.set_bios_protection(false);
@@ -354,8 +326,16 @@ mod tests {
 
     #[test]
     fn single_step_tests() {
+        // Skip coprocessor tests
+        let skip = ["arm_cdp.json.bin", "arm_mcr_mrc.json.bin", "arm_stc_ldc.json.bin"];
+
         let directory = fs::read_dir("../../external/arm7tdmi/v1").expect("Unable to access directory");
-        let file_paths: Vec<PathBuf> = directory.filter_map(|entry| entry.ok()).map(|entry| entry.path()).collect();
+        let file_paths: Vec<PathBuf> = directory
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("bin"))
+            .filter(|p| !skip.contains(&p.file_name().unwrap().to_str().unwrap()))
+            .collect();
 
         // Process files in parallel
         file_paths
