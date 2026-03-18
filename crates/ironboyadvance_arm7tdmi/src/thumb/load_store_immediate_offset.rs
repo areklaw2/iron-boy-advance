@@ -14,6 +14,7 @@ pub struct LoadStoreImmediateOffset {
 }
 
 impl LoadStoreImmediateOffset {
+    #[inline]
     pub fn new(value: u16) -> Self {
         Self {
             rd: value.bits(0..=2).into(),

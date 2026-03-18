@@ -12,6 +12,7 @@ pub struct MultipleLoadStore {
 }
 
 impl MultipleLoadStore {
+    #[inline]
     pub fn new(value: u16) -> Self {
         Self {
             rb: value.bits(8..=10).into(),

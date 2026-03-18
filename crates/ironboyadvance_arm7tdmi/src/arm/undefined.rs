@@ -13,6 +13,7 @@ pub struct Undefined {
 }
 
 impl Undefined {
+    #[inline]
     pub fn new(value: u32) -> Self {
         Self {
             cond: value.bits(28..=31).into(),

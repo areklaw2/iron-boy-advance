@@ -11,6 +11,7 @@ pub struct LongBranchWithLink {
 }
 
 impl LongBranchWithLink {
+    #[inline]
     pub fn new(value: u16) -> Self {
         Self {
             offset: value.bits(0..=10),

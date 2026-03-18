@@ -23,6 +23,7 @@ pub struct PsrTransfer {
 }
 
 impl PsrTransfer {
+    #[inline]
     pub fn new(value: u32) -> Self {
         let field_bits = value.bits(16..=19);
         let mut psr_mask = 0u32;

@@ -12,6 +12,7 @@ pub struct PushPopRegisters {
 }
 
 impl PushPopRegisters {
+    #[inline]
     pub fn new(value: u16) -> Self {
         Self {
             register_list_bits: value as u8,

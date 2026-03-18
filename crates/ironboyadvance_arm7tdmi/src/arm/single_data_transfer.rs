@@ -26,6 +26,7 @@ pub struct SingleDataTransfer {
 }
 
 impl SingleDataTransfer {
+    #[inline]
     pub fn new(value: u32) -> Self {
         Self {
             cond: value.bits(28..=31).into(),

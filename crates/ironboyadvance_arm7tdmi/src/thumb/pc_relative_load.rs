@@ -11,6 +11,7 @@ pub struct PcRelativeLoad {
 }
 
 impl PcRelativeLoad {
+    #[inline]
     pub fn new(value: u16) -> Self {
         Self {
             rd: value.bits(8..=10).into(),

@@ -11,6 +11,7 @@ pub struct ConditionalBranch {
 }
 
 impl ConditionalBranch {
+    #[inline]
     pub fn new(value: u16) -> Self {
         Self {
             cond: (value.bits(8..=11) as u32).into(),
