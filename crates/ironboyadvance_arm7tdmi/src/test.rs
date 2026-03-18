@@ -326,15 +326,11 @@ mod tests {
 
     #[test]
     fn single_step_tests() {
-        // Skip coprocessor tests
-        let skip = ["arm_cdp.json.bin", "arm_mcr_mrc.json.bin", "arm_stc_ldc.json.bin"];
-
         let directory = fs::read_dir("../../external/arm7tdmi/v1").expect("Unable to access directory");
         let file_paths: Vec<PathBuf> = directory
             .filter_map(|entry| entry.ok())
             .map(|entry| entry.path())
             .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("bin"))
-            .filter(|p| !skip.contains(&p.file_name().unwrap().to_str().unwrap()))
             .collect();
 
         // Process files in parallel

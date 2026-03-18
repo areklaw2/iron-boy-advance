@@ -40,9 +40,9 @@ pub enum ArmInstruction {
     BlockDataTransfer(BlockDataTransfer),
     BranchAndBranchWithLink(BranchAndBranchWithLink),
     SoftwareInterrupt(SoftwareInterrupt),
-    //CoprocessorDataTransfer,
-    //CoprocessorDataOperation,
-    //CoprocessorRegisterTransfer,
+    CoprocessorDataOperation(Undefined),
+    CoprocessorDataTransfer(Undefined),
+    CoprocessorRegisterTransfer(Undefined),
 }
 
 impl ArmInstruction {
@@ -60,6 +60,9 @@ impl ArmInstruction {
             Self::BlockDataTransfer(i) => i.cond(),
             Self::BranchAndBranchWithLink(i) => i.cond(),
             Self::SoftwareInterrupt(i) => i.cond(),
+            Self::CoprocessorDataOperation(i) => i.cond(),
+            Self::CoprocessorDataTransfer(i) => i.cond(),
+            Self::CoprocessorRegisterTransfer(i) => i.cond(),
         }
     }
 }
@@ -79,6 +82,9 @@ impl Instruction for ArmInstruction {
             Self::BlockDataTransfer(i) => i.execute(cpu),
             Self::BranchAndBranchWithLink(i) => i.execute(cpu),
             Self::SoftwareInterrupt(i) => i.execute(cpu),
+            Self::CoprocessorDataOperation(i) => i.execute(cpu),
+            Self::CoprocessorDataTransfer(i) => i.execute(cpu),
+            Self::CoprocessorRegisterTransfer(i) => i.execute(cpu),
         }
     }
 
@@ -96,6 +102,9 @@ impl Instruction for ArmInstruction {
             Self::BlockDataTransfer(i) => i.disassemble(cpu),
             Self::BranchAndBranchWithLink(i) => i.disassemble(cpu),
             Self::SoftwareInterrupt(i) => i.disassemble(cpu),
+            Self::CoprocessorDataOperation(i) => i.disassemble(cpu),
+            Self::CoprocessorDataTransfer(i) => i.disassemble(cpu),
+            Self::CoprocessorRegisterTransfer(i) => i.disassemble(cpu),
         }
     }
 }
@@ -149,9 +158,12 @@ fn decode_arm(index: u32) -> ArmInstructionFactory {
         0b11 => match pattern.bit(25) {
             true => match pattern.bit(24) {
                 true => |value| ArmInstruction::SoftwareInterrupt(SoftwareInterrupt::new(value)),
-                false => |value| ArmInstruction::Undefined(Undefined::new(value)),
+                false => match pattern.bit(4) {
+                    true => |value| ArmInstruction::CoprocessorRegisterTransfer(Undefined::new(value)),
+                    false => |value| ArmInstruction::CoprocessorDataOperation(Undefined::new(value)),
+                },
             },
-            false => |value| ArmInstruction::Undefined(Undefined::new(value)),
+            false => |value| ArmInstruction::CoprocessorDataTransfer(Undefined::new(value)),
         },
         _ => |value| ArmInstruction::Undefined(Undefined::new(value)),
     }
