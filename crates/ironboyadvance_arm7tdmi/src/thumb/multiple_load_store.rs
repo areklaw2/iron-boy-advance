@@ -2,24 +2,33 @@ use crate::{
     BitOps, CpuAction, LoRegister,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct MultipleLoadStore {
-    value: u16,
+    rb: LoRegister,
+    register_list_bits: u8,
+    load: bool,
 }
 
-thumb_instruction!(MultipleLoadStore);
+impl MultipleLoadStore {
+    pub fn new(value: u16) -> Self {
+        Self {
+            rb: value.bits(8..=10).into(),
+            register_list_bits: value as u8,
+            load: value.bit(11),
+        }
+    }
+}
 
 impl Instruction for MultipleLoadStore {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let rb = self.rb() as usize;
+        let rb = self.rb as usize;
         let mut address = cpu.register(rb);
-        let register_list = self.register_list();
+        let register_list: Vec<usize> = (0..8).filter(|&i| (self.register_list_bits >> i) & 1 == 1).collect();
 
         let mut memory_access = MemoryAccess::NonSequential;
-        match self.load() {
+        match self.load {
             true => {
                 if register_list.is_empty() {
                     let value = cpu.load_32(address, memory_access as u8);
@@ -67,35 +76,18 @@ impl Instruction for MultipleLoadStore {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let rb = self.rb();
-        let load = self.load();
-        let register_list = self
-            .register_list()
+        let rb = self.rb;
+        let load = self.load;
+        let register_list: Vec<usize> = (0..8).filter(|&i| (self.register_list_bits >> i) & 1 == 1).collect();
+        let register_list_str = register_list
             .iter()
             .map(|register| LoRegister::from(*register as u16).to_string())
             .collect::<Vec<String>>()
             .join(",");
 
         match load {
-            true => format!("LDMIA {}!,{{{}}}", rb, register_list),
-            false => format!("STMIA {}!,{{{}}}", rb, register_list),
+            true => format!("LDMIA {}!,{{{}}}", rb, register_list_str),
+            false => format!("STMIA {}!,{{{}}}", rb, register_list_str),
         }
-    }
-}
-
-impl MultipleLoadStore {
-    #[inline]
-    pub fn register_list(&self) -> Vec<usize> {
-        (0..=7).filter(|&i| self.value.bit(i)).collect()
-    }
-
-    #[inline]
-    pub fn rb(&self) -> LoRegister {
-        self.value.bits(8..=10).into()
-    }
-
-    #[inline]
-    pub fn load(&self) -> bool {
-        self.value.bit(11)
     }
 }

@@ -1,24 +1,46 @@
+use getset::CopyGetters;
+
 use crate::{
-    BitOps, CpuAction, Register,
+    BitOps, Condition, CpuAction, Register,
     alu::multiplier_array_cycles,
-    arm::arm_instruction,
     cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct MultiplyLong {
-    value: u32,
+    #[getset(get_copy = "pub(crate)")]
+    cond: Condition,
+    rd_hi: Register,
+    rd_lo: Register,
+    rm: Register,
+    rs: Register,
+    sets_flags: bool,
+    accumulate: bool,
+    unsigned: bool,
 }
 
-arm_instruction!(MultiplyLong);
+impl MultiplyLong {
+    pub fn new(value: u32) -> Self {
+        Self {
+            cond: value.bits(28..=31).into(),
+            rd_hi: value.bits(16..=19).into(),
+            rd_lo: value.bits(12..=15).into(),
+            rm: value.bits(0..=3).into(),
+            rs: value.bits(8..=11).into(),
+            sets_flags: value.bit(20),
+            accumulate: value.bit(21),
+            unsigned: value.bit(22),
+        }
+    }
+}
 
 impl Instruction for MultiplyLong {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let rd_lo = self.rd_lo() as usize;
-        let rd_hi = self.rd_hi() as usize;
-        let rm = self.rm() as usize;
-        let rs = self.rs() as usize;
+        let rd_lo = self.rd_lo as usize;
+        let rd_hi = self.rd_hi as usize;
+        let rm = self.rm as usize;
+        let rs = self.rs as usize;
 
         let mut operand1 = cpu.register(rm);
         if rm == PC {
@@ -29,8 +51,7 @@ impl Instruction for MultiplyLong {
             operand2 += 4
         }
 
-        let unsigned = self.unsigned();
-        let mut result = match unsigned {
+        let mut result = match self.unsigned {
             true => (operand1 as i32 as i64).wrapping_mul(operand2 as i32 as i64) as u64,
             false => (operand1 as u64).wrapping_mul(operand2 as u64),
         };
@@ -40,7 +61,7 @@ impl Instruction for MultiplyLong {
             cpu.idle_cycle();
         }
 
-        if self.accumulate() {
+        if self.accumulate {
             let mut accumulator_lo = cpu.register(rd_lo) as u64;
             if rd_lo == PC {
                 accumulator_lo += 4
@@ -55,7 +76,7 @@ impl Instruction for MultiplyLong {
 
         let result_lo = (result & 0xFFFFFFFF) as u32;
         let result_hi = (result >> 32) as u32;
-        if self.sets_flags() {
+        if self.sets_flags {
             cpu.cpsr_mut().set_negative(result_hi >> 31 != 0);
             cpu.cpsr_mut().set_zero(result == 0);
         }
@@ -72,56 +93,19 @@ impl Instruction for MultiplyLong {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond();
-        let s = if self.sets_flags() { "S" } else { "" };
-        let rd_hi = self.rd_hi();
-        let rd_lo = self.rd_lo();
-        let rm = self.rm();
-        let rs = self.rs();
-        let unsigned = self.unsigned();
-        let accumulate = self.accumulate();
+        let cond = self.cond;
+        let s = if self.sets_flags { "S" } else { "" };
+        let rd_hi = self.rd_hi;
+        let rd_lo = self.rd_lo;
+        let rm = self.rm;
+        let rs = self.rs;
+        let unsigned = self.unsigned;
+        let accumulate = self.accumulate;
         match (unsigned, accumulate) {
             (true, false) => format!("UMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
             (true, true) => format!("UMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
             (false, false) => format!("SMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
             (false, true) => format!("SMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
         }
-    }
-}
-
-impl MultiplyLong {
-    #[inline]
-    pub fn rd_hi(&self) -> Register {
-        self.value.bits(16..=19).into()
-    }
-
-    #[inline]
-    pub fn rd_lo(&self) -> Register {
-        self.value.bits(12..=15).into()
-    }
-
-    #[inline]
-    pub fn rm(&self) -> Register {
-        self.value.bits(0..=3).into()
-    }
-
-    #[inline]
-    pub fn rs(&self) -> Register {
-        self.value.bits(8..=11).into()
-    }
-
-    #[inline]
-    pub fn sets_flags(&self) -> bool {
-        self.value.bit(20)
-    }
-
-    #[inline]
-    pub fn accumulate(&self) -> bool {
-        self.value.bit(21)
-    }
-
-    #[inline]
-    pub fn unsigned(&self) -> bool {
-        self.value.bit(22)
     }
 }

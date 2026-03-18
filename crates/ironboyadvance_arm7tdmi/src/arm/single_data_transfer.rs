@@ -1,33 +1,63 @@
-use crate::BitOps;
+use getset::CopyGetters;
 
 use crate::{
-    CpuAction, Register,
-    arm::arm_instruction,
+    BitOps, Condition, CpuAction, Register,
     barrel_shifter::{ShiftType, asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct SingleDataTransfer {
-    value: u32,
+    #[getset(get_copy = "pub(crate)")]
+    cond: Condition,
+    rn: Register,
+    rd: Register,
+    rm: Register,
+    is_immediate: bool,
+    shift_amount: u32,
+    shift_type: ShiftType,
+    immediate: u32,
+    pre_index: bool,
+    add: bool,
+    byte: bool,
+    write_back: bool,
+    load: bool,
 }
 
-arm_instruction!(SingleDataTransfer);
+impl SingleDataTransfer {
+    pub fn new(value: u32) -> Self {
+        Self {
+            cond: value.bits(28..=31).into(),
+            rn: value.bits(16..=19).into(),
+            rd: value.bits(12..=15).into(),
+            rm: value.bits(0..=3).into(),
+            is_immediate: !value.bit(25),
+            shift_amount: value.bits(7..=11),
+            shift_type: value.bits(5..=6).into(),
+            immediate: value.bits(0..=11),
+            pre_index: value.bit(24),
+            add: value.bit(23),
+            byte: value.bit(22),
+            write_back: value.bit(21),
+            load: value.bit(20),
+        }
+    }
+}
 
 impl Instruction for SingleDataTransfer {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let rd = self.rd() as usize;
-        let rn = self.rn() as usize;
+        let rd = self.rd as usize;
+        let rn = self.rn as usize;
 
         let mut address = cpu.register(rn);
-        let mut offset = match self.is_immediate() {
-            true => self.immediate(),
+        let mut offset = match self.is_immediate {
+            true => self.immediate,
             false => {
-                let rm_value = cpu.register(self.rm() as usize);
-                let shift_amount = self.shift_amount();
+                let rm_value = cpu.register(self.rm as usize);
+                let shift_amount = self.shift_amount;
                 let mut carry = cpu.cpsr().carry();
-                match self.shift_type() {
+                match self.shift_type {
                     ShiftType::LSL => lsl(rm_value, shift_amount, &mut carry),
                     ShiftType::LSR => lsr(rm_value, shift_amount, &mut carry, true),
                     ShiftType::ASR => asr(rm_value, shift_amount, &mut carry, true),
@@ -36,18 +66,18 @@ impl Instruction for SingleDataTransfer {
             }
         };
 
-        if !self.add() {
+        if !self.add {
             offset = (-(offset as i64)) as u32
         }
 
-        let pre_index = self.pre_index();
+        let pre_index = self.pre_index;
         if pre_index {
             address = address.wrapping_add(offset)
         }
 
-        let load = self.load();
-        let byte = self.byte();
-        let write_back = self.write_back();
+        let load = self.load;
+        let byte = self.byte;
+        let write_back = self.write_back;
         match load {
             true => {
                 let value = match byte {
@@ -91,30 +121,30 @@ impl Instruction for SingleDataTransfer {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond();
-        let pre_index = self.pre_index();
+        let cond = self.cond;
+        let pre_index = self.pre_index;
         let t = if pre_index { "" } else { "T" };
-        let add = if self.add() { "+" } else { "-" };
-        let byte = if self.byte() { "B" } else { "" };
-        let rn = self.rn();
-        let rd = self.rd();
-        let immediate = self.immediate();
+        let add = if self.add { "+" } else { "-" };
+        let byte = if self.byte { "B" } else { "" };
+        let rn = self.rn;
+        let rd = self.rd;
+        let immediate = self.immediate;
         let address = match rd as usize == 15 {
             true => format!("#{:08X}", immediate),
             false => {
-                let offset = match self.is_immediate() {
+                let offset = match self.is_immediate {
                     true => match immediate {
                         0 => "".into(),
                         _ => format!(",#{}{}", add, immediate),
                     },
                     false => {
-                        let rm = self.rm();
-                        let shift_type = self.shift_type();
-                        format!(",{}{},{} #{}", add, rm, shift_type, self.shift_amount())
+                        let rm = self.rm;
+                        let shift_type = self.shift_type;
+                        format!(",{}{},{} #{}", add, rm, shift_type, self.shift_amount)
                     }
                 };
 
-                let write_back = if self.write_back() && !offset.is_empty() { "!" } else { "" };
+                let write_back = if self.write_back && !offset.is_empty() { "!" } else { "" };
                 match pre_index {
                     true => format!("[{}{}]{}", rn, offset, write_back),
                     false => format!("[{}]{}", rn, offset),
@@ -122,71 +152,9 @@ impl Instruction for SingleDataTransfer {
             }
         };
 
-        match self.load() {
+        match self.load {
             true => format!("LDR{}{}{} {},{}", cond, byte, t, rd, address),
             false => format!("STR{}{}{} {},{}", cond, byte, t, rd, address),
         }
-    }
-}
-
-impl SingleDataTransfer {
-    #[inline]
-    pub fn rn(&self) -> Register {
-        self.value.bits(16..=19).into()
-    }
-
-    #[inline]
-    pub fn rd(&self) -> Register {
-        self.value.bits(12..=15).into()
-    }
-
-    #[inline]
-    pub fn rm(&self) -> Register {
-        self.value.bits(0..=3).into()
-    }
-
-    #[inline]
-    pub fn is_immediate(&self) -> bool {
-        !self.value.bit(25)
-    }
-
-    #[inline]
-    pub fn shift_amount(&self) -> u32 {
-        self.value.bits(7..=11)
-    }
-
-    #[inline]
-    pub fn shift_type(&self) -> ShiftType {
-        self.value.bits(5..=6).into()
-    }
-
-    #[inline]
-    pub fn immediate(&self) -> u32 {
-        self.value.bits(0..=11)
-    }
-
-    #[inline]
-    pub fn pre_index(&self) -> bool {
-        self.value.bit(24)
-    }
-
-    #[inline]
-    pub fn add(&self) -> bool {
-        self.value.bit(23)
-    }
-
-    #[inline]
-    pub fn byte(&self) -> bool {
-        self.value.bit(22)
-    }
-
-    #[inline]
-    pub fn write_back(&self) -> bool {
-        self.value.bit(21)
-    }
-
-    #[inline]
-    pub fn load(&self) -> bool {
-        self.value.bit(20)
     }
 }

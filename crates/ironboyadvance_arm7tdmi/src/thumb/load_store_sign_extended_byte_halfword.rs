@@ -2,25 +2,38 @@ use crate::{
     BitOps, CpuAction, LoRegister,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct LoadStoreSignExtendedByteHalfword {
-    value: u16,
+    rd: LoRegister,
+    rb: LoRegister,
+    ro: LoRegister,
+    signed: bool,
+    halfword: bool,
 }
 
-thumb_instruction!(LoadStoreSignExtendedByteHalfword);
+impl LoadStoreSignExtendedByteHalfword {
+    pub fn new(value: u16) -> Self {
+        Self {
+            rd: value.bits(0..=2).into(),
+            rb: value.bits(3..=5).into(),
+            ro: value.bits(6..=8).into(),
+            signed: value.bit(10),
+            halfword: value.bit(11),
+        }
+    }
+}
 
 impl Instruction for LoadStoreSignExtendedByteHalfword {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let ro_value = cpu.register(self.ro() as usize);
-        let rb_value = cpu.register(self.rb() as usize);
+        let ro_value = cpu.register(self.ro as usize);
+        let rb_value = cpu.register(self.rb as usize);
         let address = rb_value.wrapping_add(ro_value);
 
-        let rd = self.rd() as usize;
-        let signed = self.signed();
-        let halfword = self.halfword();
+        let rd = self.rd as usize;
+        let signed = self.signed;
+        let halfword = self.halfword;
         match (signed, halfword) {
             (false, false) => {
                 let value = cpu.register(rd);
@@ -47,43 +60,16 @@ impl Instruction for LoadStoreSignExtendedByteHalfword {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let ro = self.ro();
-        let rb = self.rb();
-        let rd = self.rd();
-        let signed = self.signed();
-        let halfword = self.halfword();
+        let ro = self.ro;
+        let rb = self.rb;
+        let rd = self.rd;
+        let signed = self.signed;
+        let halfword = self.halfword;
         match (signed, halfword) {
             (false, false) => format!("STRH {}, [{},{}]", rd, rb, ro),
             (false, true) => format!("LDRH {}, [{},{}]", rd, rb, ro),
             (true, false) => format!("LDSB {}, [{},{}]", rd, rb, ro),
             (true, true) => format!("LDSH {}, [{},{}]", rd, rb, ro),
         }
-    }
-}
-
-impl LoadStoreSignExtendedByteHalfword {
-    #[inline]
-    pub fn rd(&self) -> LoRegister {
-        self.value.bits(0..=2).into()
-    }
-
-    #[inline]
-    pub fn rb(&self) -> LoRegister {
-        self.value.bits(3..=5).into()
-    }
-
-    #[inline]
-    pub fn ro(&self) -> LoRegister {
-        self.value.bits(6..=8).into()
-    }
-
-    #[inline]
-    pub fn signed(&self) -> bool {
-        self.value.bit(10)
-    }
-
-    #[inline]
-    pub fn halfword(&self) -> bool {
-        self.value.bit(11)
     }
 }

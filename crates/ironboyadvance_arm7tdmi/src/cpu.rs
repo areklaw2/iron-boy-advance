@@ -15,6 +15,12 @@ pub(crate) const LR: usize = 14;
 pub(crate) const PC: usize = 15;
 const BIOS_END: u32 = 0x3FFF;
 
+#[derive(Debug, Clone, Copy)]
+pub enum LastInstruction {
+    Arm(ArmInstruction),
+    Thumb(ThumbInstruction),
+}
+
 pub(crate) trait Instruction {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
     fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
@@ -38,7 +44,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     next_memory_access: u8,
     arm_lut: [ArmInstructionFactory; 4096],
     thumb_lut: [ThumbInstructionFactory; 1024],
-    dissassembled_instruction: String,
+    last_instruction: Option<LastInstruction>,
     bios_last_fetch: u32,
     bios_protection: bool,
     show_logs: bool,
@@ -113,7 +119,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             next_memory_access: MemoryAccess::Instruction | MemoryAccess::NonSequential,
             arm_lut: [|v| ArmInstruction::Undefined(arm::undefined::Undefined::new(v)); 4096],
             thumb_lut: [|v| ThumbInstruction::Undefined(thumb::undefined::Undefined::new(v)); 1024],
-            dissassembled_instruction: String::new(),
+            last_instruction: None,
             bios_last_fetch: 0xE129F000,
             bios_protection: true,
             show_logs,
@@ -153,10 +159,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
                 let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
                 let instruction = (self.arm_lut[lut_index as usize])(instruction);
+                self.last_instruction = Some(LastInstruction::Arm(instruction));
 
                 if self.show_logs {
-                    self.dissassembled_instruction = instruction.disassemble(self);
-                    debug!("{}", self.dissassembled_instruction);
+                    debug!("{}", instruction.disassemble(self));
                 }
 
                 let condition = instruction.cond();
@@ -179,10 +185,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 self.pipeline[1] = self.load_16(pc, self.next_memory_access);
                 let lut_index = (instruction) as u16 >> 6;
                 let instruction = (self.thumb_lut[lut_index as usize])(instruction as u16);
+                self.last_instruction = Some(LastInstruction::Thumb(instruction));
 
                 if self.show_logs {
-                    self.dissassembled_instruction = instruction.disassemble(self);
-                    debug!("{}", self.dissassembled_instruction);
+                    debug!("{}", instruction.disassemble(self));
                 }
 
                 match instruction.execute(self) {

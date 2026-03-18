@@ -1,27 +1,39 @@
+use getset::CopyGetters;
+
 use crate::{
     AluOperationsOpcode, BitOps, CpuAction, LoRegister,
     alu::*,
     barrel_shifter::{asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct AluOperations {
-    value: u16,
+    rd: LoRegister,
+    rs: LoRegister,
+    #[getset(get_copy = "pub(crate)")]
+    opcode: u16,
 }
 
-thumb_instruction!(AluOperations);
+impl AluOperations {
+    pub fn new(value: u16) -> Self {
+        Self {
+            rd: value.bits(0..=2).into(),
+            rs: value.bits(3..=5).into(),
+            opcode: value.bits(6..=9),
+        }
+    }
+}
 
 impl Instruction for AluOperations {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         use AluOperationsOpcode::*;
-        let rd = self.rd() as usize;
+        let rd = self.rd as usize;
         let operand1 = cpu.register(rd);
-        let mut operand2 = cpu.register(self.rs() as usize);
+        let mut operand2 = cpu.register(self.rs as usize);
         let mut carry = cpu.cpsr().carry();
-        let opcode: AluOperationsOpcode = self.opcode().into();
+        let opcode: AluOperationsOpcode = self.opcode.into();
         let mut access = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
 
         let result = match opcode {
@@ -102,26 +114,9 @@ impl Instruction for AluOperations {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let rd = self.rd();
-        let rs = self.rs();
-        let opcode = AluOperationsOpcode::from(self.opcode());
+        let rd = self.rd;
+        let rs = self.rs;
+        let opcode = AluOperationsOpcode::from(self.opcode);
         format!("{} {},{}", opcode, rd, rs)
-    }
-}
-
-impl AluOperations {
-    #[inline]
-    pub fn rd(&self) -> LoRegister {
-        self.value.bits(0..=2).into()
-    }
-
-    #[inline]
-    pub fn rs(&self) -> LoRegister {
-        self.value.bits(3..=5).into()
-    }
-
-    #[inline]
-    pub fn opcode(&self) -> u16 {
-        self.value.bits(6..=9)
     }
 }

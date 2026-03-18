@@ -2,20 +2,27 @@ use crate::{
     BitOps, CpuAction,
     cpu::{Arm7tdmiCpu, Instruction, LR},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct LongBranchWithLink {
-    value: u16,
+    offset: u16,
+    high: bool,
 }
 
-thumb_instruction!(LongBranchWithLink);
+impl LongBranchWithLink {
+    pub fn new(value: u16) -> Self {
+        Self {
+            offset: value.bits(0..=10),
+            high: value.bit(11),
+        }
+    }
+}
 
 impl Instruction for LongBranchWithLink {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let mut offset = self.offset() as i32;
-        match self.high() {
+        let mut offset = self.offset as i32;
+        match self.high {
             true => {
                 offset <<= 1;
                 let temp = (cpu.pc() - 2) | 0b1;
@@ -33,20 +40,8 @@ impl Instruction for LongBranchWithLink {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset();
-        let high = if self.high() { "hi" } else { "lo" };
+        let offset = self.offset;
+        let high = if self.high { "hi" } else { "lo" };
         format!("BL #{}({})", offset, high)
-    }
-}
-
-impl LongBranchWithLink {
-    #[inline]
-    pub fn offset(&self) -> u16 {
-        self.value.bits(0..=10)
-    }
-
-    #[inline]
-    pub fn high(&self) -> bool {
-        self.value.bit(11)
     }
 }

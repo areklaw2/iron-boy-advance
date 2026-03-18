@@ -2,25 +2,38 @@ use crate::{
     BitOps, CpuAction, LoRegister,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct LoadStoreRegisterOffset {
-    value: u16,
+    rd: LoRegister,
+    rb: LoRegister,
+    ro: LoRegister,
+    byte: bool,
+    load: bool,
 }
 
-thumb_instruction!(LoadStoreRegisterOffset);
+impl LoadStoreRegisterOffset {
+    pub fn new(value: u16) -> Self {
+        Self {
+            rd: value.bits(0..=2).into(),
+            rb: value.bits(3..=5).into(),
+            ro: value.bits(6..=8).into(),
+            byte: value.bit(10),
+            load: value.bit(11),
+        }
+    }
+}
 
 impl Instruction for LoadStoreRegisterOffset {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let ro_value = cpu.register(self.ro() as usize);
-        let rb_value = cpu.register(self.rb() as usize);
+        let ro_value = cpu.register(self.ro as usize);
+        let rb_value = cpu.register(self.rb as usize);
         let address = rb_value.wrapping_add(ro_value);
 
-        let rd = self.rd() as usize;
-        let byte = self.byte();
-        let load = self.load();
+        let rd = self.rd as usize;
+        let byte = self.byte;
+        let load = self.load;
         match (load, byte) {
             (false, false) => {
                 let value = cpu.register(rd);
@@ -46,41 +59,14 @@ impl Instruction for LoadStoreRegisterOffset {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let byte = if self.byte() { "B" } else { "" };
-        let ro = self.ro();
-        let rb = self.rb();
-        let rd = self.rd();
+        let byte = if self.byte { "B" } else { "" };
+        let ro = self.ro;
+        let rb = self.rb;
+        let rd = self.rd;
 
-        match self.load() {
+        match self.load {
             true => format!("LDR{} {}, [{},{}]", byte, rd, rb, ro),
             false => format!("STR{} {}, [{},{}]", byte, rd, rb, ro),
         }
-    }
-}
-
-impl LoadStoreRegisterOffset {
-    #[inline]
-    pub fn rd(&self) -> LoRegister {
-        self.value.bits(0..=2).into()
-    }
-
-    #[inline]
-    pub fn rb(&self) -> LoRegister {
-        self.value.bits(3..=5).into()
-    }
-
-    #[inline]
-    pub fn ro(&self) -> LoRegister {
-        self.value.bits(6..=8).into()
-    }
-
-    #[inline]
-    pub fn byte(&self) -> bool {
-        self.value.bit(10)
-    }
-
-    #[inline]
-    pub fn load(&self) -> bool {
-        self.value.bit(11)
     }
 }

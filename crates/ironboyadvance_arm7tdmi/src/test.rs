@@ -8,7 +8,13 @@ mod tests {
     use std::path::PathBuf;
 
     use crate::memory::{MemoryAccess, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
-    use crate::{cpu::Arm7tdmiCpu, psr::ProgramStatusRegister};
+    use crate::{
+        AluOperationsOpcode,
+        arm::ArmInstruction,
+        cpu::{Arm7tdmiCpu, LastInstruction},
+        psr::ProgramStatusRegister,
+        thumb::ThumbInstruction,
+    };
 
     #[derive(Debug, Deserialize_repr, Clone, Copy, PartialEq, Eq)]
     #[repr(u8)]
@@ -233,9 +239,13 @@ mod tests {
             let expected = ProgramStatusRegister::from_bits(final_state.cpsr);
 
             // The booth multiplication sets the carry. data sheet says its set to a meaningless value. Will ignore result
-            let is_mutliply = ["MUL", "MLA", "MULL", "MLAL"]
-                .iter()
-                .any(|s| cpu.dissassembled_instruction().contains(s));
+            let is_mutliply = match cpu.last_instruction() {
+                Some(LastInstruction::Arm(ArmInstruction::Multiply(_) | ArmInstruction::MultiplyLong(_))) => true,
+                Some(LastInstruction::Thumb(ThumbInstruction::AluOperations(operation))) => {
+                    AluOperationsOpcode::from(operation.opcode()) == AluOperationsOpcode::MUL
+                }
+                _ => false,
+            };
 
             let actual = cpu.cpsr_mut();
             if is_mutliply {

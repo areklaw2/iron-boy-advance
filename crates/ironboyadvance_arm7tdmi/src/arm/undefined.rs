@@ -1,16 +1,24 @@
+use getset::CopyGetters;
+
 use crate::{
-    CpuAction, Exception,
-    arm::arm_instruction,
+    BitOps, Condition, CpuAction, Exception,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct Undefined {
-    value: u32,
+    #[getset(get_copy = "pub(crate)")]
+    cond: Condition,
 }
 
-arm_instruction!(Undefined);
+impl Undefined {
+    pub fn new(value: u32) -> Self {
+        Self {
+            cond: value.bits(28..=31).into(),
+        }
+    }
+}
 
 impl Instruction for Undefined {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {

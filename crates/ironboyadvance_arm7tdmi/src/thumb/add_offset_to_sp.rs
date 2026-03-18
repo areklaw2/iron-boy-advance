@@ -2,21 +2,28 @@ use crate::{
     BitOps, CpuAction,
     cpu::{Arm7tdmiCpu, Instruction, SP},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct AddOffsetToSp {
-    value: u16,
+    offset: u16,
+    signed: bool,
 }
 
-thumb_instruction!(AddOffsetToSp);
+impl AddOffsetToSp {
+    pub fn new(value: u16) -> Self {
+        Self {
+            offset: value.bits(0..=6),
+            signed: value.bit(7),
+        }
+    }
+}
 
 impl Instruction for AddOffsetToSp {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let offset = self.offset() * 4;
+        let offset = self.offset * 4;
         let sp_value = cpu.register(SP);
-        let value = match self.signed() {
+        let value = match self.signed {
             true => sp_value.wrapping_sub(offset as u32),
             false => sp_value.wrapping_add(offset as u32),
         };
@@ -25,20 +32,8 @@ impl Instruction for AddOffsetToSp {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset();
-        let signed = if self.signed() { "-" } else { "" };
+        let offset = self.offset;
+        let signed = if self.signed { "-" } else { "" };
         format!("ADD sp, {}{}", signed, offset)
-    }
-}
-
-impl AddOffsetToSp {
-    #[inline]
-    pub fn offset(&self) -> u16 {
-        self.value.bits(0..=6)
-    }
-
-    #[inline]
-    pub fn signed(&self) -> bool {
-        self.value.bit(7)
     }
 }

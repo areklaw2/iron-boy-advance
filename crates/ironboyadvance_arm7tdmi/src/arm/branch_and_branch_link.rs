@@ -1,24 +1,36 @@
+use getset::CopyGetters;
+
 use crate::{
-    BitOps, CpuAction,
-    arm::arm_instruction,
+    BitOps, Condition, CpuAction,
     cpu::{Arm7tdmiCpu, Instruction, LR},
     memory::MemoryInterface,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct BranchAndBranchWithLink {
-    value: u32,
+    #[getset(get_copy = "pub(crate)")]
+    cond: Condition,
+    link: bool,
+    offset: u32,
 }
 
-arm_instruction!(BranchAndBranchWithLink);
+impl BranchAndBranchWithLink {
+    pub fn new(value: u32) -> Self {
+        Self {
+            cond: value.bits(28..=31).into(),
+            link: value.bit(24),
+            offset: value.bits(0..=23),
+        }
+    }
+}
 
 impl Instruction for BranchAndBranchWithLink {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        if self.link() {
+        if self.link {
             cpu.set_register(LR, cpu.pc() - 4)
         }
 
-        let offset = ((self.offset() << 8) as i32) >> 6;
+        let offset = ((self.offset << 8) as i32) >> 6;
         cpu.set_pc((cpu.pc() as i32).wrapping_add(offset) as u32);
         cpu.pipeline_flush();
         CpuAction::PipelineFlush
@@ -26,20 +38,8 @@ impl Instruction for BranchAndBranchWithLink {
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
         let cond = self.cond();
-        let link = if self.link() { "L" } else { "" };
-        let expression = self.offset();
+        let link = if self.link { "L" } else { "" };
+        let expression = self.offset;
         format!("B{link}{cond} 0x{expression:08X}")
-    }
-}
-
-impl BranchAndBranchWithLink {
-    #[inline]
-    fn link(&self) -> bool {
-        self.value.bit(24)
-    }
-
-    #[inline]
-    fn offset(&self) -> u32 {
-        self.value.bits(0..=23)
     }
 }

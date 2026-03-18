@@ -3,36 +3,53 @@ use crate::{
     alu::{add, cmp, mov},
     cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct HiRegisterOperationsBranchExchange {
-    value: u16,
+    rd: LoRegister,
+    hd: HiRegister,
+    rs: LoRegister,
+    hs: HiRegister,
+    h1: bool,
+    h2: bool,
+    opcode: u16,
 }
 
-thumb_instruction!(HiRegisterOperationsBranchExchange);
+impl HiRegisterOperationsBranchExchange {
+    pub fn new(value: u16) -> Self {
+        Self {
+            rd: value.bits(0..=2).into(),
+            hd: value.bits(0..=2).into(),
+            rs: value.bits(3..=5).into(),
+            hs: value.bits(3..=5).into(),
+            h1: value.bit(7),
+            h2: value.bit(6),
+            opcode: value.bits(8..=9),
+        }
+    }
+}
 
 impl Instruction for HiRegisterOperationsBranchExchange {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         use HiRegOpsBxOpcode::*;
         let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
-        let destination = match self.h1() {
-            true => self.hd() as usize + 8,
-            false => self.rd() as usize,
+        let destination = match self.h1 {
+            true => self.hd as usize + 8,
+            false => self.rd as usize,
         };
         let operand1 = cpu.register(destination);
 
-        let source = match self.h2() {
-            true => self.hs() as usize + 8,
-            false => self.rs() as usize,
+        let source = match self.h2 {
+            true => self.hs as usize + 8,
+            false => self.rs as usize,
         };
         let mut operand2 = cpu.register(source);
         if source == PC {
             operand2 &= !0x1
         }
 
-        match self.opcode().into() {
+        match self.opcode.into() {
             CMP => {
                 cmp(cpu, true, operand1, operand2);
             }
@@ -66,54 +83,17 @@ impl Instruction for HiRegisterOperationsBranchExchange {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let destination = match self.h1() {
-            true => self.hd().to_string(),
-            false => self.rd().to_string(),
+        let destination = match self.h1 {
+            true => self.hd.to_string(),
+            false => self.rd.to_string(),
         };
 
-        let source = match self.h2() {
-            true => self.hs().to_string(),
-            false => self.rs().to_string(),
+        let source = match self.h2 {
+            true => self.hs.to_string(),
+            false => self.rs.to_string(),
         };
 
-        let opcode = HiRegOpsBxOpcode::from(self.opcode());
+        let opcode = HiRegOpsBxOpcode::from(self.opcode);
         format!("{} {},{}", opcode, destination, source)
-    }
-}
-
-impl HiRegisterOperationsBranchExchange {
-    #[inline]
-    pub fn rd(&self) -> LoRegister {
-        self.value.bits(0..=2).into()
-    }
-
-    #[inline]
-    pub fn hd(&self) -> HiRegister {
-        self.value.bits(0..=2).into()
-    }
-
-    #[inline]
-    pub fn rs(&self) -> LoRegister {
-        self.value.bits(3..=5).into()
-    }
-
-    #[inline]
-    pub fn hs(&self) -> HiRegister {
-        self.value.bits(3..=5).into()
-    }
-
-    #[inline]
-    pub fn h2(&self) -> bool {
-        self.value.bit(6)
-    }
-
-    #[inline]
-    pub fn h1(&self) -> bool {
-        self.value.bit(7)
-    }
-
-    #[inline]
-    pub fn opcode(&self) -> u16 {
-        self.value.bits(8..=9)
     }
 }

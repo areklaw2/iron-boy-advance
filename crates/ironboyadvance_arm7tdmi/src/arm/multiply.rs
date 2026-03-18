@@ -1,24 +1,44 @@
+use getset::CopyGetters;
+
 use crate::{
-    BitOps, CpuAction, Register,
+    BitOps, Condition, CpuAction, Register,
     alu::multiplier_array_cycles,
-    arm::arm_instruction,
     cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct Multiply {
-    value: u32,
+    #[getset(get_copy = "pub(crate)")]
+    cond: Condition,
+    rn: Register,
+    rd: Register,
+    rm: Register,
+    rs: Register,
+    sets_flags: bool,
+    accumulate: bool,
 }
 
-arm_instruction!(Multiply);
+impl Multiply {
+    pub fn new(value: u32) -> Self {
+        Self {
+            cond: value.bits(28..=31).into(),
+            rn: value.bits(12..=15).into(),
+            rd: value.bits(16..=19).into(),
+            rm: value.bits(0..=3).into(),
+            rs: value.bits(8..=11).into(),
+            sets_flags: value.bit(20),
+            accumulate: value.bit(21),
+        }
+    }
+}
 
 impl Instruction for Multiply {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let rd = self.rd() as usize;
-        let rm = self.rm() as usize;
-        let rs = self.rs() as usize;
-        let rn = self.rn() as usize;
+        let rd = self.rd as usize;
+        let rm = self.rm as usize;
+        let rs = self.rs as usize;
+        let rn = self.rn as usize;
 
         let mut operand1 = cpu.register(rm);
         if rm == PC {
@@ -35,7 +55,7 @@ impl Instruction for Multiply {
             cpu.idle_cycle();
         }
 
-        if self.accumulate() {
+        if self.accumulate {
             let mut accumulator = cpu.register(rn);
             if rn == PC {
                 accumulator += 4
@@ -44,7 +64,7 @@ impl Instruction for Multiply {
             cpu.idle_cycle();
         };
 
-        if self.sets_flags() {
+        if self.sets_flags {
             cpu.cpsr_mut().set_negative(result >> 31 != 0);
             cpu.cpsr_mut().set_zero(result == 0);
         }
@@ -60,47 +80,15 @@ impl Instruction for Multiply {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond();
-        let s = if self.sets_flags() { "S" } else { "" };
-        let rd = self.rd();
-        let rm = self.rm();
-        let rs = self.rs();
-        let rn = self.rn();
-        match self.accumulate() {
+        let cond = self.cond;
+        let s = if self.sets_flags { "S" } else { "" };
+        let rd = self.rd;
+        let rm = self.rm;
+        let rs = self.rs;
+        let rn = self.rn;
+        match self.accumulate {
             true => format!("MLA{}{} {},{},{},{}", cond, s, rd, rm, rs, rn),
             false => format!("MUL{}{} {},{},{}", cond, s, rd, rm, rs),
         }
-    }
-}
-
-impl Multiply {
-    #[inline]
-    pub fn rn(&self) -> Register {
-        self.value.bits(12..=15).into()
-    }
-
-    #[inline]
-    pub fn rd(&self) -> Register {
-        self.value.bits(16..=19).into()
-    }
-
-    #[inline]
-    pub fn rm(&self) -> Register {
-        self.value.bits(0..=3).into()
-    }
-
-    #[inline]
-    pub fn rs(&self) -> Register {
-        self.value.bits(8..=11).into()
-    }
-
-    #[inline]
-    pub fn sets_flags(&self) -> bool {
-        self.value.bit(20)
-    }
-
-    #[inline]
-    pub fn accumulate(&self) -> bool {
-        self.value.bit(21)
     }
 }

@@ -2,23 +2,34 @@ use crate::{
     BitOps, CpuAction, LoRegister,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct LoadStoreHalfword {
-    value: u16,
+    rd: LoRegister,
+    rb: LoRegister,
+    offset: u16,
+    load: bool,
 }
 
-thumb_instruction!(LoadStoreHalfword);
+impl LoadStoreHalfword {
+    pub fn new(value: u16) -> Self {
+        Self {
+            rd: value.bits(0..=2).into(),
+            rb: value.bits(3..=5).into(),
+            offset: value.bits(6..=10),
+            load: value.bit(11),
+        }
+    }
+}
 
 impl Instruction for LoadStoreHalfword {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let immediate = self.offset() * 2;
-        let rb_value = cpu.register(self.rb() as usize);
+        let immediate = self.offset * 2;
+        let rb_value = cpu.register(self.rb as usize);
         let address = rb_value.wrapping_add(immediate as u32);
-        let rd = self.rd() as usize;
-        match self.load() {
+        let rd = self.rd as usize;
+        match self.load {
             true => {
                 let value = cpu.load_rotated_16(address, MemoryAccess::NonSequential as u8);
                 cpu.set_register(rd, value);
@@ -34,34 +45,12 @@ impl Instruction for LoadStoreHalfword {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset();
-        let rb = self.rb();
-        let rd = self.rd();
-        match self.load() {
+        let offset = self.offset;
+        let rb = self.rb;
+        let rd = self.rd;
+        match self.load {
             true => format!("LDRH {}, [{},#{}]", rd, rb, offset),
             false => format!("STRH {}, [{},#{}]", rd, rb, offset),
         }
-    }
-}
-
-impl LoadStoreHalfword {
-    #[inline]
-    pub fn rd(&self) -> LoRegister {
-        self.value.bits(0..=2).into()
-    }
-
-    #[inline]
-    pub fn rb(&self) -> LoRegister {
-        self.value.bits(3..=5).into()
-    }
-
-    #[inline]
-    pub fn offset(&self) -> u16 {
-        self.value.bits(6..=10)
-    }
-
-    #[inline]
-    pub fn load(&self) -> bool {
-        self.value.bit(11)
     }
 }

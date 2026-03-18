@@ -36,18 +36,6 @@ pub mod sp_relative_load_store;
 pub mod unconditional_branch;
 pub mod undefined;
 
-macro_rules! thumb_instruction {
-    ($name:ident) => {
-        impl $name {
-            pub fn new(value: u16) -> Self {
-                Self { value }
-            }
-        }
-    };
-}
-
-pub(crate) use thumb_instruction;
-
 pub type ThumbInstructionFactory = fn(u16) -> ThumbInstruction;
 
 #[derive(Debug, Clone, Copy)]

@@ -2,15 +2,20 @@ use crate::{
     BitOps, CpuAction, Exception,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct SoftwareInterrupt {
-    value: u16,
+    offset: u16,
 }
 
-thumb_instruction!(SoftwareInterrupt);
+impl SoftwareInterrupt {
+    pub fn new(value: u16) -> Self {
+        Self {
+            offset: value.bits(0..=7),
+        }
+    }
+}
 
 impl Instruction for SoftwareInterrupt {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
@@ -19,14 +24,7 @@ impl Instruction for SoftwareInterrupt {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset();
+        let offset = self.offset;
         format!("SWI #{}", offset)
-    }
-}
-
-impl SoftwareInterrupt {
-    #[inline]
-    pub fn offset(&self) -> u16 {
-        self.value.bits(0..=7)
     }
 }

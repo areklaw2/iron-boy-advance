@@ -1,24 +1,38 @@
-use crate::BitOps;
+use getset::CopyGetters;
 
 use crate::{
-    CpuAction, Register,
-    arm::arm_instruction,
+    BitOps, Condition, CpuAction, Register,
     cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct SingleDataSwap {
-    value: u32,
+    #[getset(get_copy = "pub(crate)")]
+    cond: Condition,
+    rn: Register,
+    rd: Register,
+    rm: Register,
+    byte: bool,
 }
 
-arm_instruction!(SingleDataSwap);
+impl SingleDataSwap {
+    pub fn new(value: u32) -> Self {
+        Self {
+            cond: value.bits(28..=31).into(),
+            rn: value.bits(16..=19).into(),
+            rd: value.bits(12..=15).into(),
+            rm: value.bits(0..=3).into(),
+            byte: value.bit(22),
+        }
+    }
+}
 
 impl Instruction for SingleDataSwap {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let rd = self.rd() as usize;
-        let rn = self.rn() as usize;
-        let rm = self.rm() as usize;
+        let rd = self.rd as usize;
+        let rn = self.rn as usize;
+        let rm = self.rm as usize;
 
         let address = cpu.register(rn);
         let mut source = cpu.register(rm);
@@ -27,7 +41,7 @@ impl Instruction for SingleDataSwap {
         }
 
         let value: u32;
-        match self.byte() {
+        match self.byte {
             true => {
                 value = cpu.load_8(address, MemoryAccess::NonSequential as u8);
                 cpu.store_8(address, source as u8, MemoryAccess::NonSequential | MemoryAccess::Lock);
@@ -50,33 +64,11 @@ impl Instruction for SingleDataSwap {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond();
-        let byte = if self.byte() { "B" } else { "" };
-        let rd = self.rd();
-        let rm = self.rm();
-        let rn = self.rn();
+        let cond = self.cond;
+        let byte = if self.byte { "B" } else { "" };
+        let rd = self.rd;
+        let rm = self.rm;
+        let rn = self.rn;
         format!("SWP{}{} {},{},[{}]", cond, byte, rd, rm, rn)
-    }
-}
-
-impl SingleDataSwap {
-    #[inline]
-    pub fn rn(&self) -> Register {
-        self.value.bits(16..=19).into()
-    }
-
-    #[inline]
-    pub fn rd(&self) -> Register {
-        self.value.bits(12..=15).into()
-    }
-
-    #[inline]
-    pub fn rm(&self) -> Register {
-        self.value.bits(0..=3).into()
-    }
-
-    #[inline]
-    pub fn byte(&self) -> bool {
-        self.value.bit(22)
     }
 }

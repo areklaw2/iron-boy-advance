@@ -3,25 +3,36 @@ use crate::{
     barrel_shifter::{ShiftType, asr, lsl, lsr},
     cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct MoveShiftedRegister {
-    value: u16,
+    rd: LoRegister,
+    rs: LoRegister,
+    offset: u16,
+    opcode: u16,
 }
 
-thumb_instruction!(MoveShiftedRegister);
+impl MoveShiftedRegister {
+    pub fn new(value: u16) -> Self {
+        Self {
+            rd: value.bits(0..=2).into(),
+            rs: value.bits(3..=5).into(),
+            offset: value.bits(6..=10),
+            opcode: value.bits(11..=12),
+        }
+    }
+}
 
 impl Instruction for MoveShiftedRegister {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let rd = self.rd() as usize;
-        let rs = self.rs() as usize;
-        let offset5 = self.offset() as u32;
+        let rd = self.rd as usize;
+        let rs = self.rs as usize;
+        let offset5 = self.offset as u32;
 
         let value = cpu.register(rs);
         let mut carry = cpu.cpsr().carry();
-        let result = match self.opcode().into() {
+        let result = match ShiftType::from(self.opcode) {
             ShiftType::LSL => lsl(value, offset5, &mut carry),
             ShiftType::LSR => lsr(value, offset5, &mut carry, true),
             ShiftType::ASR => asr(value, offset5, &mut carry, true),
@@ -37,32 +48,10 @@ impl Instruction for MoveShiftedRegister {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let shift_type = self.opcode();
-        let offset5 = self.offset();
-        let rs = self.rs();
-        let rd = self.rd();
+        let shift_type = ShiftType::from(self.opcode);
+        let offset5 = self.offset;
+        let rs = self.rs;
+        let rd = self.rd;
         format!("{} {},{},#{}", shift_type, rd, rs, offset5)
-    }
-}
-
-impl MoveShiftedRegister {
-    #[inline]
-    pub fn rd(&self) -> LoRegister {
-        self.value.bits(0..=2).into()
-    }
-
-    #[inline]
-    pub fn rs(&self) -> LoRegister {
-        self.value.bits(3..=5).into()
-    }
-
-    #[inline]
-    pub fn offset(&self) -> u16 {
-        self.value.bits(6..=10)
-    }
-
-    #[inline]
-    pub fn opcode(&self) -> u16 {
-        self.value.bits(11..=12)
     }
 }

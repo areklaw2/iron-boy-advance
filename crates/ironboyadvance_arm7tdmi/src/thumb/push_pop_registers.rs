@@ -2,24 +2,33 @@ use crate::{
     BitOps, CpuAction, LoRegister,
     cpu::{Arm7tdmiCpu, Instruction, LR, PC, SP},
     memory::{MemoryAccess, MemoryInterface},
-    thumb::thumb_instruction,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct PushPopRegisters {
-    value: u16,
+    register_list_bits: u8,
+    store_lr_load_pc: bool,
+    load: bool,
 }
 
-thumb_instruction!(PushPopRegisters);
+impl PushPopRegisters {
+    pub fn new(value: u16) -> Self {
+        Self {
+            register_list_bits: value as u8,
+            store_lr_load_pc: value.bit(8),
+            load: value.bit(11),
+        }
+    }
+}
 
 impl Instruction for PushPopRegisters {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let mut address = cpu.register(SP);
-        let register_list = self.register_list();
-        let store_lr_load_pc = self.store_lr_load_pc();
+        let register_list: Vec<usize> = (0..8).filter(|&i| (self.register_list_bits >> i) & 1 == 1).collect();
+        let store_lr_load_pc = self.store_lr_load_pc;
 
         let mut memory_access = MemoryAccess::NonSequential;
-        match self.load() {
+        match self.load {
             true => {
                 if register_list.is_empty() && !store_lr_load_pc {
                     let value = cpu.load_32(address, memory_access as u8);
@@ -81,37 +90,20 @@ impl Instruction for PushPopRegisters {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let load = self.load();
-        let store_lr_load_pc = self.store_lr_load_pc();
-        let register_list = self
-            .register_list()
+        let load = self.load;
+        let store_lr_load_pc = self.store_lr_load_pc;
+        let register_list: Vec<usize> = (0..8).filter(|&i| (self.register_list_bits >> i) & 1 == 1).collect();
+        let register_list_str = register_list
             .iter()
             .map(|register| LoRegister::from(*register as u16).to_string())
             .collect::<Vec<String>>()
             .join(",");
 
         match (load, store_lr_load_pc) {
-            (false, false) => format!("PUSH {{{}}}", register_list),
-            (false, true) => format!("PUSH {{{},lr}}", register_list),
-            (true, false) => format!("POP {{{}}}", register_list),
-            (true, true) => format!("POP {{{},pc}}", register_list),
+            (false, false) => format!("PUSH {{{}}}", register_list_str),
+            (false, true) => format!("PUSH {{{},lr}}", register_list_str),
+            (true, false) => format!("POP {{{}}}", register_list_str),
+            (true, true) => format!("POP {{{},pc}}", register_list_str),
         }
-    }
-}
-
-impl PushPopRegisters {
-    #[inline]
-    pub fn register_list(&self) -> Vec<usize> {
-        (0..=7).filter(|&i| self.value.bit(i)).collect()
-    }
-
-    #[inline]
-    pub fn store_lr_load_pc(&self) -> bool {
-        self.value.bit(8)
-    }
-
-    #[inline]
-    pub fn load(&self) -> bool {
-        self.value.bit(11)
     }
 }

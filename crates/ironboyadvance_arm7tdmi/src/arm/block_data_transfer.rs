@@ -1,34 +1,51 @@
+use getset::CopyGetters;
+
 use crate::{
-    BitOps, CpuAction, CpuMode, Register,
-    arm::arm_instruction,
+    BitOps, Condition, CpuAction, CpuMode, Register,
     cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct BlockDataTransfer {
-    value: u32,
+    #[getset(get_copy = "pub(crate)")]
+    cond: Condition,
+    rn: Register,
+    pre_index: bool,
+    add: bool,
+    write_back: bool,
+    load: bool,
+    load_psr_force_user: bool,
+    register_list: u16,
 }
 
-arm_instruction!(BlockDataTransfer);
+impl BlockDataTransfer {
+    pub fn new(value: u32) -> Self {
+        Self {
+            cond: value.bits(28..=31).into(),
+            rn: value.bits(16..=19).into(),
+            pre_index: value.bit(24),
+            add: value.bit(23),
+            write_back: value.bit(21),
+            load: value.bit(20),
+            load_psr_force_user: value.bit(22),
+            register_list: value as u16,
+        }
+    }
+}
 
 impl Instruction for BlockDataTransfer {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let mut register_list = self.register_list();
-        let rn = self.rn() as usize;
+        let rn = self.rn as usize;
         let mut address = cpu.register(rn);
 
-        let mut transfer_pc = register_list.contains(&PC);
-        let transfer_bytes = if !register_list.is_empty() {
-            register_list.len() as u32 * 4
-        } else {
-            register_list.push(PC);
-            transfer_pc = true;
-            64
-        };
+        let is_empty_list = self.register_list == 0;
+        let register_list: u16 = if is_empty_list { 1 << PC } else { self.register_list };
+        let transfer_pc = (register_list >> PC) & 1 == 1;
+        let transfer_bytes = if is_empty_list { 64 } else { register_list.count_ones() * 4 };
 
-        let load = self.load();
-        let load_psr_force_user = self.load_psr_force_user();
+        let load = self.load;
+        let load_psr_force_user = self.load_psr_force_user;
         let mode = cpu.cpsr().mode();
         let switch_mode =
             load_psr_force_user && (!load || !transfer_pc) && ![CpuMode::User, CpuMode::System].contains(&mode);
@@ -36,8 +53,8 @@ impl Instruction for BlockDataTransfer {
             cpu.cpsr_mut().set_mode(CpuMode::User);
         }
 
-        let add = self.add();
-        let mut pre_index = self.pre_index();
+        let add = self.add;
+        let mut pre_index = self.pre_index;
         let mut base_address = address;
         if !add {
             pre_index = !pre_index;
@@ -47,12 +64,12 @@ impl Instruction for BlockDataTransfer {
             base_address += transfer_bytes
         }
 
-        let write_back = self.write_back();
+        let write_back = self.write_back;
         let mut memory_access = MemoryAccess::NonSequential;
         let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential);
         match load {
             true => {
-                for (i, register) in register_list.iter().enumerate() {
+                for (i, register) in (0..16).filter(|&r| (register_list >> r) & 1 == 1).enumerate() {
                     if pre_index {
                         address += 4
                     }
@@ -67,7 +84,7 @@ impl Instruction for BlockDataTransfer {
                         }
                         cpu.set_register(rn, base_address);
                     }
-                    cpu.set_register(*register, value);
+                    cpu.set_register(register, value);
 
                     if !pre_index {
                         address += 4
@@ -87,13 +104,13 @@ impl Instruction for BlockDataTransfer {
                 }
             }
             false => {
-                for (i, register) in register_list.iter().enumerate() {
+                for (i, register) in (0..16).filter(|&r| (register_list >> r) & 1 == 1).enumerate() {
                     if pre_index {
                         address += 4
                     }
 
-                    let mut value = cpu.register(*register);
-                    if *register == PC {
+                    let mut value = cpu.register(register);
+                    if register == PC {
                         match write_back && rn == PC {
                             true => value -= 4,
                             false => value += 4,
@@ -126,18 +143,17 @@ impl Instruction for BlockDataTransfer {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond();
-        let pre_index = self.pre_index();
-        let add = self.add();
-        let load_psr_force_user = if self.load_psr_force_user() { "^" } else { "" };
-        let write_back = if self.write_back() { "!" } else { "" };
-        let load = self.load();
-        let rn = self.rn();
-        let register_list = self
-            .register_list()
-            .iter()
-            .map(|register| Register::from(*register as u32).to_string())
-            .collect::<Vec<String>>()
+        let cond = self.cond;
+        let pre_index = self.pre_index;
+        let add = self.add;
+        let load_psr_force_user = if self.load_psr_force_user { "^" } else { "" };
+        let write_back = if self.write_back { "!" } else { "" };
+        let load = self.load;
+        let rn = self.rn;
+        let register_list = (0..16u32)
+            .filter(|&i| (self.register_list >> i) & 1 == 1)
+            .map(|i| Register::from(i).to_string())
+            .collect::<Vec<_>>()
             .join(",");
 
         let mnemonic = match (load, pre_index, add) {
@@ -176,42 +192,5 @@ impl Instruction for BlockDataTransfer {
         };
 
         format!("{} {}{},({}){}", mnemonic, rn, write_back, register_list, load_psr_force_user)
-    }
-}
-
-impl BlockDataTransfer {
-    #[inline]
-    pub fn rn(&self) -> Register {
-        self.value.bits(16..=19).into()
-    }
-
-    #[inline]
-    pub fn pre_index(&self) -> bool {
-        self.value.bit(24)
-    }
-
-    #[inline]
-    pub fn add(&self) -> bool {
-        self.value.bit(23)
-    }
-
-    #[inline]
-    pub fn write_back(&self) -> bool {
-        self.value.bit(21)
-    }
-
-    #[inline]
-    pub fn load(&self) -> bool {
-        self.value.bit(20)
-    }
-
-    #[inline]
-    pub fn load_psr_force_user(&self) -> bool {
-        self.value.bit(22)
-    }
-
-    #[inline]
-    pub fn register_list(&self) -> Vec<usize> {
-        (0..=15).filter(|&i| self.value.bit(i)).collect()
     }
 }

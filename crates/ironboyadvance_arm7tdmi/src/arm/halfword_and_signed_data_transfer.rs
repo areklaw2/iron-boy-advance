@@ -1,41 +1,73 @@
+use getset::CopyGetters;
+
 use crate::{
-    BitOps, CpuAction, Register,
-    arm::arm_instruction,
+    BitOps, Condition, CpuAction, Register,
     cpu::{Arm7tdmiCpu, Instruction, PC},
     memory::{MemoryAccess, MemoryInterface},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct HalfwordAndSignedDataTransfer {
-    value: u32,
+    #[getset(get_copy = "pub(crate)")]
+    cond: Condition,
+    rn: Register,
+    rd: Register,
+    rm: Register,
+    is_immediate: bool,
+    immediate_hi: u32,
+    immediate_lo: u32,
+    pre_index: bool,
+    add: bool,
+    write_back: bool,
+    load: bool,
+    signed: bool,
+    halfword: bool,
 }
 
-arm_instruction!(HalfwordAndSignedDataTransfer);
+impl HalfwordAndSignedDataTransfer {
+    pub fn new(value: u32) -> Self {
+        Self {
+            cond: value.bits(28..=31).into(),
+            rn: value.bits(16..=19).into(),
+            rd: value.bits(12..=15).into(),
+            rm: value.bits(0..=3).into(),
+            is_immediate: value.bit(22),
+            immediate_hi: value.bits(8..=11),
+            immediate_lo: value.bits(0..=3),
+            pre_index: value.bit(24),
+            add: value.bit(23),
+            write_back: value.bit(21),
+            load: value.bit(20),
+            signed: value.bit(6),
+            halfword: value.bit(5),
+        }
+    }
+}
 
 impl Instruction for HalfwordAndSignedDataTransfer {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let rd = self.rd() as usize;
-        let rn = self.rn() as usize;
+        let rd = self.rd as usize;
+        let rn = self.rn as usize;
 
         let mut address = cpu.register(rn);
-        let mut offset = match self.is_immediate() {
-            true => self.immediate_hi() << 4 | self.immediate_lo(),
-            false => cpu.register(self.rm() as usize),
+        let mut offset = match self.is_immediate {
+            true => self.immediate_hi << 4 | self.immediate_lo,
+            false => cpu.register(self.rm as usize),
         };
 
-        if !self.add() {
+        if !self.add {
             offset = (-(offset as i64)) as u32
         }
 
-        let pre_index = self.pre_index();
+        let pre_index = self.pre_index;
         if pre_index {
             address = address.wrapping_add(offset)
         }
 
-        let load = self.load();
-        let write_back = self.write_back();
-        let s = self.signed();
-        let h = self.halfword();
+        let load = self.load;
+        let write_back = self.write_back;
+        let s = self.signed;
+        let h = self.halfword;
         match load {
             true => match (s, h) {
                 (false, false) => {}
@@ -121,17 +153,17 @@ impl Instruction for HalfwordAndSignedDataTransfer {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond();
-        let pre_index = self.pre_index();
-        let add = if self.add() { "+" } else { "-" };
-        let rn = self.rn();
-        let rd = self.rd();
-        let immediate = self.immediate_hi() << 4 | self.immediate_lo();
+        let cond = self.cond;
+        let pre_index = self.pre_index;
+        let add = if self.add { "+" } else { "-" };
+        let rn = self.rn;
+        let rd = self.rd;
+        let immediate = self.immediate_hi << 4 | self.immediate_lo;
         let address = match rd as usize == 15 {
             true => format!("#{:08X}", immediate),
             false => {
-                let rm = self.rm();
-                let offset = match self.is_immediate() {
+                let rm = self.rm;
+                let offset = match self.is_immediate {
                     true => match immediate {
                         0 => "".into(),
                         _ => format!(",#{}{}", add, immediate),
@@ -139,7 +171,7 @@ impl Instruction for HalfwordAndSignedDataTransfer {
                     false => format!(",{}{}", add, rm),
                 };
 
-                let write_back = if self.write_back() && !offset.is_empty() { "!" } else { "" };
+                let write_back = if self.write_back && !offset.is_empty() { "!" } else { "" };
                 match pre_index {
                     true => format!("[{}{}]{}", rn, offset, write_back),
                     false => format!("[{}]{}", rn, offset),
@@ -147,8 +179,8 @@ impl Instruction for HalfwordAndSignedDataTransfer {
             }
         };
 
-        let s = self.signed();
-        let h = self.halfword();
+        let s = self.signed;
+        let h = self.halfword;
         let sh = match (s, h) {
             (false, false) => "",
             (false, true) => "H",
@@ -156,71 +188,9 @@ impl Instruction for HalfwordAndSignedDataTransfer {
             (true, true) => "SH",
         };
 
-        match self.load() {
+        match self.load {
             true => format!("LDR{}{} {},{}", cond, sh, rd, address),
             false => format!("STR{}{} {},{}", cond, sh, rd, address),
         }
-    }
-}
-
-impl HalfwordAndSignedDataTransfer {
-    #[inline]
-    pub fn rn(&self) -> Register {
-        self.value.bits(16..=19).into()
-    }
-
-    #[inline]
-    pub fn rd(&self) -> Register {
-        self.value.bits(12..=15).into()
-    }
-
-    #[inline]
-    pub fn rm(&self) -> Register {
-        self.value.bits(0..=3).into()
-    }
-
-    #[inline]
-    pub fn is_immediate(&self) -> bool {
-        self.value.bit(22)
-    }
-
-    #[inline]
-    pub fn immediate_hi(&self) -> u32 {
-        self.value.bits(8..=11)
-    }
-
-    #[inline]
-    pub fn immediate_lo(&self) -> u32 {
-        self.value.bits(0..=3)
-    }
-
-    #[inline]
-    pub fn pre_index(&self) -> bool {
-        self.value.bit(24)
-    }
-
-    #[inline]
-    pub fn add(&self) -> bool {
-        self.value.bit(23)
-    }
-
-    #[inline]
-    pub fn write_back(&self) -> bool {
-        self.value.bit(21)
-    }
-
-    #[inline]
-    pub fn load(&self) -> bool {
-        self.value.bit(20)
-    }
-
-    #[inline]
-    pub fn signed(&self) -> bool {
-        self.value.bit(6)
-    }
-
-    #[inline]
-    pub fn halfword(&self) -> bool {
-        self.value.bit(5)
     }
 }

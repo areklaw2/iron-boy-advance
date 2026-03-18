@@ -1,25 +1,64 @@
+use getset::CopyGetters;
+
 use crate::{
-    BitOps, CpuAction, CpuMode, Register,
-    arm::arm_instruction,
+    BitOps, Condition, CpuAction, CpuMode, Register,
     barrel_shifter::ror,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
     psr::ProgramStatusRegister,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct PsrTransfer {
-    value: u32,
+    #[getset(get_copy = "pub(crate)")]
+    cond: Condition,
+    is_mrs: bool,
+    psr_mask: u32,
+    rd: Register,
+    rm: Register,
+    is_immediate: bool,
+    rotate: u32,
+    immediate: u32,
+    is_spsr: bool,
 }
 
-arm_instruction!(PsrTransfer);
+impl PsrTransfer {
+    pub fn new(value: u32) -> Self {
+        let field_bits = value.bits(16..=19);
+        let mut psr_mask = 0u32;
+        if field_bits & 0b1000 != 0 {
+            psr_mask |= 0xFF000000;
+        }
+        if field_bits & 0b0100 != 0 {
+            psr_mask |= 0xFF0000;
+        }
+        if field_bits & 0b0010 != 0 {
+            psr_mask |= 0xFF00;
+        }
+        if field_bits & 0b0001 != 0 {
+            psr_mask |= 0xFF;
+        }
+
+        Self {
+            cond: value.bits(28..=31).into(),
+            is_mrs: value.bits(16..=21) as u8 == 0xF,
+            psr_mask,
+            rd: value.bits(12..=15).into(),
+            rm: value.bits(0..=3).into(),
+            is_immediate: value.bit(25),
+            rotate: value.bits(8..=11),
+            immediate: value.bits(0..=7),
+            is_spsr: value.bit(22),
+        }
+    }
+}
 
 impl Instruction for PsrTransfer {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let is_spsr = self.is_spsr();
-        match self.value.bits(16..=21) as u8 == 0xF {
+        let is_spsr = self.is_spsr;
+        match self.is_mrs {
             true => {
-                let rd = self.rd() as usize;
+                let rd = self.rd as usize;
                 let psr = match is_spsr {
                     false => *cpu.cpsr(),
                     true => cpu.spsr(),
@@ -27,26 +66,14 @@ impl Instruction for PsrTransfer {
                 cpu.set_register(rd, psr.into_bits());
             }
             false => {
-                let mut mask = 0u32;
-                if self.value.bit(19) {
-                    mask |= 0xFF000000;
-                }
-                if self.value.bit(18) {
-                    mask |= 0xFF0000;
-                }
-                if self.value.bit(17) {
-                    mask |= 0xFF00;
-                }
-                if self.value.bit(16) {
-                    mask |= 0xFF;
-                }
+                let mask = self.psr_mask;
 
-                let mut operand = match self.is_immediate() {
-                    false => cpu.register(self.rm() as usize),
+                let mut operand = match self.is_immediate {
+                    false => cpu.register(self.rm as usize),
                     true => {
                         let mut carry = cpu.cpsr().carry();
-                        let rotate = 2 * self.rotate();
-                        let immediate = self.immediate();
+                        let rotate = 2 * self.rotate;
+                        let immediate = self.immediate;
                         ror(immediate, rotate, &mut carry, false)
                     }
                 };
@@ -55,16 +82,18 @@ impl Instruction for PsrTransfer {
                     false => {
                         // User mode can only change flags
                         if cpu.cpsr().mode() == CpuMode::User {
-                            mask &= 0xFF000000;
-                        }
+                            let mask = mask & 0xFF000000;
+                            let bits = (cpu.cpsr().into_bits() & !mask) | (operand & mask);
+                            cpu.set_cpsr(ProgramStatusRegister::from_bits(bits));
+                        } else {
+                            // Make sure operand has the 4th bit
+                            if mask & 0xFF != 0 {
+                                operand |= 0x10;
+                            }
 
-                        // Make sure operand has the 4th bit
-                        if mask & 0xFF != 0 {
-                            operand |= 0x10;
+                            let bits = (cpu.cpsr().into_bits() & !mask) | (operand & mask);
+                            cpu.set_cpsr(ProgramStatusRegister::from_bits(bits));
                         }
-
-                        let bits = (cpu.cpsr().into_bits() & !mask) | (operand & mask);
-                        cpu.set_cpsr(ProgramStatusRegister::from_bits(bits));
                     }
                     true => {
                         if cpu.cpsr().mode() != CpuMode::User && cpu.cpsr().mode() != CpuMode::System {
@@ -79,8 +108,8 @@ impl Instruction for PsrTransfer {
     }
 
     fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond();
-        let is_spsr = self.is_spsr();
+        let cond = self.cond;
+        let is_spsr = self.is_spsr;
         let psr = match is_spsr {
             false => "CPSR",
             true => match cpu.cpsr().mode() {
@@ -94,17 +123,17 @@ impl Instruction for PsrTransfer {
             },
         };
 
-        match self.value.bits(16..=21) as u8 == 0xF {
+        match self.is_mrs {
             true => {
-                let rd = self.rd() as usize;
+                let rd = self.rd as usize;
                 format!("MRS{} {},{}", cond, rd, psr)
             }
             false => {
-                let operand = match self.is_immediate() {
-                    false => format!("{}", self.rm()),
+                let operand = match self.is_immediate {
+                    false => format!("{}", self.rm),
                     true => {
-                        let rotate = 2 * self.rotate();
-                        let immediate = self.immediate();
+                        let rotate = 2 * self.rotate;
+                        let immediate = self.immediate;
                         let expression = immediate.rotate_right(rotate);
                         format!("0x{:08X}", expression)
                     }
@@ -121,37 +150,5 @@ impl Instruction for PsrTransfer {
                 }
             }
         }
-    }
-}
-
-impl PsrTransfer {
-    #[inline]
-    pub fn rd(&self) -> Register {
-        self.value.bits(12..=15).into()
-    }
-
-    #[inline]
-    pub fn rm(&self) -> Register {
-        self.value.bits(0..=3).into()
-    }
-
-    #[inline]
-    pub fn is_immediate(&self) -> bool {
-        self.value.bit(25)
-    }
-
-    #[inline]
-    pub fn rotate(&self) -> u32 {
-        self.value.bits(8..=11)
-    }
-
-    #[inline]
-    pub fn immediate(&self) -> u32 {
-        self.value.bits(0..=7)
-    }
-
-    #[inline]
-    pub fn is_spsr(&self) -> bool {
-        self.value.bit(22)
     }
 }

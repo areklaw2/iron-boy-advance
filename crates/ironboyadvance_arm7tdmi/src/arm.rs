@@ -24,24 +24,6 @@ pub mod single_data_transfer;
 pub mod software_interrupt;
 pub mod undefined;
 
-macro_rules! arm_instruction {
-    ($name:ident) => {
-        impl $name {
-            pub fn new(value: u32) -> Self {
-                Self { value }
-            }
-
-            #[inline]
-            pub fn cond(&self) -> crate::Condition {
-                use crate::BitOps;
-                self.value.bits(28..=31).into()
-            }
-        }
-    };
-}
-
-pub(crate) use arm_instruction;
-
 pub type ArmInstructionFactory = fn(u32) -> ArmInstruction;
 
 #[derive(Debug, Clone, Copy)]
@@ -64,7 +46,7 @@ pub enum ArmInstruction {
 }
 
 impl ArmInstruction {
-    pub fn cond(&self) -> Condition {
+    pub(crate) fn cond(&self) -> Condition {
         match self {
             Self::DataProcessing(i) => i.cond(),
             Self::PsrTransfer(i) => i.cond(),

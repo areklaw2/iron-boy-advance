@@ -32,6 +32,7 @@ impl From<u16> for ShiftType {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum ShiftBy {
     Immediate,
     Register,
