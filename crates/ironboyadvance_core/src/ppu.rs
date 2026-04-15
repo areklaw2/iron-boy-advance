@@ -52,7 +52,7 @@ pub struct Ppu {
     color_special_effects_selection: ColorSpecialEffectsSelection,
     alpha_blending_coefficients: AlphaBlendingCoefficients,
     brightness_coefficient: BrightnessCoefficient,
-    pallete_ram: Vec<u8>,
+    palette_ram: Vec<u8>,
     vram: Vec<u8>,
     oam: Vec<u8>,
     #[getset(get = "pub")]
@@ -81,7 +81,7 @@ impl Ppu {
             color_special_effects_selection: ColorSpecialEffectsSelection::from_bits(0),
             alpha_blending_coefficients: AlphaBlendingCoefficients::from_bits(0),
             brightness_coefficient: BrightnessCoefficient::from_bits(0),
-            pallete_ram: vec![0; 0x400],
+            palette_ram: vec![0; 0x400],
             vram: vec![0; 0x18000],
             oam: vec![0; 0x400],
             frame_buffer: [0; PIXEL_PER_FRAME],
@@ -116,7 +116,7 @@ impl SystemMemoryAccess for Ppu {
             0x04000052..=0x04000053 => self.alpha_blending_coefficients.read_byte(address),
             0x04000054..=0x04000057 => self.brightness_coefficient.read_byte(address),
             // Access Memory
-            0x05000000..=0x05FFFFFF => self.pallete_ram[(address & 0x3FF) as usize],
+            0x05000000..=0x05FFFFFF => self.palette_ram[(address & 0x3FF) as usize],
             0x06000000..=0x06FFFFFF => {
                 let offset = (address & 0x1FFFF) as usize; // 128KB mirror
                 let index = if offset >= 0x18000 { offset - 0x8000 } else { offset };
@@ -183,7 +183,7 @@ impl SystemMemoryAccess for Ppu {
             0x04000052..=0x04000053 => self.alpha_blending_coefficients.write_byte(address, value),
             0x04000054..=0x04000057 => self.brightness_coefficient.write_byte(address, value),
             // Access Memory
-            0x05000000..=0x05FFFFFF => self.pallete_ram[(address & 0x3FF) as usize] = value,
+            0x05000000..=0x05FFFFFF => self.palette_ram[(address & 0x3FF) as usize] = value,
             0x06000000..=0x06FFFFFF => {
                 let offset = (address & 0x1FFFF) as usize; // 128KB mirror
                 let index = if offset >= 0x18000 { offset - 0x8000 } else { offset };
@@ -291,19 +291,34 @@ impl Ppu {
             return;
         }
 
-        if self.lcd_control.bg_mode() == BgMode::Mode4 {
-            self.render_mode4_scanline();
+        match self.lcd_control.bg_mode() {
+            BgMode::Mode0 => println!("mode 0"),
+            BgMode::Mode1 => todo!(),
+            BgMode::Mode2 => todo!(),
+            BgMode::Mode3 => self.render_mode3_scanline(),
+            BgMode::Mode4 => self.render_mode4_scanline(),
+            BgMode::Mode5 => todo!(),
+            BgMode::Prohibited => todo!(),
+        }
+    }
+
+    fn render_mode3_scanline(&mut self) {
+        let vram_row_offset = self.v_count as usize * HDRAW_PIXELS;
+        for x in 0..HDRAW_PIXELS {
+            let vram_index = (vram_row_offset + x) * 2;
+            let color = u16::from_le_bytes([self.vram[vram_index], self.vram[vram_index + 1]]);
+            self.frame_buffer[(self.v_count as usize) * HDRAW_PIXELS + x] = bgr555_to_rgb888(color);
         }
     }
 
     fn render_mode4_scanline(&mut self) {
         let frame_start = if self.lcd_control.display_frame_select() { 0xA000 } else { 0 };
-        let vram_row = frame_start + (self.v_count as usize) * HDRAW_PIXELS;
-        let frame_buffer_row = (self.v_count as usize) * HDRAW_PIXELS;
+        let vram_row_offset = frame_start + (self.v_count as usize) * HDRAW_PIXELS;
         for x in 0..HDRAW_PIXELS {
-            let palette_index = self.vram[vram_row + x] as usize;
-            let color = u16::from_le_bytes([self.pallete_ram[palette_index * 2], self.pallete_ram[palette_index * 2 + 1]]);
-            self.frame_buffer[frame_buffer_row + x] = bgr555_to_rgb888(color);
+            let palette_index = (self.vram[vram_row_offset + x] as usize) * 2;
+            let color = u16::from_le_bytes([self.palette_ram[palette_index], self.palette_ram[palette_index + 1]]);
+            //y * width + x
+            self.frame_buffer[(self.v_count as usize) * HDRAW_PIXELS + x] = bgr555_to_rgb888(color);
         }
     }
 }
