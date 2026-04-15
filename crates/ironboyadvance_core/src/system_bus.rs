@@ -89,7 +89,7 @@ impl SystemMemoryAccess for SystemBus {
             BIOS_BASE => self.bios.read_8(address),
             WRAM_BOARD_BASE => self.memory.read_8(address),
             WRAM_CHIP_BASE => self.memory.read_8(address),
-            IO_REGISTERS_BASE => self.io_registers.read_8(address), // theres mirrors for this see GBATEK
+            IO_REGISTERS_BASE => self.io_registers.read_8(address),
             PALETTE_RAM_BASE => self.io_registers.read_8(address),
             VRAM_BASE => self.io_registers.read_8(address),
             OAM_BASE => self.io_registers.read_8(address),
@@ -104,12 +104,52 @@ impl SystemMemoryAccess for SystemBus {
         }
     }
 
+    fn read_16(&self, address: u32) -> u16 {
+        match address & 0xFF000000 {
+            BIOS_BASE => self.bios.read_16(address),
+            WRAM_BOARD_BASE => self.memory.read_16(address),
+            WRAM_CHIP_BASE => self.memory.read_16(address),
+            IO_REGISTERS_BASE => self.io_registers.read_16(address),
+            PALETTE_RAM_BASE => self.io_registers.read_16(address),
+            VRAM_BASE => self.io_registers.read_16(address),
+            OAM_BASE => self.io_registers.read_16(address),
+            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.read_16(address),
+            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.read_16(address),
+            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_16(address),
+            SRAM_LO | SRAM_HI => self.cartridge.read_16(address),
+            _ => {
+                debug!("Unused: {:08X}", address);
+                0
+            }
+        }
+    }
+
+    fn read_32(&self, address: u32) -> u32 {
+        match address & 0xFF000000 {
+            BIOS_BASE => self.bios.read_32(address),
+            WRAM_BOARD_BASE => self.memory.read_32(address),
+            WRAM_CHIP_BASE => self.memory.read_32(address),
+            IO_REGISTERS_BASE => self.io_registers.read_32(address),
+            PALETTE_RAM_BASE => self.io_registers.read_32(address),
+            VRAM_BASE => self.io_registers.read_32(address),
+            OAM_BASE => self.io_registers.read_32(address),
+            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.read_32(address),
+            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.read_32(address),
+            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_32(address),
+            SRAM_LO | SRAM_HI => self.cartridge.read_32(address),
+            _ => {
+                debug!("Unused: {:08X}", address);
+                0
+            }
+        }
+    }
+
     fn write_8(&mut self, address: u32, value: u8) {
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.write_8(address, value),
             WRAM_BOARD_BASE => self.memory.write_8(address, value),
             WRAM_CHIP_BASE => self.memory.write_8(address, value),
-            IO_REGISTERS_BASE => self.io_registers.write_8(address, value), // theres mirrors for this see GBATEK
+            IO_REGISTERS_BASE => self.io_registers.write_8(address, value),
             PALETTE_RAM_BASE => self.io_registers.write_8(address, value),
             VRAM_BASE => self.io_registers.write_8(address, value),
             OAM_BASE => self.io_registers.write_8(address, value),
@@ -117,6 +157,40 @@ impl SystemMemoryAccess for SystemBus {
             ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_8(address, value),
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_8(address, value),
             SRAM_LO | SRAM_HI => self.cartridge.write_8(address, value),
+            _ => panic!("Unused: {:08X}", address),
+        }
+    }
+
+    fn write_16(&mut self, address: u32, value: u16) {
+        match address & 0xFF000000 {
+            BIOS_BASE => self.bios.write_16(address, value),
+            WRAM_BOARD_BASE => self.memory.write_16(address, value),
+            WRAM_CHIP_BASE => self.memory.write_16(address, value),
+            IO_REGISTERS_BASE => self.io_registers.write_16(address, value),
+            PALETTE_RAM_BASE => self.io_registers.write_16(address, value),
+            VRAM_BASE => self.io_registers.write_16(address, value),
+            OAM_BASE => self.io_registers.write_16(address, value),
+            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.write_16(address, value),
+            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_16(address, value),
+            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_16(address, value),
+            SRAM_LO | SRAM_HI => self.cartridge.write_16(address, value),
+            _ => panic!("Unused: {:08X}", address),
+        }
+    }
+
+    fn write_32(&mut self, address: u32, value: u32) {
+        match address & 0xFF000000 {
+            BIOS_BASE => self.bios.write_32(address, value),
+            WRAM_BOARD_BASE => self.memory.write_32(address, value),
+            WRAM_CHIP_BASE => self.memory.write_32(address, value),
+            IO_REGISTERS_BASE => self.io_registers.write_32(address, value),
+            PALETTE_RAM_BASE => self.io_registers.write_32(address, value),
+            VRAM_BASE => self.io_registers.write_32(address, value),
+            OAM_BASE => self.io_registers.write_32(address, value),
+            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.write_32(address, value),
+            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_32(address, value),
+            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_32(address, value),
+            SRAM_LO | SRAM_HI => self.cartridge.write_32(address, value),
             _ => panic!("Unused: {:08X}", address),
         }
     }
