@@ -269,7 +269,6 @@ mod tests {
         let tests = parse_bin_file(&file_path)?;
 
         let mut cpu = Arm7tdmiCpu::new(TestBus::default(), false, true);
-        cpu.set_bios_protection(false);
 
         for test in tests {
             let test_bus = TestBus::new(test.base_addr[0], test.opcode, test.transactions);

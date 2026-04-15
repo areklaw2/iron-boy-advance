@@ -5,7 +5,7 @@ use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
 use thiserror::Error;
 
 use crate::{
-    bios::Bios,
+    bios::{Bios, BiosError},
     cartridge::{Cartridge, CartridgeError},
     scheduler::{
         Scheduler,
@@ -33,6 +33,8 @@ pub use ppu::{CYCLES_PER_FRAME, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 
 #[derive(Error, Debug)]
 pub enum GbaError {
+    #[error("Failed to load bios: {0}")]
+    BiosError(#[from] BiosError),
     #[error("Failed to load cartridge: {0}")]
     CartridgeError(#[from] CartridgeError),
 }
@@ -49,7 +51,7 @@ impl GameBoyAdvance {
     pub fn new(rom_buffer: Vec<u8>, bios_buffer: Box<[u8]>, show_logs: bool) -> Result<GameBoyAdvance, GbaError> {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         let cartridge = Cartridge::load(rom_buffer)?;
-        let bios = Bios::load(bios_buffer);
+        let bios = Bios::load(bios_buffer)?;
         let skip_bios = !bios.loaded();
         let gba = GameBoyAdvance {
             arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone()), show_logs, skip_bios),

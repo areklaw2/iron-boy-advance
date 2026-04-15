@@ -77,6 +77,10 @@ impl MemoryInterface for SystemBus {
     fn idle_cycle(&mut self) {
         self.scheduler.borrow_mut().step(1);
     }
+
+    fn set_pc_ref(&mut self, pc: u32) {
+        self.bios.set_pc_ref(pc);
+    }
 }
 
 impl SystemMemoryAccess for SystemBus {

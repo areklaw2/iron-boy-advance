@@ -62,6 +62,8 @@ pub trait MemoryInterface {
     fn store_32(&mut self, address: u32, value: u32, access_pattern: u8);
 
     fn idle_cycle(&mut self);
+
+    fn set_pc_ref(&mut self, _pc: u32) {}
 }
 
 pub trait SystemMemoryAccess {
