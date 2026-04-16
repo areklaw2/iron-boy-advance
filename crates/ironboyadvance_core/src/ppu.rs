@@ -1,5 +1,6 @@
 use getset::Getters;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use tracing::debug;
 
 use crate::{
     io_registers::RegisterOps,
@@ -292,7 +293,7 @@ impl Ppu {
         }
 
         match self.lcd_control.bg_mode() {
-            BgMode::Mode0 => println!("mode 0"),
+            BgMode::Mode0 => debug!("mode 0"),
             BgMode::Mode1 => todo!(),
             BgMode::Mode2 => todo!(),
             BgMode::Mode3 => self.render_mode3_scanline(),

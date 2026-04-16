@@ -49,10 +49,24 @@ impl SystemMemoryAccess for IoRegisters {
         }
     }
 
+    fn read_16(&self, address: u32) -> u16 {
+        match address {
+            // Interrupt Control
+            0x04000200 | 0x04000202 | 0x04000208 => self.interrupt_controller.read_16(address),
+            // Keypad
+            0x04000130 | 0x04000132 => self.keypad.read_16(address),
+            _ => {
+                let lo = self.read_8(address) as u16;
+                let hi = self.read_8(address + 1) as u16;
+                hi << 8 | lo
+            }
+        }
+    }
+
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
             // PPU
-            0x04000000..=0x04000005 | 0x04000008..=0x04000057 => self.ppu.write_8(address, value),
+            0x04000000..=0x04000057 => self.ppu.write_8(address, value),
             // Keypad
             0x04000130..=0x04000133 => self.keypad.write_8(address, value),
             // Interrupt Control
@@ -68,6 +82,19 @@ impl SystemMemoryAccess for IoRegisters {
                 "Write byte not implemented for I/O register: {:#010X}, value: {:#04X}",
                 address, value
             ),
+        }
+    }
+
+    fn write_16(&mut self, address: u32, value: u16) {
+        match address {
+            // Interrupt Control
+            0x04000200 | 0x04000202 | 0x04000208 => self.interrupt_controller.write_16(address, value),
+            // Keypad
+            0x04000130 | 0x04000132 => self.keypad.write_16(address, value),
+            _ => {
+                self.write_8(address, (value & 0xFF) as u8);
+                self.write_8(address + 1, (value >> 8) as u8);
+            }
         }
     }
 }
