@@ -1,7 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use getset::{Getters, MutGetters};
-use ironboyadvance_arm7tdmi::memory::{MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
+use ironboyadvance_arm7tdmi::{
+    CpuState,
+    memory::{MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern},
+};
 use tracing::debug;
 
 use crate::{
@@ -41,6 +44,9 @@ pub struct SystemBus {
     io_registers: IoRegisters,
     cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler>>,
+    cpu_state: CpuState,
+    pc: u32,
+    pipeline: [u32; 2],
 }
 
 impl MemoryInterface for SystemBus {
@@ -78,8 +84,17 @@ impl MemoryInterface for SystemBus {
         self.scheduler.borrow_mut().step(1);
     }
 
-    fn set_pc_ref(&mut self, pc: u32) {
+    fn update_pc_ref(&mut self, pc: u32) {
         self.bios.set_pc_ref(pc);
+        self.pc = pc;
+    }
+
+    fn update_cpu_state_ref(&mut self, cpu_state: CpuState) {
+        self.cpu_state = cpu_state
+    }
+
+    fn update_pipeline_ref(&mut self, decoded: u32, prefetched: u32) {
+        self.pipeline = [decoded, prefetched];
     }
 }
 
@@ -98,8 +113,8 @@ impl SystemMemoryAccess for SystemBus {
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_8(address),
             SRAM_LO | SRAM_HI => self.cartridge.read_8(address),
             _ => {
-                debug!("Unused: {:08X}", address);
-                0
+                debug!("Unused Read from {:08X}", address);
+                (self.open_bus_read_32() >> ((address & 3) * 8)) as u8
             }
         }
     }
@@ -118,8 +133,8 @@ impl SystemMemoryAccess for SystemBus {
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_16(address),
             SRAM_LO | SRAM_HI => self.cartridge.read_16(address),
             _ => {
-                debug!("Unused: {:08X}", address);
-                0
+                debug!("Unused Read from {:08X}", address);
+                (self.open_bus_read_32() >> ((address & 2) * 8)) as u16
             }
         }
     }
@@ -138,8 +153,8 @@ impl SystemMemoryAccess for SystemBus {
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_32(address),
             SRAM_LO | SRAM_HI => self.cartridge.read_32(address),
             _ => {
-                debug!("Unused: {:08X}", address);
-                0
+                debug!("Unused Read from {:08X}", address);
+                self.open_bus_read_32()
             }
         }
     }
@@ -157,7 +172,7 @@ impl SystemMemoryAccess for SystemBus {
             ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_8(address, value),
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_8(address, value),
             SRAM_LO | SRAM_HI => self.cartridge.write_8(address, value),
-            _ => panic!("Unused: {:08X}", address),
+            _ => debug!("Unused Write {} to {:08X}", value, address),
         }
     }
 
@@ -174,7 +189,7 @@ impl SystemMemoryAccess for SystemBus {
             ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_16(address, value),
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_16(address, value),
             SRAM_LO | SRAM_HI => self.cartridge.write_16(address, value),
-            _ => panic!("Unused: {:08X}", address),
+            _ => debug!("Unused Write {} to {:08X}", value, address),
         }
     }
 
@@ -191,7 +206,7 @@ impl SystemMemoryAccess for SystemBus {
             ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_32(address, value),
             ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_32(address, value),
             SRAM_LO | SRAM_HI => self.cartridge.write_32(address, value),
-            _ => panic!("Unused: {:08X}", address),
+            _ => debug!("Unused Write {} to {:08X}", value, address),
         }
     }
 }
@@ -208,6 +223,34 @@ impl SystemBus {
             io_registers: IoRegisters::new(),
             cartridge,
             scheduler,
+            cpu_state: CpuState::Arm,
+            pc: 0,
+            pipeline: [0; 2],
+        }
+    }
+
+    fn open_bus_read_32(&self) -> u32 {
+        //TODO: add dma check
+        match self.cpu_state {
+            CpuState::Arm => self.pipeline[1],
+            CpuState::Thumb => {
+                let decoded = self.pipeline[0] & 0xFFFF;
+                let fetched = self.pipeline[1] & 0xFFFF;
+                let pc = self.pc;
+                match pc & 0xFF00_0000 {
+                    // Approximation, cant get to $+6 for aligned and $+2 for unaligned
+                    // See GBATEK - GBA Unpredictable Things.
+                    BIOS_BASE | OAM_BASE => match pc & 2 == 0 {
+                        true => (fetched << 16) | decoded,
+                        false => (fetched << 16) | fetched,
+                    },
+                    WRAM_CHIP_BASE => match pc & 2 == 0 {
+                        true => (decoded << 16) | fetched,
+                        false => (fetched << 16) | decoded,
+                    },
+                    _ => (fetched << 16) | fetched,
+                }
+            }
         }
     }
 

@@ -49,7 +49,7 @@ impl CpuMode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum CpuState {
+pub enum CpuState {
     Arm = 0,
     Thumb = 1,
 }

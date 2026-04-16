@@ -17,7 +17,7 @@ pub struct Bios {
     data: Box<[u8]>,
     #[getset(get_copy = "pub")]
     loaded: bool,
-    last_fetch: Cell<u32>,
+    last_fetched: Cell<u32>,
     pc_in_bios: bool,
 }
 
@@ -35,7 +35,7 @@ impl Bios {
         Ok(Self {
             data,
             loaded,
-            last_fetch: Cell::new(0xE129F000),
+            last_fetched: Cell::new(0xE129F000),
             pc_in_bios: true,
         })
     }
@@ -62,10 +62,10 @@ impl SystemMemoryAccess for Bios {
         if self.pc_in_bios && aligned_address <= BIOS_END {
             let address = aligned_address as usize;
             let word = u32::from_le_bytes(self.data[address..address + 4].try_into().unwrap());
-            self.last_fetch.set(word);
+            self.last_fetched.set(word);
             word
         } else {
-            self.last_fetch.get()
+            self.last_fetched.get()
         }
     }
 

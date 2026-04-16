@@ -123,13 +123,15 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
 
     pub fn cycle(&mut self) {
         let pc = self.general_registers[PC] & !0x1;
-        self.bus.set_pc_ref(pc);
+        self.bus.update_pc_ref(pc);
+        self.bus.update_cpu_state_ref(self.cpsr.state());
 
         match self.cpsr.state() {
             CpuState::Arm => {
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
+                self.bus.update_pipeline_ref(self.pipeline[0], self.pipeline[1]);
                 let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
                 let instruction = (self.arm_lut[lut_index as usize])(instruction);
                 self.last_instruction = Some(LastInstruction::Arm(instruction));
@@ -156,6 +158,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_16(pc, self.next_memory_access);
+                self.bus.update_pipeline_ref(self.pipeline[0], self.pipeline[1]);
                 let lut_index = (instruction) as u16 >> 6;
                 let instruction = (self.thumb_lut[lut_index as usize])(instruction as u16);
                 self.last_instruction = Some(LastInstruction::Thumb(instruction));
@@ -214,7 +217,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     pub(crate) fn pipeline_flush(&mut self) {
-        self.bus.set_pc_ref(self.general_registers[PC]);
+        self.bus.update_pc_ref(self.general_registers[PC]);
+        self.bus.update_cpu_state_ref(self.cpsr.state());
         match self.cpsr.state() {
             CpuState::Arm => {
                 self.pipeline[0] = self.load_32(
@@ -228,6 +232,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 );
                 self.advance_pc_arm();
                 self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Sequential;
+                self.bus.update_pipeline_ref(self.pipeline[0], self.pipeline[1]);
             }
             CpuState::Thumb => {
                 self.pipeline[0] = self.load_16(
@@ -241,6 +246,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 );
                 self.advance_pc_thumb();
                 self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Sequential;
+                self.bus.update_pipeline_ref(self.pipeline[0], self.pipeline[1]);
             }
         }
     }

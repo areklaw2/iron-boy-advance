@@ -1,6 +1,6 @@
 use std::ops::BitOr;
 
-use crate::cpu::Arm7tdmiCpu;
+use crate::{CpuState, cpu::Arm7tdmiCpu};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MemoryAccess {
@@ -63,7 +63,11 @@ pub trait MemoryInterface {
 
     fn idle_cycle(&mut self);
 
-    fn set_pc_ref(&mut self, _pc: u32) {}
+    fn update_pc_ref(&mut self, _pc: u32) {}
+
+    fn update_cpu_state_ref(&mut self, _cpu_state: CpuState) {}
+
+    fn update_pipeline_ref(&mut self, _decoded: u32, _prefetched: u32) {}
 }
 
 pub trait SystemMemoryAccess {
