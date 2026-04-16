@@ -53,11 +53,11 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     }
 
     fn load_16(&mut self, address: u32, access: u8) -> u32 {
-        self.bus.load_16(address & !1, access)
+        self.bus.load_16(address, access)
     }
 
     fn load_32(&mut self, address: u32, access: u8) -> u32 {
-        self.bus.load_32(address & !3, access)
+        self.bus.load_32(address, access)
     }
 
     fn store_8(&mut self, address: u32, value: u8, access: u8) {
@@ -65,11 +65,11 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     }
 
     fn store_16(&mut self, address: u32, value: u16, access: u8) {
-        self.bus.store_16(address & !1, value, access);
+        self.bus.store_16(address, value, access);
     }
 
     fn store_32(&mut self, address: u32, value: u32, access: u8) {
-        self.bus.store_32(address & !3, value, access);
+        self.bus.store_32(address, value, access);
     }
 
     fn idle_cycle(&mut self) {

@@ -120,6 +120,7 @@ impl SystemMemoryAccess for SystemBus {
     }
 
     fn read_16(&self, address: u32) -> u16 {
+        let address = address & !1;
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.read_16(address),
             WRAM_BOARD_BASE => self.memory.read_16(address),
@@ -140,6 +141,7 @@ impl SystemMemoryAccess for SystemBus {
     }
 
     fn read_32(&self, address: u32) -> u32 {
+        let address = address & !3;
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.read_32(address),
             WRAM_BOARD_BASE => self.memory.read_32(address),
@@ -177,6 +179,7 @@ impl SystemMemoryAccess for SystemBus {
     }
 
     fn write_16(&mut self, address: u32, value: u16) {
+        let address = address & !1;
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.write_16(address, value),
             WRAM_BOARD_BASE => self.memory.write_16(address, value),
@@ -194,6 +197,7 @@ impl SystemMemoryAccess for SystemBus {
     }
 
     fn write_32(&mut self, address: u32, value: u32) {
+        let address = address & !3;
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.write_32(address, value),
             WRAM_BOARD_BASE => self.memory.write_32(address, value),

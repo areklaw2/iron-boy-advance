@@ -23,15 +23,16 @@ pub struct Bios {
 
 impl Bios {
     pub fn load(buffer: Box<[u8]>) -> Result<Bios, BiosError> {
-        let length = buffer.len();
-        if length != 0x4000 {
-            return Err(BiosError::InvalidBiosLength(length));
-        }
-
-        let (data, loaded) = match !buffer.is_empty() {
-            true => (buffer, true),
-            false => (Box::new([0u8; 0x4000]) as Box<[u8]>, false),
+        let (data, loaded) = match buffer.is_empty() {
+            true => (Box::new([0u8; 0x4000]) as Box<[u8]>, false),
+            false => {
+                if buffer.len() != 0x4000 {
+                    return Err(BiosError::InvalidBiosLength(buffer.len()));
+                }
+                (buffer, true)
+            }
         };
+
         Ok(Self {
             data,
             loaded,
