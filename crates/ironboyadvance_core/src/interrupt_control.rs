@@ -40,23 +40,11 @@ impl SystemMemoryAccess for InterruptController {
         }
     }
 
-    fn read_16(&self, address: u32) -> u16 {
-        match address {
-            // IE
-            0x04000200 => self.interrupt_enable,
-            // IF
-            0x04000202 => self.interrupt_flags,
-            // IME
-            0x04000208 => self.interrupt_master_enable as u16,
-            _ => panic!("Invalid halfword read for InterruptController: {:#010X}", address),
-        }
-    }
-
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
             // IE
             0x04000200..=0x04000201 => self.interrupt_enable.write_byte(address, value),
-            // IF — write-1-to-clear (acknowledge)
+            // IF
             0x04000202..=0x04000203 => {
                 let shift = ((address & 1) * 8) as u16;
                 self.interrupt_flags &= !(u16::from(value) << shift);
@@ -64,20 +52,6 @@ impl SystemMemoryAccess for InterruptController {
             // IME
             0x04000208..=0x0400020B => self.interrupt_master_enable.write_byte(address, value),
             _ => panic!("Invalid byte write for InterruptController: {:#010X}", address),
-        }
-    }
-
-    fn write_16(&mut self, address: u32, value: u16) {
-        match address {
-            // IE
-            0x04000200 => self.interrupt_enable = value,
-            // IF — write-1-to-clear (acknowledge)
-            0x04000202 => self.interrupt_flags &= !value,
-            // IME
-            0x04000208 => {
-                self.interrupt_master_enable = (self.interrupt_master_enable & 0xFFFF_0000) | (value as u32);
-            }
-            _ => panic!("Invalid halfword write for InterruptController: {:#010X}", address),
         }
     }
 }

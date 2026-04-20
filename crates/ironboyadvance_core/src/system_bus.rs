@@ -114,7 +114,7 @@ impl SystemMemoryAccess for SystemBus {
             SRAM_LO | SRAM_HI => self.cartridge.read_8(address),
             _ => {
                 debug!("Unused Read from {:08X}", address);
-                (self.open_bus_read_32() >> ((address & 3) * 8)) as u8
+                self.open_bus_read(address, MemoryAccessWidth::Byte) as u8
             }
         }
     }
@@ -135,7 +135,7 @@ impl SystemMemoryAccess for SystemBus {
             SRAM_LO | SRAM_HI => self.cartridge.read_16(address),
             _ => {
                 debug!("Unused Read from {:08X}", address);
-                (self.open_bus_read_32() >> ((address & 2) * 8)) as u16
+                self.open_bus_read(address, MemoryAccessWidth::HalfWord) as u16
             }
         }
     }
@@ -156,7 +156,7 @@ impl SystemMemoryAccess for SystemBus {
             SRAM_LO | SRAM_HI => self.cartridge.read_32(address),
             _ => {
                 debug!("Unused Read from {:08X}", address);
-                self.open_bus_read_32()
+                self.open_bus_read(address, MemoryAccessWidth::Word)
             }
         }
     }
@@ -233,9 +233,9 @@ impl SystemBus {
         }
     }
 
-    fn open_bus_read_32(&self) -> u32 {
+    fn open_bus_read(&self, address: u32, width: MemoryAccessWidth) -> u32 {
         //TODO: add dma check
-        match self.cpu_state {
+        let value = match self.cpu_state {
             CpuState::Arm => self.pipeline[1],
             CpuState::Thumb => {
                 let decoded = self.pipeline[0] & 0xFFFF;
@@ -255,6 +255,12 @@ impl SystemBus {
                     _ => (fetched << 16) | fetched,
                 }
             }
+        };
+
+        match width {
+            MemoryAccessWidth::Byte => value >> ((address & 3) * 8),
+            MemoryAccessWidth::HalfWord => value >> ((address & 2) * 8),
+            MemoryAccessWidth::Word => value,
         }
     }
 

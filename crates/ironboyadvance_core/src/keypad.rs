@@ -108,16 +108,6 @@ impl SystemMemoryAccess for Keypad {
         }
     }
 
-    fn read_16(&self, address: u32) -> u16 {
-        match address {
-            // KEYINPUT
-            0x04000130 => self.key_input.register(),
-            // KEYCNT
-            0x04000132 => self.key_control.register(),
-            _ => panic!("Invalid halfword read for Keypad: {:#010X}", address),
-        }
-    }
-
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
             // KEYINPUT
@@ -125,16 +115,6 @@ impl SystemMemoryAccess for Keypad {
             // KEYCNT
             0x04000132..=0x04000133 => self.key_control.write_byte(address, value),
             _ => panic!("Invalid byte write for Keypad: {:#010X}", address),
-        }
-    }
-
-    fn write_16(&mut self, address: u32, value: u16) {
-        match address {
-            // KEYINPUT
-            0x04000130 => {}
-            // KEYCNT
-            0x04000132 => self.key_control.write_register(value),
-            _ => panic!("Invalid halfword write for Keypad: {:#010X}", address),
         }
     }
 }
