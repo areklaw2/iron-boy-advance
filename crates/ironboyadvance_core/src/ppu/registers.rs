@@ -32,13 +32,42 @@ impl BgMode {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum BitMapFrameSelection {
+    Frame0,
+    Frame1,
+}
+
+impl BitMapFrameSelection {
+    pub const fn from_bits(bits: u8) -> Self {
+        use BitMapFrameSelection::*;
+        match bits {
+            0 => Frame0,
+            _ => Frame1,
+        }
+    }
+
+    pub const fn into_bits(self) -> u8 {
+        self as u8
+    }
+
+    pub fn base_address(&self) -> usize {
+        use BitMapFrameSelection::*;
+        match self {
+            Frame0 => 0,
+            Frame1 => 0xA000,
+        }
+    }
+}
+
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct LcdControl {
     #[bits(3)]
     bg_mode: BgMode,
     cgb_mode: bool,
-    display_frame_select: bool,
+    #[bits(1)]
+    display_frame_select: BitMapFrameSelection,
     h_blank_interval_free: bool,
     obj_character_vram_mapping: bool,
     forced_blank: bool,
