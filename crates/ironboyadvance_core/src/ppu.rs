@@ -350,5 +350,5 @@ fn bgr555_to_rgb888(color: u16) -> u32 {
     let r = (color & 0x1F) as u32;
     let g = ((color >> 5) & 0x1F) as u32;
     let b = ((color >> 10) & 0x1F) as u32;
-    (r << 19) | (g << 11) | (b << 3)
+    ((r << 3 | r >> 2) << 16) | ((g << 3 | g >> 2) << 8) | (b << 3 | b >> 2)
 }
