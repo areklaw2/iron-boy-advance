@@ -4,23 +4,27 @@ use getset::{Getters, MutGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use tracing::debug;
 
-use crate::{interrupt_control::InterruptController, keypad::Keypad, ppu::Ppu, system_control::SystemController};
+use crate::{
+    interrupt_control::InterruptController, keypad::Keypad, ppu::Ppu, system_control::SystemController, timers::Timers,
+};
 
 #[derive(Getters, MutGetters, Setters)]
 #[getset(get = "pub", get_mut = "pub")]
 pub struct IoRegisters {
     ppu: Ppu,
+    timers: Timers,
+    // TODO remove when doing soudn this just gets the bios to pass
+    sound_bias: u16,
     keypad: Keypad,
     interrupt_controller: InterruptController,
     system_controller: SystemController,
-    // TODO remove when doing soudn this just gets the bios to pass
-    sound_bias: u16,
 }
 
 impl IoRegisters {
     pub fn new() -> Self {
         IoRegisters {
             ppu: Ppu::new(),
+            timers: Timers::new(),
             keypad: Keypad::new(),
             interrupt_controller: InterruptController::new(),
             system_controller: SystemController::new(),
@@ -36,6 +40,8 @@ impl SystemMemoryAccess for IoRegisters {
             0x04000000..=0x04000057 => self.ppu.read_8(address),
             // TODO remove when doing soudn this just gets the bios to pass
             0x04000088..=0x04000089 => self.sound_bias.read_byte(address),
+            // Timers
+            0x04000100..=0x0400010F => self.timers.read_8(address),
             // Keypad
             0x04000130..=0x04000133 => self.keypad.read_8(address),
             // Interrupt Control
@@ -60,6 +66,8 @@ impl SystemMemoryAccess for IoRegisters {
             0x04000000..=0x04000057 => self.ppu.write_8(address, value),
             // TODO remove when doing soudn this just gets the bios to pass
             0x04000088..=0x04000089 => self.sound_bias.write_byte(address, value),
+            // Timers
+            0x04000100..=0x0400010F => self.timers.write_8(address, value),
             // Keypad
             0x04000130..=0x04000133 => self.keypad.write_8(address, value),
             // Interrupt Control

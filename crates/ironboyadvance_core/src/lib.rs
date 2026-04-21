@@ -25,6 +25,7 @@ mod ppu;
 mod scheduler;
 mod system_bus;
 mod system_control;
+mod timers;
 
 pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 
