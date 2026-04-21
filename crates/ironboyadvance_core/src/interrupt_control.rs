@@ -23,7 +23,7 @@ impl InterruptController {
 
     pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) {
         let interrupt_flag = 1 << (interrupt_event as u8);
-        self.interrupt_flags |= interrupt_flag
+        self.interrupt_flags |= interrupt_flag;
     }
 }
 

@@ -13,6 +13,8 @@ pub struct IoRegisters {
     keypad: Keypad,
     interrupt_controller: InterruptController,
     system_controller: SystemController,
+    // TODO remove when doing soudn this just gets the bios to pass
+    sound_bias: u16,
 }
 
 impl IoRegisters {
@@ -22,6 +24,7 @@ impl IoRegisters {
             keypad: Keypad::new(),
             interrupt_controller: InterruptController::new(),
             system_controller: SystemController::new(),
+            sound_bias: 0x0200,
         }
     }
 }
@@ -31,6 +34,8 @@ impl SystemMemoryAccess for IoRegisters {
         match address {
             // PPU
             0x04000000..=0x04000057 => self.ppu.read_8(address),
+            // TODO remove when doing soudn this just gets the bios to pass
+            0x04000088..=0x04000089 => self.sound_bias.read_byte(address),
             // Keypad
             0x04000130..=0x04000133 => self.keypad.read_8(address),
             // Interrupt Control
@@ -53,6 +58,8 @@ impl SystemMemoryAccess for IoRegisters {
         match address {
             // PPU
             0x04000000..=0x04000057 => self.ppu.write_8(address, value),
+            // TODO remove when doing soudn this just gets the bios to pass
+            0x04000088..=0x04000089 => self.sound_bias.write_byte(address, value),
             // Keypad
             0x04000130..=0x04000133 => self.keypad.write_8(address, value),
             // Interrupt Control

@@ -296,8 +296,8 @@ impl Ppu {
 
         match self.lcd_control.bg_mode() {
             BgMode::Mode0 => debug!("mode 0"),
-            BgMode::Mode1 => todo!(),
-            BgMode::Mode2 => todo!(),
+            BgMode::Mode1 => debug!("mode 1"),
+            BgMode::Mode2 => debug!("mode 2"),
             BgMode::Mode3 => self.render_mode3_scanline(),
             BgMode::Mode4 => self.render_mode4_scanline(),
             BgMode::Mode5 => self.render_mode5_scanline(),
@@ -306,37 +306,43 @@ impl Ppu {
     }
 
     fn render_mode3_scanline(&mut self) {
-        let vram_row_offset = self.v_count as usize * VIEWPORT_WIDTH;
+        let row_offset = (self.v_count as usize) * VIEWPORT_WIDTH;
         for x in 0..VIEWPORT_WIDTH {
-            let vram_index = (vram_row_offset + x) * 2;
+            let vram_index = (row_offset + x) * 2;
             let color = u16::from_le_bytes([self.vram[vram_index], self.vram[vram_index + 1]]);
-            self.frame_buffer[(self.v_count as usize) * VIEWPORT_WIDTH + x] = bgr555_to_rgb888(color);
+            self.frame_buffer[row_offset + x] = bgr555_to_rgb888(color);
         }
     }
 
     fn render_mode4_scanline(&mut self) {
         let frame_base_address = self.lcd_control.display_frame_select().base_address();
-        let vram_row_offset = frame_base_address + (self.v_count as usize) * VIEWPORT_WIDTH;
+        let row_offset = (self.v_count as usize) * VIEWPORT_WIDTH;
         for x in 0..VIEWPORT_WIDTH {
-            let palette_index = (self.vram[vram_row_offset + x] as usize) * 2;
+            let palette_index = (self.vram[frame_base_address + row_offset + x] as usize) * 2;
             let color = u16::from_le_bytes([self.palette_ram[palette_index], self.palette_ram[palette_index + 1]]);
-            //y * width + x
-            self.frame_buffer[(self.v_count as usize) * VIEWPORT_WIDTH + x] = bgr555_to_rgb888(color);
+            self.frame_buffer[row_offset + x] = bgr555_to_rgb888(color);
         }
     }
 
     fn render_mode5_scanline(&mut self) {
+        let row_offset = (self.v_count as usize) * VIEWPORT_WIDTH;
+        let backdrop = bgr555_to_rgb888(u16::from_le_bytes([self.palette_ram[0], self.palette_ram[1]]));
+
+        // handles height
         if (self.v_count as usize) >= BG_MODE_5_HEIGHT {
+            self.frame_buffer[row_offset..row_offset + VIEWPORT_WIDTH].fill(backdrop);
             return;
         }
 
         let frame_base_address = self.lcd_control.display_frame_select().base_address();
-        let vram_row_offset = frame_base_address + (self.v_count as usize) * BG_MODE_5_WIDTH;
         for x in 0..BG_MODE_5_WIDTH {
-            let vram_index = (vram_row_offset + x) * 2;
+            let vram_index = frame_base_address + ((self.v_count as usize) * BG_MODE_5_WIDTH + x) * 2;
             let color = u16::from_le_bytes([self.vram[vram_index], self.vram[vram_index + 1]]);
-            self.frame_buffer[(self.v_count as usize) * BG_MODE_5_WIDTH + x] = bgr555_to_rgb888(color);
+            self.frame_buffer[row_offset + x] = bgr555_to_rgb888(color);
         }
+
+        // handles width
+        self.frame_buffer[row_offset + BG_MODE_5_WIDTH..row_offset + VIEWPORT_WIDTH].fill(backdrop);
     }
 }
 
