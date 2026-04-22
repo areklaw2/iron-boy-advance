@@ -1,4 +1,5 @@
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use tracing::debug;
 
 pub struct Timers {}
 
@@ -20,10 +21,11 @@ impl Timers {
 
 impl SystemMemoryAccess for Timers {
     fn read_8(&self, address: u32) -> u8 {
-        todo!("{}", address)
+        debug!("{}", address);
+        0
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
-        todo!("{}, {}", address, value)
+        debug!("{}, {}", address, value)
     }
 }
