@@ -4,5 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = "4.5.23"
 ironboyadvance_core = { path = "../../crates/ironboyadvance_core" }
+clap = { version = "4.5.23", features = ["derive"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+thiserror = { workspace = true }
+getset = { workspace = true }
+
+winit = "0.30"
+wgpu = "29.0.1"
+pollster = "0.4.0"
+bytemuck = { version = "1.16", features = ["derive"] }
+egui = "0.34.1"
+egui-wgpu = "0.34.1"
+egui-winit = "0.34.1"
+image = { version = "0.25.10", default-features = false, features = ["png"] }

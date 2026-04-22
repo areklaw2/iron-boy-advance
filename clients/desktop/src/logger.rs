@@ -2,7 +2,7 @@ use std::fs::OpenOptions;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
-pub fn initilize_logger() -> WorkerGuard {
+pub fn initialize_logger() -> WorkerGuard {
     let log_file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -17,9 +17,9 @@ pub fn initilize_logger() -> WorkerGuard {
             fmt::layer()
                 .with_writer(non_blocking)
                 .with_ansi(false)
-                .without_time() // remove this
-                .with_target(false) // remove this
-                .with_level(false) // remove this
+                .without_time()
+                .with_target(false)
+                .with_level(false)
                 .with_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug"))),
         )
         .init();

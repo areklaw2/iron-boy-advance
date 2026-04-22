@@ -29,7 +29,6 @@ impl FrameTimer {
             std::thread::sleep(remaining);
         }
         self.frame_clock = target;
-        self.frame_clock = target;
     }
 
     pub fn count_frame(&mut self) {
