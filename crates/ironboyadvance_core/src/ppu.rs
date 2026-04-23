@@ -295,12 +295,12 @@ impl Ppu {
         }
 
         match self.lcd_control.bg_mode() {
-            BgMode::Mode0 => debug!("mode 0"),
-            BgMode::Mode1 => debug!("mode 1"),
-            BgMode::Mode2 => debug!("mode 2"),
-            BgMode::Mode3 => self.render_mode3_scanline(),
-            BgMode::Mode4 => self.render_mode4_scanline(),
-            BgMode::Mode5 => self.render_mode5_scanline(),
+            BgMode::Zero => debug!("mode 0"),
+            BgMode::One => debug!("mode 1"),
+            BgMode::Two => debug!("mode 2"),
+            BgMode::Three => self.render_mode3_scanline(),
+            BgMode::Four => self.render_mode4_scanline(),
+            BgMode::Five => self.render_mode5_scanline(),
             BgMode::Prohibited => todo!(),
         }
     }

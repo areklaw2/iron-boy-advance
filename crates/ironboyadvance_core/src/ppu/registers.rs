@@ -4,12 +4,12 @@ use crate::io_registers::RegisterOps;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BgMode {
-    Mode0,
-    Mode1,
-    Mode2,
-    Mode3,
-    Mode4,
-    Mode5,
+    Zero,
+    One,
+    Two,
+    Three,
+    Four,
+    Five,
     Prohibited,
 }
 
@@ -17,12 +17,12 @@ impl BgMode {
     pub const fn from_bits(bits: u8) -> Self {
         use BgMode::*;
         match bits {
-            0x0 => Mode0,
-            0x1 => Mode1,
-            0x2 => Mode2,
-            0x3 => Mode3,
-            0x4 => Mode4,
-            0x5 => Mode5,
+            0x0 => Zero,
+            0x1 => One,
+            0x2 => Two,
+            0x3 => Three,
+            0x4 => Four,
+            0x5 => Five,
             _ => Prohibited,
         }
     }
@@ -33,17 +33,17 @@ impl BgMode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum BitMapFrameSelection {
-    Frame0,
-    Frame1,
+pub enum FrameSelection {
+    Zero,
+    One,
 }
 
-impl BitMapFrameSelection {
+impl FrameSelection {
     pub const fn from_bits(bits: u8) -> Self {
-        use BitMapFrameSelection::*;
+        use FrameSelection::*;
         match bits {
-            0 => Frame0,
-            _ => Frame1,
+            0 => Zero,
+            _ => One,
         }
     }
 
@@ -51,11 +51,11 @@ impl BitMapFrameSelection {
         self as u8
     }
 
-    pub fn base_address(&self) -> usize {
-        use BitMapFrameSelection::*;
+    pub fn base_address(self) -> usize {
+        use FrameSelection::*;
         match self {
-            Frame0 => 0,
-            Frame1 => 0xA000,
+            Zero => 0,
+            One => 0xA000,
         }
     }
 }
@@ -67,7 +67,7 @@ pub struct LcdControl {
     bg_mode: BgMode,
     cgb_mode: bool,
     #[bits(1)]
-    display_frame_select: BitMapFrameSelection,
+    display_frame_select: FrameSelection,
     h_blank_interval_free: bool,
     obj_character_vram_mapping: bool,
     forced_blank: bool,
@@ -116,22 +116,99 @@ impl RegisterOps<u16> for LcdStatus {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ScreenSize {
+    Zero,
+    One,
+    Two,
+    Three,
+}
+
+impl ScreenSize {
+    pub const fn from_bits(bits: u8) -> Self {
+        use ScreenSize::*;
+        match bits {
+            0x0 => Zero,
+            0x1 => One,
+            0x2 => Two,
+            _ => Three,
+        }
+    }
+
+    pub const fn into_bits(self) -> u8 {
+        self as u8
+    }
+
+    pub fn text_tile_map_size(self) -> (u16, u16) {
+        use ScreenSize::*;
+        match self {
+            Zero => (32, 32),
+            One => (64, 32),
+            Two => (32, 64),
+            Three => (64, 64),
+        }
+    }
+    pub fn affine_tile_map_size(self) -> (u16, u16) {
+        use ScreenSize::*;
+        match self {
+            Zero => (16, 16),
+            One => (32, 32),
+            Two => (64, 64),
+            Three => (128, 128),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CharacterBaseBlock(u8);
+
+impl CharacterBaseBlock {
+    pub const fn from_bits(bits: u8) -> Self {
+        Self(bits & 0b11)
+    }
+
+    pub const fn into_bits(self) -> u8 {
+        self.0
+    }
+
+    pub const fn vram_offset(self) -> u32 {
+        self.0 as u32 * 0x4000
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ScreenBaseBlock(u8);
+
+impl ScreenBaseBlock {
+    pub const fn from_bits(bits: u8) -> Self {
+        Self(bits & 0x1F)
+    }
+
+    pub const fn into_bits(self) -> u8 {
+        self.0
+    }
+
+    pub const fn vram_offset(self) -> u32 {
+        self.0 as u32 * 0x800
+    }
+}
+
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct BgControl {
     #[bits(2)]
     priority: u8,
     #[bits(2)]
-    character_base_block: u8, // BG Tile Data
+    character_base_block: CharacterBaseBlock, // BG Tile Data
     #[bits(2)]
     _reserved: u8,
-    mosiac: bool,
+    mosaic: bool,
     colors: bool,
     #[bits(5)]
-    screen_base_block: u8, // BG Map Data
+    screen_base_block: ScreenBaseBlock, // BG Map Data
     display_area_overflow: bool,
     #[bits(2)]
-    screen_size: u8,
+    screen_size: ScreenSize,
 }
 
 impl RegisterOps<u16> for BgControl {
@@ -306,6 +383,7 @@ impl RegisterOps<u32> for MosiacSize {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ColorSpecialEffect {
     None,
     AlphaBlending,
