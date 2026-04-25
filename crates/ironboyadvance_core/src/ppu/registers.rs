@@ -43,7 +43,8 @@ impl FrameSelection {
         use FrameSelection::*;
         match bits {
             0 => Zero,
-            _ => One,
+            1 => One,
+            _ => unreachable!(),
         }
     }
 
@@ -131,7 +132,8 @@ impl ScreenSize {
             0x0 => Zero,
             0x1 => One,
             0x2 => Two,
-            _ => Three,
+            0x3 => Three,
+            _ => unreachable!(),
         }
     }
 
@@ -193,6 +195,27 @@ impl ScreenBaseBlock {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum DisplayAreaOverflow {
+    Transparent,
+    Wraparound,
+}
+
+impl DisplayAreaOverflow {
+    pub const fn from_bits(bits: u8) -> Self {
+        use DisplayAreaOverflow::*;
+        match bits {
+            0x0 => Transparent,
+            0x1 => Wraparound,
+            _ => unreachable!(),
+        }
+    }
+
+    pub const fn into_bits(self) -> u8 {
+        self as u8
+    }
+}
+
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct BgControl {
@@ -206,7 +229,8 @@ pub struct BgControl {
     colors: bool,
     #[bits(5)]
     screen_base_block: ScreenBaseBlock, // BG Map Data
-    display_area_overflow: bool,
+    #[bits(1)]
+    display_area_overflow: DisplayAreaOverflow,
     #[bits(2)]
     screen_size: ScreenSize,
 }
@@ -395,10 +419,11 @@ impl ColorSpecialEffect {
     pub const fn from_bits(bits: u8) -> Self {
         use ColorSpecialEffect::*;
         match bits {
+            0b00 => None,
             0b01 => AlphaBlending,
             0b10 => BrightnessIncrease,
             0b11 => BrightnessDecrease,
-            _ => None,
+            _ => unreachable!(),
         }
     }
 
