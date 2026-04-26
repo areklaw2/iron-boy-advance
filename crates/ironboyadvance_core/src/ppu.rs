@@ -4,7 +4,7 @@ use tracing::debug;
 
 use crate::{
     io_registers::RegisterOps,
-    ppu::registers::*,
+    ppu::{registers::*, tiles::TextBgScreenEntry},
     scheduler::event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
 };
 
@@ -33,6 +33,7 @@ const BG_MODE_5_WIDTH: usize = 160;
 const BG_MODE_5_HEIGHT: usize = 128;
 
 mod registers;
+mod tiles;
 
 #[derive(Getters)]
 pub struct Ppu {
@@ -294,8 +295,11 @@ impl Ppu {
             return;
         }
 
+        //Only drawing on bg 0 right now
+        let bg = 0;
+
         match self.lcd_control.bg_mode() {
-            BgMode::Zero => debug!("mode 0"),
+            BgMode::Zero => self.render_mode0_scanline(bg),
             BgMode::One => debug!("mode 1"),
             BgMode::Two => debug!("mode 2"),
             BgMode::Three => self.render_mode3_scanline(),
@@ -305,11 +309,79 @@ impl Ppu {
         }
     }
 
+    fn render_mode0_scanline(&mut self, bg: usize) {
+        let y = self.v_count;
+        for x in 0..VIEWPORT_WIDTH {
+            let scroll_x = self.bg_x_offsets[bg].offset();
+            let scroll_y = self.bg_y_offsets[bg].offset();
+            let screen_size = self.bg_controls[bg].screen_size();
+            let (map_width_pixel, map_height_pixel) = screen_size.text_map_pixel_size();
+            let map_pixel_x = (x as u16 + scroll_x) % map_width_pixel;
+            let map_pixel_y = (y as u16 + scroll_y) % map_height_pixel;
+            let map_tile_x = map_pixel_x / 8;
+            let map_tile_y = map_pixel_y / 8;
+
+            let screen_block_columns = screen_size.screen_block_columns();
+            let screen_block_x = map_tile_x / 32;
+            let screen_block_y = map_tile_y / 32;
+            let screen_block_index = screen_block_x + screen_block_y * screen_block_columns;
+
+            let block_tile_x = map_tile_x % 32;
+            let block_tile_y = map_tile_y % 32;
+            let screen_entry_index = screen_block_index * 1024 + block_tile_y * 32 + block_tile_x;
+
+            let screen_block_base = self.bg_controls[bg].screen_base_block().vram_offset();
+            let screen_entry_address = screen_block_base + screen_entry_index as usize * 2;
+            let screen_entry = TextBgScreenEntry::from_bits(u16::from_le_bytes([
+                self.vram[screen_entry_address],
+                self.vram[screen_entry_address + 1],
+            ]));
+
+            let tile_pixel_x = map_pixel_x % 8;
+            let tile_pixel_x = if screen_entry.horizontal_flip() {
+                7 - tile_pixel_x
+            } else {
+                tile_pixel_x
+            };
+            let tile_pixel_y = map_pixel_y % 8;
+            let tile_pixel_y = if screen_entry.vertical_flip() {
+                7 - tile_pixel_y
+            } else {
+                tile_pixel_y
+            };
+
+            let character_block_base = self.bg_controls[bg].character_base_block().vram_offset();
+
+            // TODO: return Option<u16> for proper transparency once multiple BGs are wired up
+            let palette_index = match self.bg_controls[bg].color_mode() {
+                ColorMode::Color16 => {
+                    let tile_address = character_block_base + screen_entry.tile_index() as usize * 32;
+                    let byte = self.vram[tile_address + tile_pixel_y as usize * 4 + tile_pixel_x as usize / 2];
+                    let nibble = if tile_pixel_x & 1 == 0 { byte & 0xF } else { byte >> 4 };
+                    if nibble == 0 {
+                        0
+                    } else {
+                        screen_entry.palette_bank() as usize * 16 + nibble as usize
+                    }
+                }
+                ColorMode::Color256 => {
+                    let tile_address = character_block_base + screen_entry.tile_index() as usize * 64;
+                    self.vram[tile_address + tile_pixel_y as usize * 8 + tile_pixel_x as usize] as usize
+                }
+            };
+
+            let palette_address = palette_index * 2;
+            let color = u16::from_le_bytes([self.palette_ram[palette_address], self.palette_ram[palette_address + 1]]);
+            let frame_index = y as usize * VIEWPORT_WIDTH + x;
+            self.frame_buffer[frame_index] = bgr555_to_rgb888(color);
+        }
+    }
+
     fn render_mode3_scanline(&mut self) {
         let row_offset = (self.v_count as usize) * VIEWPORT_WIDTH;
         for x in 0..VIEWPORT_WIDTH {
-            let vram_index = (row_offset + x) * 2;
-            let color = u16::from_le_bytes([self.vram[vram_index], self.vram[vram_index + 1]]);
+            let vram_address = (row_offset + x) * 2;
+            let color = u16::from_le_bytes([self.vram[vram_address], self.vram[vram_address + 1]]);
             self.frame_buffer[row_offset + x] = bgr555_to_rgb888(color);
         }
     }
@@ -318,8 +390,8 @@ impl Ppu {
         let frame_base_address = self.lcd_control.display_frame_select().base_address();
         let row_offset = (self.v_count as usize) * VIEWPORT_WIDTH;
         for x in 0..VIEWPORT_WIDTH {
-            let palette_index = (self.vram[frame_base_address + row_offset + x] as usize) * 2;
-            let color = u16::from_le_bytes([self.palette_ram[palette_index], self.palette_ram[palette_index + 1]]);
+            let palette_address = (self.vram[frame_base_address + row_offset + x] as usize) * 2;
+            let color = u16::from_le_bytes([self.palette_ram[palette_address], self.palette_ram[palette_address + 1]]);
             self.frame_buffer[row_offset + x] = bgr555_to_rgb888(color);
         }
     }
@@ -336,8 +408,8 @@ impl Ppu {
 
         let frame_base_address = self.lcd_control.display_frame_select().base_address();
         for x in 0..BG_MODE_5_WIDTH {
-            let vram_index = frame_base_address + ((self.v_count as usize) * BG_MODE_5_WIDTH + x) * 2;
-            let color = u16::from_le_bytes([self.vram[vram_index], self.vram[vram_index + 1]]);
+            let vram_address = frame_base_address + ((self.v_count as usize) * BG_MODE_5_WIDTH + x) * 2;
+            let color = u16::from_le_bytes([self.vram[vram_address], self.vram[vram_address + 1]]);
             self.frame_buffer[row_offset + x] = bgr555_to_rgb888(color);
         }
 

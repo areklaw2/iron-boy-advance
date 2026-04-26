@@ -141,22 +141,33 @@ impl ScreenSize {
         self as u8
     }
 
-    pub fn text_tile_map_size(self) -> (u16, u16) {
+    pub fn text_map_pixel_size(self) -> (u16, u16) {
         use ScreenSize::*;
         match self {
-            Zero => (32, 32),
-            One => (64, 32),
-            Two => (32, 64),
-            Three => (64, 64),
+            Zero => (256, 256),
+            One => (512, 256),
+            Two => (256, 512),
+            Three => (512, 512),
         }
     }
-    pub fn affine_tile_map_size(self) -> (u16, u16) {
+
+    pub fn screen_block_columns(self) -> u16 {
         use ScreenSize::*;
         match self {
-            Zero => (16, 16),
-            One => (32, 32),
-            Two => (64, 64),
-            Three => (128, 128),
+            Zero => 1,
+            One => 2,
+            Two => 1,
+            Three => 2,
+        }
+    }
+
+    pub fn affine_map_pixel_size(self) -> (u16, u16) {
+        use ScreenSize::*;
+        match self {
+            Zero => (128, 128),
+            One => (256, 256),
+            Two => (512, 512),
+            Three => (1024, 1024),
         }
     }
 }
@@ -173,8 +184,8 @@ impl CharacterBaseBlock {
         self.0
     }
 
-    pub const fn vram_offset(self) -> u32 {
-        self.0 as u32 * 0x4000
+    pub const fn vram_offset(self) -> usize {
+        self.0 as usize * 0x4000
     }
 }
 
@@ -190,8 +201,29 @@ impl ScreenBaseBlock {
         self.0
     }
 
-    pub const fn vram_offset(self) -> u32 {
-        self.0 as u32 * 0x800
+    pub const fn vram_offset(self) -> usize {
+        self.0 as usize * 0x800
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ColorMode {
+    Color16,  //4bpp
+    Color256, //8bpp
+}
+
+impl ColorMode {
+    pub const fn from_bits(bits: u8) -> Self {
+        use ColorMode::*;
+        match bits {
+            0x0 => Color16,
+            0x1 => Color256,
+            _ => unreachable!(),
+        }
+    }
+
+    pub const fn into_bits(self) -> u8 {
+        self as u8
     }
 }
 
@@ -226,11 +258,12 @@ pub struct BgControl {
     #[bits(2)]
     _reserved: u8,
     mosaic: bool,
-    colors: bool,
+    #[bits(1)]
+    color_mode: ColorMode,
     #[bits(5)]
     screen_base_block: ScreenBaseBlock, // BG Map Data
     #[bits(1)]
-    display_area_overflow: DisplayAreaOverflow,
+    display_area_overflow: DisplayAreaOverflow, //Affine only
     #[bits(2)]
     screen_size: ScreenSize,
 }
