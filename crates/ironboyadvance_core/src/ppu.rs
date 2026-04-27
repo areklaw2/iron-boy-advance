@@ -36,7 +36,6 @@ const BG_MODE_5_HEIGHT: usize = 128;
 const SB_SIDE: u16 = 32;
 const SB_ENTRIES: u16 = SB_SIDE * SB_SIDE;
 
-mod background;
 mod registers;
 mod tiles;
 
@@ -333,38 +332,16 @@ impl Ppu {
                 self.vram[screen_entry_address + 1],
             ]));
 
-            let tile_pixel_x = map_pixel_x % 8;
-            let tile_pixel_x = if screen_entry.horizontal_flip() {
-                7 - tile_pixel_x
-            } else {
-                tile_pixel_x
-            };
-            let tile_pixel_y = map_pixel_y % 8;
-            let tile_pixel_y = if screen_entry.vertical_flip() {
-                7 - tile_pixel_y
-            } else {
-                tile_pixel_y
-            };
-
+            let (tile_pixel_x, tile_pixel_y) = screen_entry.apply_flip((map_pixel_x % 8) as u8, (map_pixel_y % 8) as u8);
             let character_block_base = self.bg_controls[bg].character_base_block().vram_offset();
 
             // TODO: return Option<u16> for proper transparency once multiple BGs are wired up
             let color_mode = self.bg_controls[bg].color_mode();
             let tile_address = character_block_base + screen_entry.tile_index() as usize * color_mode.bytes_per_tile();
-            let palette_index = match color_mode {
-                ColorMode::Color16 => {
-                    let byte = self.vram[tile_address + tile_pixel_y as usize * 4 + tile_pixel_x as usize / 2];
-                    let nibble = if tile_pixel_x & 1 == 0 { byte & 0xF } else { byte >> 4 };
-                    if nibble == 0 {
-                        0
-                    } else {
-                        screen_entry.palette_bank() as usize * 16 + nibble as usize
-                    }
-                }
-                ColorMode::Color256 => self.vram[tile_address + tile_pixel_y as usize * 8 + tile_pixel_x as usize] as usize,
-            };
+            let tile = &self.vram[tile_address..tile_address + color_mode.bytes_per_tile()];
+            let palette_index = color_mode.palette_index(tile, tile_pixel_x, tile_pixel_y, screen_entry.palette_bank());
 
-            let palette_address = palette_index * 2;
+            let palette_address = palette_index as usize * 2;
             let color = u16::from_le_bytes([self.palette_ram[palette_address], self.palette_ram[palette_address + 1]]);
             let frame_index = y as usize * VIEWPORT_WIDTH + x;
             self.frame_buffer[frame_index] = bgr555_to_rgb888(color);
