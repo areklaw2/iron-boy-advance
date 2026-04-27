@@ -1,15 +1,18 @@
 use bitfields::bitfield;
 
-use crate::io_registers::RegisterOps;
+use crate::{
+    io_registers::RegisterOps,
+    ppu::{SB_ENTRIES, SB_SIDE},
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BgMode {
-    Zero,
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
+    Mode0,
+    Mode1,
+    Mode2,
+    Mode3,
+    Mode4,
+    Mode5,
     Prohibited,
 }
 
@@ -17,12 +20,12 @@ impl BgMode {
     pub const fn from_bits(bits: u8) -> Self {
         use BgMode::*;
         match bits {
-            0x0 => Zero,
-            0x1 => One,
-            0x2 => Two,
-            0x3 => Three,
-            0x4 => Four,
-            0x5 => Five,
+            0x0 => Mode0,
+            0x1 => Mode1,
+            0x2 => Mode2,
+            0x3 => Mode3,
+            0x4 => Mode4,
+            0x5 => Mode5,
             _ => Prohibited,
         }
     }
@@ -34,16 +37,16 @@ impl BgMode {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FrameSelection {
-    Zero,
-    One,
+    Frame0,
+    Frame1,
 }
 
 impl FrameSelection {
     pub const fn from_bits(bits: u8) -> Self {
         use FrameSelection::*;
         match bits {
-            0 => Zero,
-            1 => One,
+            0 => Frame0,
+            1 => Frame1,
             _ => unreachable!(),
         }
     }
@@ -55,8 +58,8 @@ impl FrameSelection {
     pub fn base_address(self) -> usize {
         use FrameSelection::*;
         match self {
-            Zero => 0,
-            One => 0xA000,
+            Frame0 => 0,
+            Frame1 => 0xA000,
         }
     }
 }
@@ -119,20 +122,20 @@ impl RegisterOps<u16> for LcdStatus {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ScreenSize {
-    Zero,
-    One,
-    Two,
-    Three,
+    Size0,
+    Size1,
+    Size2,
+    Size3,
 }
 
 impl ScreenSize {
     pub const fn from_bits(bits: u8) -> Self {
         use ScreenSize::*;
         match bits {
-            0x0 => Zero,
-            0x1 => One,
-            0x2 => Two,
-            0x3 => Three,
+            0x0 => Size0,
+            0x1 => Size1,
+            0x2 => Size2,
+            0x3 => Size3,
             _ => unreachable!(),
         }
     }
@@ -144,31 +147,38 @@ impl ScreenSize {
     pub fn text_map_pixel_size(self) -> (u16, u16) {
         use ScreenSize::*;
         match self {
-            Zero => (256, 256),
-            One => (512, 256),
-            Two => (256, 512),
-            Three => (512, 512),
+            Size0 => (256, 256),
+            Size1 => (512, 256),
+            Size2 => (256, 512),
+            Size3 => (512, 512),
         }
     }
 
-    pub fn screen_block_columns(self) -> u16 {
+    pub fn affine_map_pixel_size(self) -> u16 {
+        //affine maps are square
         use ScreenSize::*;
         match self {
-            Zero => 1,
-            One => 2,
-            Two => 1,
-            Three => 2,
+            Size0 => 128,
+            Size1 => 256,
+            Size2 => 512,
+            Size3 => 1024,
         }
     }
 
-    pub fn affine_map_pixel_size(self) -> (u16, u16) {
+    pub fn text_screen_entry_index(self, map_tile_x: u16, map_tile_y: u16) -> u16 {
         use ScreenSize::*;
-        match self {
-            Zero => (128, 128),
-            One => (256, 256),
-            Two => (512, 512),
-            Three => (1024, 1024),
-        }
+        let screen_block_columns = match self {
+            Size0 => 1,
+            Size1 => 2,
+            Size2 => 1,
+            Size3 => 2,
+        };
+        let screen_block_index = (map_tile_y / SB_SIDE) * screen_block_columns + (map_tile_x / SB_SIDE);
+        screen_block_index * SB_ENTRIES + (map_tile_y % SB_SIDE) * SB_SIDE + (map_tile_x % SB_SIDE)
+    }
+
+    pub fn affine_screen_entry_index(self, map_tile_x: u16, map_tile_y: u16) -> u16 {
+        map_tile_y * self.affine_map_pixel_size() / 8 + map_tile_x
     }
 }
 
@@ -224,6 +234,14 @@ impl ColorMode {
 
     pub const fn into_bits(self) -> u8 {
         self as u8
+    }
+
+    pub fn bytes_per_tile(self) -> usize {
+        use ColorMode::*;
+        match self {
+            Color16 => 32,
+            Color256 => 64,
+        }
     }
 }
 

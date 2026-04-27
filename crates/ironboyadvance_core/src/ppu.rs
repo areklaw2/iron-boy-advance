@@ -29,9 +29,14 @@ const PIXEL_PER_FRAME: usize = HDRAW_PIXELS * VDRAW_SCANLINES;
 pub const CYCLES_PER_FRAME: usize = VDRAW_CYCLES + VBLANK_CYCLES;
 pub const VIEWPORT_WIDTH: usize = HDRAW_PIXELS;
 pub const VIEWPORT_HEIGHT: usize = VDRAW_SCANLINES;
+
 const BG_MODE_5_WIDTH: usize = 160;
 const BG_MODE_5_HEIGHT: usize = 128;
 
+const SB_SIDE: u16 = 32;
+const SB_ENTRIES: u16 = SB_SIDE * SB_SIDE;
+
+mod background;
 mod registers;
 mod tiles;
 
@@ -299,12 +304,12 @@ impl Ppu {
         let bg = 0;
 
         match self.lcd_control.bg_mode() {
-            BgMode::Zero => self.render_mode0_scanline(bg),
-            BgMode::One => debug!("mode 1"),
-            BgMode::Two => debug!("mode 2"),
-            BgMode::Three => self.render_mode3_scanline(),
-            BgMode::Four => self.render_mode4_scanline(),
-            BgMode::Five => self.render_mode5_scanline(),
+            BgMode::Mode0 => self.render_mode0_scanline(bg),
+            BgMode::Mode1 => debug!("mode 1"),
+            BgMode::Mode2 => debug!("mode 2"),
+            BgMode::Mode3 => self.render_mode3_scanline(),
+            BgMode::Mode4 => self.render_mode4_scanline(),
+            BgMode::Mode5 => self.render_mode5_scanline(),
             BgMode::Prohibited => todo!(),
         }
     }
@@ -315,20 +320,11 @@ impl Ppu {
             let scroll_x = self.bg_x_offsets[bg].offset();
             let scroll_y = self.bg_y_offsets[bg].offset();
             let screen_size = self.bg_controls[bg].screen_size();
+
             let (map_width_pixel, map_height_pixel) = screen_size.text_map_pixel_size();
             let map_pixel_x = (x as u16 + scroll_x) % map_width_pixel;
             let map_pixel_y = (y as u16 + scroll_y) % map_height_pixel;
-            let map_tile_x = map_pixel_x / 8;
-            let map_tile_y = map_pixel_y / 8;
-
-            let screen_block_columns = screen_size.screen_block_columns();
-            let screen_block_x = map_tile_x / 32;
-            let screen_block_y = map_tile_y / 32;
-            let screen_block_index = screen_block_x + screen_block_y * screen_block_columns;
-
-            let block_tile_x = map_tile_x % 32;
-            let block_tile_y = map_tile_y % 32;
-            let screen_entry_index = screen_block_index * 1024 + block_tile_y * 32 + block_tile_x;
+            let screen_entry_index = screen_size.text_screen_entry_index(map_pixel_x / 8, map_pixel_y / 8);
 
             let screen_block_base = self.bg_controls[bg].screen_base_block().vram_offset();
             let screen_entry_address = screen_block_base + screen_entry_index as usize * 2;
@@ -353,9 +349,10 @@ impl Ppu {
             let character_block_base = self.bg_controls[bg].character_base_block().vram_offset();
 
             // TODO: return Option<u16> for proper transparency once multiple BGs are wired up
-            let palette_index = match self.bg_controls[bg].color_mode() {
+            let color_mode = self.bg_controls[bg].color_mode();
+            let tile_address = character_block_base + screen_entry.tile_index() as usize * color_mode.bytes_per_tile();
+            let palette_index = match color_mode {
                 ColorMode::Color16 => {
-                    let tile_address = character_block_base + screen_entry.tile_index() as usize * 32;
                     let byte = self.vram[tile_address + tile_pixel_y as usize * 4 + tile_pixel_x as usize / 2];
                     let nibble = if tile_pixel_x & 1 == 0 { byte & 0xF } else { byte >> 4 };
                     if nibble == 0 {
@@ -364,10 +361,7 @@ impl Ppu {
                         screen_entry.palette_bank() as usize * 16 + nibble as usize
                     }
                 }
-                ColorMode::Color256 => {
-                    let tile_address = character_block_base + screen_entry.tile_index() as usize * 64;
-                    self.vram[tile_address + tile_pixel_y as usize * 8 + tile_pixel_x as usize] as usize
-                }
+                ColorMode::Color256 => self.vram[tile_address + tile_pixel_y as usize * 8 + tile_pixel_x as usize] as usize,
             };
 
             let palette_address = palette_index * 2;
