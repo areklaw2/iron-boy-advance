@@ -15,15 +15,14 @@ pub enum BgMode {
 
 impl BgMode {
     pub const fn from_bits(bits: u8) -> Self {
-        use BgMode::*;
         match bits {
-            0x0 => Mode0,
-            0x1 => Mode1,
-            0x2 => Mode2,
-            0x3 => Mode3,
-            0x4 => Mode4,
-            0x5 => Mode5,
-            _ => Prohibited,
+            0x0 => Self::Mode0,
+            0x1 => Self::Mode1,
+            0x2 => Self::Mode2,
+            0x3 => Self::Mode3,
+            0x4 => Self::Mode4,
+            0x5 => Self::Mode5,
+            _ => Self::Prohibited,
         }
     }
 
@@ -40,10 +39,9 @@ pub enum FrameSelection {
 
 impl FrameSelection {
     pub const fn from_bits(bits: u8) -> Self {
-        use FrameSelection::*;
         match bits {
-            0 => Frame0,
-            1 => Frame1,
+            0 => Self::Frame0,
+            1 => Self::Frame1,
             _ => unreachable!(),
         }
     }
@@ -53,10 +51,9 @@ impl FrameSelection {
     }
 
     pub fn base_address(self) -> usize {
-        use FrameSelection::*;
         match self {
-            Frame0 => 0,
-            Frame1 => 0xA000,
+            Self::Frame0 => 0,
+            Self::Frame1 => 0xA000,
         }
     }
 }

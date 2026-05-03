@@ -17,7 +17,7 @@ struct KeyInput {
     r: bool,
     l: bool,
     #[bits(6)]
-    not_used_10_15: u8,
+    _not_used_10_15: u8,
 }
 
 impl RegisterOps<u16> for KeyInput {
@@ -36,7 +36,7 @@ struct KeyControl {
     #[bits(10)]
     buttons: u16,
     #[bits(4)]
-    not_used_10_13: u8,
+    _not_used_10_13: u8,
     irq_enable_flag: bool,
     irq_condition: bool,
 }

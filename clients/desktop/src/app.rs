@@ -196,7 +196,7 @@ impl Application {
                     tracing::error!("screenshot failed: {e}");
                 }
             }
-            HotKey::TogglePause => self.send_emulator_command(EmulatorCommand::TogglePause),
+            HotKey::TogglePause => self.send_emulator_command(EmulatorCommand::TogglePause), //TODO: add an overlay for paused state
             HotKey::ToggleMaxSpeed => self.send_emulator_command(EmulatorCommand::ToggleMaxSpeed),
         }
 

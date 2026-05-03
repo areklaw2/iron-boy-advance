@@ -12,12 +12,11 @@ pub enum ColorSpecialEffect {
 
 impl ColorSpecialEffect {
     pub const fn from_bits(bits: u8) -> Self {
-        use ColorSpecialEffect::*;
         match bits {
-            0b00 => None,
-            0b01 => AlphaBlending,
-            0b10 => BrightnessIncrease,
-            0b11 => BrightnessDecrease,
+            0b00 => Self::None,
+            0b01 => Self::AlphaBlending,
+            0b10 => Self::BrightnessIncrease,
+            0b11 => Self::BrightnessDecrease,
             _ => unreachable!(),
         }
     }
@@ -45,7 +44,7 @@ pub struct ColorSpecialEffectsSelection {
     obj_2nd_target_pixel: bool,
     bd_2nd_target_pixel: bool,
     #[bits(2)]
-    not_used_14_15: u8,
+    _not_used_14_15: u8,
 }
 
 impl RegisterOps<u16> for ColorSpecialEffectsSelection {
@@ -64,11 +63,11 @@ pub struct AlphaBlendingCoefficients {
     #[bits(5)]
     eva_coefficient: u8,
     #[bits(3)]
-    not_used0: u8,
+    _not_used_0: u8,
     #[bits(5)]
     evb_coefficient: u8,
     #[bits(3)]
-    not_used_13_15: u8,
+    _not_used_13_15: u8,
 }
 
 impl RegisterOps<u16> for AlphaBlendingCoefficients {
@@ -87,7 +86,7 @@ pub struct BrightnessCoefficient {
     #[bits(5)]
     evy_coefficient: u8,
     #[bits(27)]
-    not_used_5_31: u32,
+    _not_used_5_31: u32,
 }
 
 impl RegisterOps<u32> for BrightnessCoefficient {
@@ -111,7 +110,7 @@ pub struct MosaicSize {
     obj_mosaic_h_size: u8, // (minus 1)
     #[bits(4)]
     obj_mosaic_v_size: u8, // (minus 1)
-    not_used_16_31: u16,
+    _not_used_16_31: u16,
 }
 
 impl RegisterOps<u32> for MosaicSize {

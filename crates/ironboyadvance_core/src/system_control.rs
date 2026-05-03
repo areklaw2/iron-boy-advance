@@ -144,10 +144,10 @@ struct WaitStateControl {
     ws2_second_access: bool,
     #[bits(2)]
     phi_terminal_output: u8,
-    not_used_13: bool,
+    _not_used_13: bool,
     game_pak_prefetch_buffer_enable: bool,
     game_pak_type_flag: bool,
-    not_used_16_31: u16,
+    _not_used_16_31: u16,
 }
 
 impl RegisterOps<u32> for WaitStateControl {
