@@ -15,13 +15,13 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
     - [ ] DMA Transfers
     - [ ] Communication Ports
       - [ ] Same computer Link Cable support
-    - [ ] Keypad
+    - [x] Keypad
     - [ ] Interrupts
     - [ ] System Control
     - [ ] Cartridges
       - [ ] Real-time clock support
-    - [ ] Bios
-      - [ ] Ability to load External BIOS
+    - [x] Bios
+      - [x] Ability to load External BIOS
 - [ ] Game Boy/ Game Boy Color support
 - [ ] Just-in-time (JIT) compilation
 - [ ] Scheduler based game Loop
@@ -43,6 +43,7 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
   - [ ] Drag and drop file loading
   - [ ] Game savestates
   - [ ] Fast Forwarding
+  - [ ] Pausing
 
 ## Testing
 
