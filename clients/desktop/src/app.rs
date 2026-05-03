@@ -126,6 +126,7 @@ impl Application {
     }
 
     fn save_screenshot(&self) -> Result<(), DesktopError> {
+        //TODO: when a screenshot is taken we need to give some type of overlay or visual notification that it happened
         let Some(ref frame_buffer) = self.last_frame else {
             tracing::warn!("screenshot requested before any frame has arrived");
             return Ok(());

@@ -3,7 +3,7 @@ use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
 use crate::{
     io_registers::RegisterOps,
-    ppu::{registers::*, tiles::TextBgScreenEntry},
+    ppu::{background::TextBgScreenEntry, registers::*},
     scheduler::event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
 };
 
@@ -37,8 +37,9 @@ const SB_ENTRIES: u16 = SB_SIDE * SB_SIDE;
 
 const OBJ_VRAM_START: usize = 0x10000;
 
+mod background;
+mod object;
 mod registers;
-mod tiles;
 
 #[derive(Getters)]
 pub struct Ppu {
@@ -342,13 +343,7 @@ impl Ppu {
         let row = self.v_count as usize * VIEWPORT_WIDTH;
         let backdrop = self.backdrop_color();
         for (x, frame_pixel) in self.frame_buffer[row..row + VIEWPORT_WIDTH].iter_mut().enumerate() {
-            let mut color = backdrop;
-            for &bg in bg_order {
-                if let Some(c) = bg_lines[bg][x] {
-                    color = c;
-                    break;
-                }
-            }
+            let color = bg_order.iter().find_map(|&bg| bg_lines[bg][x]).unwrap_or(backdrop);
             *frame_pixel = bgr555_to_rgb888(color);
         }
     }
