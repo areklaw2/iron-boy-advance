@@ -76,6 +76,7 @@ mod tests {
     }
 
     #[allow(unused)]
+    #[derive(Default)]
     struct TestBus {
         data: HashMap<u32, u8>,
         base_address: u32,
@@ -161,17 +162,6 @@ mod tests {
                 base_address,
                 opcode,
                 transactions,
-            }
-        }
-    }
-
-    impl Default for TestBus {
-        fn default() -> Self {
-            Self {
-                data: Default::default(),
-                base_address: Default::default(),
-                opcode: Default::default(),
-                transactions: Default::default(),
             }
         }
     }
@@ -284,7 +274,7 @@ mod tests {
             cpu.set_banked_registers_irq(initial_state.r_irq);
             cpu.set_banked_registers_und(initial_state.r_und);
             cpu.set_cpsr(ProgramStatusRegister::from_bits(initial_state.cpsr));
-            cpu.set_spsrs(initial_state.spsr.map(|x| ProgramStatusRegister::from_bits(x)));
+            cpu.set_spsrs(initial_state.spsr.map(ProgramStatusRegister::from_bits));
             cpu.set_pipeline(initial_state.pipeline);
 
             cpu.cycle();

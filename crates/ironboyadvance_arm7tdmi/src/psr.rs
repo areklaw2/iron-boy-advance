@@ -60,79 +60,79 @@ mod tests {
     #[test]
     fn get_psr_negative() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        assert_eq!(psr.negative(), true)
+        assert!(psr.negative())
     }
 
     #[test]
     fn set_psr_negative() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
         psr.set_negative(false);
-        assert_eq!(psr.negative(), false)
+        assert!(psr.negative())
     }
 
     #[test]
     fn get_psr_zero() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        assert_eq!(psr.zero(), true)
+        assert!(psr.zero())
     }
 
     #[test]
     fn set_psr_zero() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
         psr.set_zero(false);
-        assert_eq!(psr.zero(), false)
+        assert!(psr.zero())
     }
 
     #[test]
     fn get_psr_carry() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        assert_eq!(psr.carry(), true)
+        assert!(psr.carry())
     }
 
     #[test]
     fn set_psr_carry() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
         psr.set_carry(false);
-        assert_eq!(psr.carry(), false)
+        assert!(!psr.carry())
     }
 
     #[test]
     fn get_psr_overflow() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        assert_eq!(psr.overflow(), true)
+        assert!(psr.overflow())
     }
 
     #[test]
     fn set_psr_overflow() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
         psr.set_overflow(false);
-        assert_eq!(psr.overflow(), false)
+        assert!(!psr.overflow())
     }
 
     #[test]
     fn get_psr_irq_disable() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        assert_eq!(psr.irq_disable(), true)
+        assert!(psr.irq_disable())
     }
 
     #[test]
     fn set_psr_irq_disable() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
         psr.set_irq_disable(false);
-        assert_eq!(psr.irq_disable(), false)
+        assert!(!psr.irq_disable())
     }
 
     #[test]
     fn get_psr_fiq_disable() {
         let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
-        assert_eq!(psr.fiq_disable(), true)
+        assert!(psr.fiq_disable())
     }
 
     #[test]
     fn set_psr_fiq_disable() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
         psr.set_fiq_disable(false);
-        assert_eq!(psr.fiq_disable(), false)
+        assert!(!psr.fiq_disable())
     }
 
     #[test]

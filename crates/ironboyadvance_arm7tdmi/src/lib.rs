@@ -421,12 +421,12 @@ mod tests {
     fn u8_bit_operations() {
         let mut value: u8 = 0b10110;
 
-        assert_eq!(value.bit(0), false);
-        assert_eq!(value.bit(1), true);
-        assert_eq!(value.bit(2), true);
-        assert_eq!(value.bit(3), false);
-        assert_eq!(value.bit(4), true);
-        assert_eq!(value.bit(7), false);
+        assert!(!value.bit(0));
+        assert!(value.bit(1));
+        assert!(value.bit(2));
+        assert!(!value.bit(3));
+        assert!(value.bit(4));
+        assert!(!value.bit(7));
 
         value.set_bit(0, true);
         assert_eq!(value, 0b10111);
@@ -444,9 +444,9 @@ mod tests {
     fn u16_bit_operations() {
         let mut value: u16 = 0b1010110;
 
-        assert_eq!(value.bit(0), false);
-        assert_eq!(value.bit(1), true);
-        assert_eq!(value.bit(15), false);
+        assert!(!value.bit(0));
+        assert!(value.bit(1));
+        assert!(!value.bit(15));
 
         value.set_bit(0, true);
         assert_eq!(value, 0b1010111);
@@ -461,12 +461,12 @@ mod tests {
     fn u32_bit_operations() {
         let mut value: u32 = 0b10110;
 
-        assert_eq!(value.bit(0), false);
-        assert_eq!(value.bit(1), true);
-        assert_eq!(value.bit(31), false);
+        assert!(!value.bit(0));
+        assert!(value.bit(1));
+        assert!(!value.bit(31));
 
         value.set_bit(31, true);
-        assert_eq!(value.bit(31), true);
+        assert!(value.bit(31));
 
         assert_eq!(value.bits(1..=3), 0b011);
     }
@@ -475,12 +475,12 @@ mod tests {
     fn u64_bit_operations() {
         let mut value: u64 = 0b10110;
 
-        assert_eq!(value.bit(0), false);
-        assert_eq!(value.bit(1), true);
-        assert_eq!(value.bit(63), false);
+        assert!(!value.bit(0));
+        assert!(value.bit(1));
+        assert!(!value.bit(63));
 
         value.set_bit(63, true);
-        assert_eq!(value.bit(63), true);
+        assert!(value.bit(63));
 
         assert_eq!(value.bits(1..=4), 0b1011);
     }
@@ -506,12 +506,12 @@ mod tests {
 
         for i in 0..16 {
             value.set_bit(i, true);
-            assert_eq!(value.bit(i), true);
+            assert!(value.bit(i));
         }
 
         for i in 0..16 {
             value.set_bit(i, false);
-            assert_eq!(value.bit(i), false);
+            assert!(!value.bit(i));
         }
     }
 
