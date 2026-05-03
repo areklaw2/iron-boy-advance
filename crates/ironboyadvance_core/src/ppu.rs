@@ -3,7 +3,7 @@ use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
 use crate::{
     io_registers::RegisterOps,
-    ppu::{background::TextBgScreenEntry, registers::*},
+    ppu::{background::*, effects::*, lcd::*, window::*},
     scheduler::event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
 };
 
@@ -38,8 +38,11 @@ const SB_ENTRIES: u16 = SB_SIDE * SB_SIDE;
 const OBJ_VRAM_START: usize = 0x10000;
 
 mod background;
+mod color;
+mod effects;
+mod lcd;
 mod object;
-mod registers;
+mod window;
 
 #[derive(Getters)]
 pub struct Ppu {
@@ -58,7 +61,7 @@ pub struct Ppu {
     win_y_dimensions: [WindowDimension; 2],
     win_inside: WindowInside,
     win_outside: WindowOutside,
-    mosiac_size: MosiacSize,
+    mosiac_size: MosaicSize,
     color_special_effects_selection: ColorSpecialEffectsSelection,
     alpha_blending_coefficients: AlphaBlendingCoefficients,
     brightness_coefficient: BrightnessCoefficient,
@@ -87,7 +90,7 @@ impl Ppu {
             win_y_dimensions: [WindowDimension::from_bits(0); 2],
             win_inside: WindowInside::from_bits(0),
             win_outside: WindowOutside::from_bits(0),
-            mosiac_size: MosiacSize::from_bits(0),
+            mosiac_size: MosaicSize::from_bits(0),
             color_special_effects_selection: ColorSpecialEffectsSelection::from_bits(0),
             alpha_blending_coefficients: AlphaBlendingCoefficients::from_bits(0),
             brightness_coefficient: BrightnessCoefficient::from_bits(0),

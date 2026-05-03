@@ -1,6 +1,7 @@
 use bitfields::bitfield;
 
-use crate::ppu::registers::ColorMode;
+use crate::ppu::color::ColorMode;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AffineMode {
     NoAffine,
@@ -82,7 +83,7 @@ pub struct ObjectAttribute0 {
     affine_mode: AffineMode,
     #[bits(2)]
     object_mode: ObjectMode,
-    mosiac: bool,
+    mosaic: bool,
     #[bits(1)]
     color_mode: ColorMode,
     #[bits(2)]
