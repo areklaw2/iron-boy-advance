@@ -8,8 +8,6 @@ use crate::{
     memory::{MemoryAccess, MemoryInterface},
 };
 
-use DataProcessingOpcode::*;
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct DataProcessing {
     #[getset(get_copy = "pub(crate)")]
@@ -54,6 +52,8 @@ impl DataProcessing {
 
 impl Instruction for DataProcessing {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+        use DataProcessingOpcode::*;
+
         let mut cpu_action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
         let rn = self.rn as usize;
         let mut operand1 = cpu.register(rn);
@@ -131,6 +131,8 @@ impl Instruction for DataProcessing {
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
+        use DataProcessingOpcode::*;
+
         let cond = self.cond;
         let opcode = self.opcode;
         let s = if self.sets_flags { "S" } else { "" };

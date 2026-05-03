@@ -9,12 +9,11 @@ pub enum ShiftType {
 
 impl From<u32> for ShiftType {
     fn from(value: u32) -> Self {
-        use ShiftType::*;
         match value {
-            0b00 => LSL,
-            0b01 => LSR,
-            0b10 => ASR,
-            0b11 => ROR,
+            0b00 => Self::LSL,
+            0b01 => Self::LSR,
+            0b10 => Self::ASR,
+            0b11 => Self::ROR,
             _ => unreachable!(),
         }
     }
@@ -22,11 +21,10 @@ impl From<u32> for ShiftType {
 
 impl From<u16> for ShiftType {
     fn from(value: u16) -> Self {
-        use ShiftType::*;
         match value {
-            0b00 => LSL,
-            0b01 => LSR,
-            0b10 => ASR,
+            0b00 => Self::LSL,
+            0b01 => Self::LSR,
+            0b10 => Self::ASR,
             _ => unreachable!(),
         }
     }

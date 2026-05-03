@@ -30,16 +30,15 @@ pub(crate) enum CpuMode {
 
 impl CpuMode {
     pub const fn from_bits(bits: u8) -> Self {
-        use CpuMode::*;
         match bits {
-            0b10000 => User,
-            0b10001 => Fiq,
-            0b10010 => Irq,
-            0b10011 => Supervisor,
-            0b10111 => Abort,
-            0b11011 => Undefined,
-            0b11111 => System,
-            _ => Invalid,
+            0b10000 => Self::User,
+            0b10001 => Self::Fiq,
+            0b10010 => Self::Irq,
+            0b10011 => Self::Supervisor,
+            0b10111 => Self::Abort,
+            0b11011 => Self::Undefined,
+            0b11111 => Self::System,
+            _ => Self::Invalid,
         }
     }
 
@@ -56,10 +55,9 @@ pub enum CpuState {
 
 impl CpuState {
     pub const fn from_bits(bits: u8) -> Self {
-        use CpuState::*;
         match bits {
-            0 => Arm,
-            1 => Thumb,
+            0 => Self::Arm,
+            1 => Self::Thumb,
             _ => unreachable!(),
         }
     }
@@ -91,24 +89,23 @@ pub(crate) enum Register {
 
 impl From<u32> for Register {
     fn from(value: u32) -> Self {
-        use Register::*;
         match value {
-            0b0000 => R0,
-            0b0001 => R1,
-            0b0010 => R2,
-            0b0011 => R3,
-            0b0100 => R4,
-            0b0101 => R5,
-            0b0110 => R6,
-            0b0111 => R7,
-            0b1000 => R8,
-            0b1001 => R9,
-            0b1010 => R10,
-            0b1011 => R11,
-            0b1100 => R12,
-            0b1101 => R13,
-            0b1110 => R14,
-            _ => R15,
+            0b0000 => Self::R0,
+            0b0001 => Self::R1,
+            0b0010 => Self::R2,
+            0b0011 => Self::R3,
+            0b0100 => Self::R4,
+            0b0101 => Self::R5,
+            0b0110 => Self::R6,
+            0b0111 => Self::R7,
+            0b1000 => Self::R8,
+            0b1001 => Self::R9,
+            0b1010 => Self::R10,
+            0b1011 => Self::R11,
+            0b1100 => Self::R12,
+            0b1101 => Self::R13,
+            0b1110 => Self::R14,
+            _ => Self::R15,
         }
     }
 }
@@ -127,16 +124,15 @@ pub(crate) enum LoRegister {
 
 impl From<u16> for LoRegister {
     fn from(value: u16) -> Self {
-        use LoRegister::*;
         match value {
-            0b000 => R0,
-            0b001 => R1,
-            0b010 => R2,
-            0b011 => R3,
-            0b100 => R4,
-            0b101 => R5,
-            0b110 => R6,
-            _ => R7,
+            0b000 => Self::R0,
+            0b001 => Self::R1,
+            0b010 => Self::R2,
+            0b011 => Self::R3,
+            0b100 => Self::R4,
+            0b101 => Self::R5,
+            0b110 => Self::R6,
+            _ => Self::R7,
         }
     }
 }
@@ -155,16 +151,15 @@ pub(crate) enum HiRegister {
 
 impl From<u16> for HiRegister {
     fn from(value: u16) -> Self {
-        use HiRegister::*;
         match value {
-            0b000 => R8,
-            0b001 => R9,
-            0b010 => R10,
-            0b011 => R11,
-            0b100 => R12,
-            0b101 => R13,
-            0b110 => R14,
-            _ => R15,
+            0b000 => Self::R8,
+            0b001 => Self::R9,
+            0b010 => Self::R10,
+            0b011 => Self::R11,
+            0b100 => Self::R12,
+            0b101 => Self::R13,
+            0b110 => Self::R14,
+            _ => Self::R15,
         }
     }
 }
@@ -191,23 +186,22 @@ pub(crate) enum Condition {
 
 impl From<u32> for Condition {
     fn from(value: u32) -> Self {
-        use Condition::*;
         match value {
-            0b0000 => EQ,
-            0b0001 => NE,
-            0b0010 => CS,
-            0b0011 => CC,
-            0b0100 => MI,
-            0b0101 => PL,
-            0b0110 => VS,
-            0b0111 => VC,
-            0b1000 => HI,
-            0b1001 => LS,
-            0b1010 => GE,
-            0b1011 => LT,
-            0b1100 => GT,
-            0b1101 => LE,
-            0b1110 => AL,
+            0b0000 => Self::EQ,
+            0b0001 => Self::NE,
+            0b0010 => Self::CS,
+            0b0011 => Self::CC,
+            0b0100 => Self::MI,
+            0b0101 => Self::PL,
+            0b0110 => Self::VS,
+            0b0111 => Self::VC,
+            0b1000 => Self::HI,
+            0b1001 => Self::LS,
+            0b1010 => Self::GE,
+            0b1011 => Self::LT,
+            0b1100 => Self::GT,
+            0b1101 => Self::LE,
+            0b1110 => Self::AL,
             _ => unreachable!(),
         }
     }
@@ -236,24 +230,23 @@ pub(crate) enum DataProcessingOpcode {
 
 impl From<u32> for DataProcessingOpcode {
     fn from(value: u32) -> Self {
-        use DataProcessingOpcode::*;
         match value {
-            0b0000 => AND,
-            0b0001 => EOR,
-            0b0010 => SUB,
-            0b0011 => RSB,
-            0b0100 => ADD,
-            0b0101 => ADC,
-            0b0110 => SBC,
-            0b0111 => RSC,
-            0b1000 => TST,
-            0b1001 => TEQ,
-            0b1010 => CMP,
-            0b1011 => CMN,
-            0b1100 => ORR,
-            0b1101 => MOV,
-            0b1110 => BIC,
-            0b1111 => MVN,
+            0b0000 => Self::AND,
+            0b0001 => Self::EOR,
+            0b0010 => Self::SUB,
+            0b0011 => Self::RSB,
+            0b0100 => Self::ADD,
+            0b0101 => Self::ADC,
+            0b0110 => Self::SBC,
+            0b0111 => Self::RSC,
+            0b1000 => Self::TST,
+            0b1001 => Self::TEQ,
+            0b1010 => Self::CMP,
+            0b1011 => Self::CMN,
+            0b1100 => Self::ORR,
+            0b1101 => Self::MOV,
+            0b1110 => Self::BIC,
+            0b1111 => Self::MVN,
             _ => unreachable!(),
         }
     }
@@ -271,12 +264,11 @@ pub(crate) enum MovCmpAddSubImmediateOpcode {
 
 impl From<u16> for MovCmpAddSubImmediateOpcode {
     fn from(value: u16) -> Self {
-        use MovCmpAddSubImmediateOpcode::*;
         match value {
-            0b00 => MOV,
-            0b01 => CMP,
-            0b10 => ADD,
-            0b11 => SUB,
+            0b00 => Self::MOV,
+            0b01 => Self::CMP,
+            0b10 => Self::ADD,
+            0b11 => Self::SUB,
             _ => unreachable!(),
         }
     }
@@ -305,24 +297,23 @@ pub(crate) enum AluOperationsOpcode {
 
 impl From<u16> for AluOperationsOpcode {
     fn from(value: u16) -> Self {
-        use AluOperationsOpcode::*;
         match value {
-            0b0000 => AND,
-            0b0001 => EOR,
-            0b0010 => LSL,
-            0b0011 => LSR,
-            0b0100 => ASR,
-            0b0101 => ADC,
-            0b0110 => SBC,
-            0b0111 => ROR,
-            0b1000 => TST,
-            0b1001 => NEG,
-            0b1010 => CMP,
-            0b1011 => CMN,
-            0b1100 => ORR,
-            0b1101 => MUL,
-            0b1110 => BIC,
-            0b1111 => MVN,
+            0b0000 => Self::AND,
+            0b0001 => Self::EOR,
+            0b0010 => Self::LSL,
+            0b0011 => Self::LSR,
+            0b0100 => Self::ASR,
+            0b0101 => Self::ADC,
+            0b0110 => Self::SBC,
+            0b0111 => Self::ROR,
+            0b1000 => Self::TST,
+            0b1001 => Self::NEG,
+            0b1010 => Self::CMP,
+            0b1011 => Self::CMN,
+            0b1100 => Self::ORR,
+            0b1101 => Self::MUL,
+            0b1110 => Self::BIC,
+            0b1111 => Self::MVN,
             _ => unreachable!(),
         }
     }
@@ -339,12 +330,11 @@ pub(crate) enum HiRegOpsBxOpcode {
 
 impl From<u16> for HiRegOpsBxOpcode {
     fn from(value: u16) -> Self {
-        use HiRegOpsBxOpcode::*;
         match value {
-            0b00 => ADD,
-            0b01 => CMP,
-            0b10 => MOV,
-            0b11 => BX,
+            0b00 => Self::ADD,
+            0b01 => Self::CMP,
+            0b10 => Self::MOV,
+            0b11 => Self::BX,
             _ => unreachable!(),
         }
     }
