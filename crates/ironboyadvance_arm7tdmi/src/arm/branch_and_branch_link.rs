@@ -2,6 +2,7 @@ use getset::CopyGetters;
 
 use crate::{
     BitOps, Condition, CpuAction,
+    bits::SignExtend,
     cpu::{Arm7tdmiCpu, Instruction, LR},
     memory::MemoryInterface,
 };
@@ -31,7 +32,7 @@ impl Instruction for BranchAndBranchWithLink {
             cpu.set_register(LR, cpu.pc() - 4)
         }
 
-        let offset = ((self.offset << 8) as i32) >> 6;
+        let offset = self.offset.sign_extend(24) << 2;
         cpu.set_pc((cpu.pc() as i32).wrapping_add(offset) as u32);
         cpu.pipeline_flush();
         CpuAction::PipelineFlush

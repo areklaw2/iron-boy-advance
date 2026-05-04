@@ -82,7 +82,7 @@ impl ObjectShape {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ObjectAttribute0 {
-    y_coordinate: u8,
+    y: u8,
     #[bits(2)]
     affine_mode: AffineMode,
     #[bits(2)]
@@ -98,7 +98,7 @@ pub struct ObjectAttribute0 {
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ObjectAttribute1Affine {
     #[bits(9)]
-    x_coordinate: u16,
+    x: u16,
     #[bits(5)]
     affine_index: u8,
     #[bits(2)]
@@ -109,7 +109,7 @@ pub struct ObjectAttribute1Affine {
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ObjectAttribute1Normal {
     #[bits(9)]
-    x_coordinate: u16,
+    x: u16,
     #[bits(3)]
     _not_used: u8,
     horizontal_flip: bool,
@@ -132,10 +132,10 @@ impl ObjectAttribute1 {
         }
     }
 
-    pub const fn x_coordinate(self) -> u16 {
+    pub const fn x(self) -> u16 {
         match self {
-            Self::Affine(a) => a.x_coordinate(),
-            Self::Normal(n) => n.x_coordinate(),
+            Self::Affine(a) => a.x(),
+            Self::Normal(n) => n.x(),
         }
     }
 

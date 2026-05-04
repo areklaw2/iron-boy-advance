@@ -1,5 +1,6 @@
 use crate::{
     BitOps, CpuAction,
+    bits::SignExtend,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };
@@ -20,7 +21,7 @@ impl UnconditionalBranch {
 
 impl Instruction for UnconditionalBranch {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        let offset = (((self.offset as u32) << 21) as i32) >> 20;
+        let offset = self.offset.sign_extend(11) << 1;
         cpu.set_pc(cpu.pc().wrapping_add(offset as u32));
         cpu.pipeline_flush();
         CpuAction::PipelineFlush

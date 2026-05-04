@@ -1,5 +1,6 @@
 use crate::{
     BitOps, Condition, CpuAction,
+    bits::SignExtend,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::{MemoryAccess, MemoryInterface},
 };
@@ -26,7 +27,7 @@ impl Instruction for ConditionalBranch {
         if !cpu.is_condition_met(condition) {
             CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential)
         } else {
-            let offset = (((self.offset as u32) << 24) as i32) >> 23;
+            let offset = self.offset.sign_extend(8) << 1;
             cpu.set_pc(cpu.pc().wrapping_add(offset as u32));
             cpu.pipeline_flush();
             CpuAction::PipelineFlush

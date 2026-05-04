@@ -67,7 +67,7 @@ mod tests {
     fn set_psr_negative() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
         psr.set_negative(false);
-        assert!(psr.negative())
+        assert!(!psr.negative())
     }
 
     #[test]
@@ -80,7 +80,7 @@ mod tests {
     fn set_psr_zero() {
         let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
         psr.set_zero(false);
-        assert!(psr.zero())
+        assert!(!psr.zero())
     }
 
     #[test]

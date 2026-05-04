@@ -1,6 +1,6 @@
 use std::ops::BitOr;
 
-use crate::{CpuState, cpu::Arm7tdmiCpu};
+use crate::{CpuState, bits::SignExtend, cpu::Arm7tdmiCpu};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MemoryAccess {
@@ -104,14 +104,14 @@ pub trait SystemMemoryAccess {
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     pub(crate) fn load_signed_8(&mut self, address: u32, access_pattern: u8) -> u32 {
-        self.load_8(address, access_pattern) as i8 as i32 as u32
+        self.load_8(address, access_pattern).sign_extend(8) as u32
     }
 
     pub(crate) fn load_signed_16(&mut self, address: u32, access_pattern: u8) -> u32 {
         let value = self.load_16(address, access_pattern);
         match address & 0x1 != 0 {
-            true => (value >> 8) as i8 as i32 as u32,
-            false => value as i16 as i32 as u32,
+            true => (value >> 8).sign_extend(8) as u32,
+            false => value.sign_extend(16) as u32,
         }
     }
 

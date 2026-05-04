@@ -1,9 +1,15 @@
 use getset::Getters;
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_arm7tdmi::{bits::SignExtend, memory::SystemMemoryAccess};
 
 use crate::{
     io_registers::RegisterOps,
-    ppu::{background::*, effects::*, lcd::*, window::*},
+    ppu::{
+        background::*,
+        effects::*,
+        lcd::*,
+        object::{AffineMode, ObjectEntry},
+        window::*,
+    },
     scheduler::event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
 };
 
@@ -68,6 +74,7 @@ pub struct Ppu {
     palette_ram: Vec<u8>,
     vram: Vec<u8>,
     oam: Vec<u8>,
+    obj_buffer: Vec<ObjectEntry>,
     #[getset(get = "pub")]
     frame_buffer: [u32; PIXEL_PER_FRAME],
 }
@@ -97,6 +104,7 @@ impl Ppu {
             palette_ram: vec![0; 0x400],
             vram: vec![0; 0x18000],
             oam: vec![0; 0x400],
+            obj_buffer: Vec::with_capacity(128),
             frame_buffer: [0; PIXEL_PER_FRAME],
         }
     }
@@ -323,7 +331,7 @@ impl Ppu {
         }
         bg_order[..count].sort_by_key(|&background| self.bg_controls[background].priority());
 
-        let mut bg_lines = [[None; VIEWPORT_WIDTH]; 4];
+        let mut bg_lines = [[None; VIEWPORT_WIDTH]; 4]; //move this into the ppu at som epoint
         for &bg in &bg_order[..count] {
             match (mode, bg) {
                 (BgMode::Mode0, _) | (BgMode::Mode1, 0 | 1) => self.render_text_bg_scanline(bg, &mut bg_lines[bg]),
@@ -333,6 +341,11 @@ impl Ppu {
                 (BgMode::Mode5, _) => self.render_mode5_scanline(&mut bg_lines[bg]),
                 _ => {}
             }
+        }
+
+        let mut obj_line = [None; VIEWPORT_WIDTH];
+        if self.lcd_control.screen_display_obj() {
+            self.render_obj_scanline(&mut obj_line);
         }
 
         self.composite_scanline(&bg_lines, &bg_order[..count]);
@@ -356,15 +369,15 @@ impl Ppu {
         let scroll_x = self.bg_x_offsets[bg].offset();
         let scroll_y = self.bg_y_offsets[bg].offset();
         let screen_size = self.bg_controls[bg].screen_size();
-        let (map_width_pixel, map_height_pixel) = screen_size.text_map_pixel_size();
+        let (map_width, map_height) = screen_size.text_map_pixel_size();
         let screen_block_base = self.bg_controls[bg].screen_base_block().vram_offset();
         let character_block_base = self.bg_controls[bg].character_base_block().vram_offset();
         let color_mode = self.bg_controls[bg].color_mode();
         let bytes_per_tile = color_mode.bytes_per_tile();
 
         for (x, pixel) in bg_line.iter_mut().enumerate() {
-            let map_pixel_x = (x as u16 + scroll_x) % map_width_pixel;
-            let map_pixel_y = (y as u16 + scroll_y) % map_height_pixel;
+            let map_pixel_x = (x as u16 + scroll_x) % map_width;
+            let map_pixel_y = (y as u16 + scroll_y) % map_height;
             let screen_entry_index = screen_size.text_screen_entry_index(map_pixel_x / 8, map_pixel_y / 8);
 
             let screen_entry_address = screen_block_base + screen_entry_index as usize * 2;
@@ -397,6 +410,49 @@ impl Ppu {
 
     fn render_affine_bg_scanline(&self, _bg: usize, _bg_line: &mut [Option<u16>; VIEWPORT_WIDTH]) {
         // TODO: affine
+    }
+
+    fn render_obj_scanline(&mut self, obj_line: &mut [Option<u16>; VIEWPORT_WIDTH]) {
+        let y = self.v_count;
+        self.obj_buffer.clear();
+        for obj_bytes in self.oam.chunks(8) {
+            let obj_entry = ObjectEntry::from_oam(obj_bytes);
+
+            let affine_mode = obj_entry.attribute0().affine_mode();
+            if affine_mode == AffineMode::Hidden {
+                continue;
+            }
+
+            let Some((_obj_width, obj_height)) = obj_entry.object_map_pixel_size() else {
+                continue;
+            };
+
+            let render_height = match affine_mode == AffineMode::AffineDouble {
+                true => obj_height * 2,
+                false => obj_height,
+            } as u32;
+
+            let obj_y = obj_entry.attribute0().y();
+            let object_row = (y as u32).wrapping_sub(obj_y as u32) & 0xFF;
+            if object_row < render_height {
+                self.obj_buffer.push(obj_entry);
+            }
+        }
+
+        for obj_entry in self.obj_buffer.iter().rev() {
+            let affine_mode = obj_entry.attribute0().affine_mode();
+            let Some((obj_width, obj_height)) = obj_entry.object_map_pixel_size() else {
+                continue;
+            };
+
+            let (render_width, render_height) = match affine_mode == AffineMode::AffineDouble {
+                true => (obj_width * 2, obj_height * 2),
+                false => (obj_width, obj_height),
+            };
+
+            let obj_x = obj_entry.attribute1().x().sign_extend(9);
+            let obj_y = obj_entry.attribute0().y();
+        }
     }
 
     fn render_mode3_scanline(&mut self, bg_line: &mut [Option<u16>; VIEWPORT_WIDTH]) {
