@@ -332,19 +332,21 @@ impl Ppu {
         }
         bg_order[..count].sort_by_key(|&background| self.bg_controls[background].priority());
 
-        let mut bg_lines = [[None; VIEWPORT_WIDTH]; 4]; //move this into the ppu at som epoint
+        //TODO: make this a ppu attribute at some point
+        let mut bg_lines = [[None; VIEWPORT_WIDTH]; 4];
         for &bg in &bg_order[..count] {
             match (mode, bg) {
                 (BgMode::Mode0, _) | (BgMode::Mode1, 0 | 1) => self.render_text_bg_scanline(bg, &mut bg_lines[bg]),
-                (BgMode::Mode1, 2) | (BgMode::Mode2, _) => self.render_affine_bg_scanline(bg, &mut bg_lines[bg]),
-                (BgMode::Mode3, _) => self.render_mode3_scanline(&mut bg_lines[bg]),
-                (BgMode::Mode4, _) => self.render_mode4_scanline(&mut bg_lines[bg]),
-                (BgMode::Mode5, _) => self.render_mode5_scanline(&mut bg_lines[bg]),
+                (BgMode::Mode1, 2) | (BgMode::Mode2, 2 | 3) => self.render_affine_bg_scanline(bg, &mut bg_lines[bg]),
+                (BgMode::Mode3, 2) => self.render_mode3_scanline(&mut bg_lines[bg]),
+                (BgMode::Mode4, 2) => self.render_mode4_scanline(&mut bg_lines[bg]),
+                (BgMode::Mode5, 2) => self.render_mode5_scanline(&mut bg_lines[bg]),
                 _ => {}
             }
         }
 
-        let mut obj_line: [Option<ObjectPixel>; VIEWPORT_WIDTH] = [None; VIEWPORT_WIDTH];
+        //TODO: make this a ppu attribute at some point
+        let mut obj_line = [None; VIEWPORT_WIDTH];
         if self.lcd_control.screen_display_obj() {
             self.render_obj_scanline(&mut obj_line);
         }
