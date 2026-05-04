@@ -200,13 +200,6 @@ pub struct ObjectAttribute2 {
     palette_bank: u8,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ObjPixel {
-    pub color: u16,
-    pub priority: u8,
-    pub mode: ObjectMode,
-}
-
 #[derive(CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct ObjectEntry {
@@ -255,4 +248,11 @@ impl ObjectEntry {
         let object_row = (y as u32).wrapping_sub(self.attribute0.y() as u32) & 0xFF;
         object_row < render_height as u32
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ObjectPixel {
+    pub color: u16,
+    pub priority: u8,
+    pub object_mode: ObjectMode,
 }

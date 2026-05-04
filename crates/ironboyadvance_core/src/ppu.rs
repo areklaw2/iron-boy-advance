@@ -7,7 +7,7 @@ use crate::{
         background::*,
         effects::*,
         lcd::*,
-        object::{AffineMode, ObjPixel, ObjectEntry},
+        object::{AffineMode, ObjectEntry, ObjectPixel},
         window::*,
     },
     scheduler::event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
@@ -344,7 +344,7 @@ impl Ppu {
             }
         }
 
-        let mut obj_line: [Option<ObjPixel>; VIEWPORT_WIDTH] = [None; VIEWPORT_WIDTH];
+        let mut obj_line: [Option<ObjectPixel>; VIEWPORT_WIDTH] = [None; VIEWPORT_WIDTH];
         if self.lcd_control.screen_display_obj() {
             self.render_obj_scanline(&mut obj_line);
         }
@@ -360,7 +360,7 @@ impl Ppu {
         &mut self,
         bg_order: &[usize],
         bg_lines: &[[Option<u16>; VIEWPORT_WIDTH]; 4],
-        obj_line: &[Option<ObjPixel>; VIEWPORT_WIDTH],
+        obj_line: &[Option<ObjectPixel>; VIEWPORT_WIDTH],
     ) {
         let row = self.v_count as usize * VIEWPORT_WIDTH;
         let backdrop_color = self.backdrop_color();
@@ -473,7 +473,7 @@ impl Ppu {
         }
     }
 
-    fn render_obj_scanline(&mut self, obj_line: &mut [Option<ObjPixel>; VIEWPORT_WIDTH]) {
+    fn render_obj_scanline(&mut self, obj_line: &mut [Option<ObjectPixel>; VIEWPORT_WIDTH]) {
         let y = self.v_count;
         self.obj_buffer.clear();
         for obj_bytes in self.oam.chunks(8) {
@@ -552,10 +552,10 @@ impl Ppu {
 
                 let palette_address = 0x200 + palette_index as usize * 2;
                 let color = u16::from_le_bytes([self.palette_ram[palette_address], self.palette_ram[palette_address + 1]]);
-                obj_line[screen_x] = Some(ObjPixel {
+                obj_line[screen_x] = Some(ObjectPixel {
                     color,
                     priority,
-                    mode: object_mode,
+                    object_mode,
                 });
             }
         }
