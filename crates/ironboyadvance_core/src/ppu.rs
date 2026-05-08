@@ -60,10 +60,14 @@ pub struct Ppu {
     bg_controls: [BgControl; 4],
     bg_x_offsets: [BgOffset; 4],
     bg_y_offsets: [BgOffset; 4],
-    bg2_reference_points: [BgReferencePoint; 2],
-    bg2_affine_parameters: [BgAffineParameter; 4],
-    bg3_reference_points: [BgReferencePoint; 2],
-    bg3_affine_parameters: [BgAffineParameter; 4],
+    bg_x_reference: [BgReferencePoint; 2],
+    bg_y_reference: [BgReferencePoint; 2],
+    bg_x_current: [i32; 2],
+    bg_y_current: [i32; 2],
+    bg_pa: [BgAffineParameter; 2],
+    bg_pb: [BgAffineParameter; 2],
+    bg_pc: [BgAffineParameter; 2],
+    bg_pd: [BgAffineParameter; 2],
     win_x_dimensions: [WindowDimension; 2],
     win_y_dimensions: [WindowDimension; 2],
     win_inside: WindowInside,
@@ -90,10 +94,14 @@ impl Ppu {
             bg_controls: [BgControl::from_bits(0); 4],
             bg_x_offsets: [BgOffset::from_bits(0); 4],
             bg_y_offsets: [BgOffset::from_bits(0); 4],
-            bg2_reference_points: [BgReferencePoint::from_bits(0); 2],
-            bg2_affine_parameters: [BgAffineParameter::from_bits(0); 4],
-            bg3_reference_points: [BgReferencePoint::from_bits(0); 2],
-            bg3_affine_parameters: [BgAffineParameter::from_bits(0); 4],
+            bg_x_reference: [BgReferencePoint::from_bits(0); 2],
+            bg_y_reference: [BgReferencePoint::from_bits(0); 2],
+            bg_x_current: [0; 2],
+            bg_y_current: [0; 2],
+            bg_pa: [BgAffineParameter::from_bits(0); 2],
+            bg_pb: [BgAffineParameter::from_bits(0); 2],
+            bg_pc: [BgAffineParameter::from_bits(0); 2],
+            bg_pd: [BgAffineParameter::from_bits(0); 2],
             win_x_dimensions: [WindowDimension::from_bits(0); 2],
             win_y_dimensions: [WindowDimension::from_bits(0); 2],
             win_inside: WindowInside::from_bits(0),
@@ -175,21 +183,33 @@ impl SystemMemoryAccess for Ppu {
             0x0400001C..=0x0400001D => self.bg_x_offsets[3].write_byte(address, value),
             0x0400001E..=0x0400001F => self.bg_y_offsets[3].write_byte(address, value),
             // BG2PA, BG2PB, BG2PC, BG2PD
-            0x04000020..=0x04000021 => self.bg2_affine_parameters[0].write_byte(address, value),
-            0x04000022..=0x04000023 => self.bg2_affine_parameters[1].write_byte(address, value),
-            0x04000024..=0x04000025 => self.bg2_affine_parameters[2].write_byte(address, value),
-            0x04000026..=0x04000027 => self.bg2_affine_parameters[3].write_byte(address, value),
+            0x04000020..=0x04000021 => self.bg_pa[0].write_byte(address, value),
+            0x04000022..=0x04000023 => self.bg_pb[0].write_byte(address, value),
+            0x04000024..=0x04000025 => self.bg_pc[0].write_byte(address, value),
+            0x04000026..=0x04000027 => self.bg_pd[0].write_byte(address, value),
             // BG2X_L, BG2X_H, BG2Y_L, BG2Y_H
-            0x04000028..=0x0400002B => self.bg2_reference_points[0].write_byte(address, value),
-            0x0400002C..=0x0400002F => self.bg2_reference_points[1].write_byte(address, value),
+            0x04000028..=0x0400002B => {
+                self.bg_x_reference[0].write_byte(address, value);
+                self.bg_x_current[0] = self.bg_x_reference[0].as_i32();
+            }
+            0x0400002C..=0x0400002F => {
+                self.bg_y_reference[0].write_byte(address, value);
+                self.bg_y_current[0] = self.bg_y_reference[0].as_i32();
+            }
             // BG3PA, BG3PB, BG3PC, BG3PD
-            0x04000030..=0x04000031 => self.bg3_affine_parameters[0].write_byte(address, value),
-            0x04000032..=0x04000033 => self.bg3_affine_parameters[1].write_byte(address, value),
-            0x04000034..=0x04000035 => self.bg3_affine_parameters[2].write_byte(address, value),
-            0x04000036..=0x04000037 => self.bg3_affine_parameters[3].write_byte(address, value),
+            0x04000030..=0x04000031 => self.bg_pa[1].write_byte(address, value),
+            0x04000032..=0x04000033 => self.bg_pb[1].write_byte(address, value),
+            0x04000034..=0x04000035 => self.bg_pc[1].write_byte(address, value),
+            0x04000036..=0x04000037 => self.bg_pd[1].write_byte(address, value),
             // BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
-            0x04000038..=0x0400003B => self.bg3_reference_points[0].write_byte(address, value),
-            0x0400003C..=0x0400003F => self.bg3_reference_points[1].write_byte(address, value),
+            0x04000038..=0x0400003B => {
+                self.bg_x_reference[1].write_byte(address, value);
+                self.bg_x_current[1] = self.bg_x_reference[1].as_i32();
+            }
+            0x0400003C..=0x0400003F => {
+                self.bg_y_reference[1].write_byte(address, value);
+                self.bg_y_current[1] = self.bg_y_reference[1].as_i32();
+            }
             // WIN0H, WIN1H, WIN0V, WIN1V
             0x04000040..=0x04000041 => self.win_x_dimensions[0].write_byte(address, value),
             0x04000042..=0x04000043 => self.win_x_dimensions[1].write_byte(address, value),
@@ -245,6 +265,7 @@ impl Ppu {
             events.push((EventType::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 
+        self.advance_current_reference_points();
         events.push((EventType::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
         events
     }
@@ -300,10 +321,25 @@ impl Ppu {
             }
 
             self.lcd_status.set_v_blank_flag(false);
+            self.reload_current_reference_points();
             self.render_scanline();
             events.push((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         }
         events
+    }
+
+    fn reload_current_reference_points(&mut self) {
+        self.bg_x_current[0] = self.bg_x_reference[0].as_i32();
+        self.bg_y_current[0] = self.bg_y_reference[0].as_i32();
+        self.bg_x_current[1] = self.bg_x_reference[1].as_i32();
+        self.bg_y_current[1] = self.bg_y_reference[1].as_i32();
+    }
+
+    fn advance_current_reference_points(&mut self) {
+        self.bg_x_current[0] = self.bg_x_current[0].wrapping_add(self.bg_pb[0].as_i32());
+        self.bg_y_current[0] = self.bg_y_current[0].wrapping_add(self.bg_pd[0].as_i32());
+        self.bg_x_current[1] = self.bg_x_current[1].wrapping_add(self.bg_pb[1].as_i32());
+        self.bg_y_current[1] = self.bg_y_current[1].wrapping_add(self.bg_pd[1].as_i32());
     }
 
     fn render_scanline(&mut self) {

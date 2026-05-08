@@ -3,6 +3,7 @@ use crate::{
     ppu::{SB_ENTRIES, SB_SIDE, color::ColorMode},
 };
 use bitfields::bitfield;
+use ironboyadvance_arm7tdmi::bits::SignExtend;
 
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -208,6 +209,12 @@ pub struct BgReferencePoint {
     _not_used_28_31: u8,
 }
 
+impl BgReferencePoint {
+    pub fn as_i32(self) -> i32 {
+        self.into_bits().sign_extend(28)
+    }
+}
+
 impl RegisterOps<u32> for BgReferencePoint {
     fn register(&self) -> u32 {
         self.into_bits()
@@ -225,6 +232,12 @@ pub struct BgAffineParameter {
     #[bits(7)]
     interger_portion: u8,
     sign: bool,
+}
+
+impl BgAffineParameter {
+    pub fn as_i32(self) -> i32 {
+        self.into_bits().sign_extend(16)
+    }
 }
 
 impl RegisterOps<u16> for BgAffineParameter {
