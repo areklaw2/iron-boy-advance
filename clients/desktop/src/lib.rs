@@ -1,4 +1,4 @@
-use std::{fs, io, path::Path};
+use std::{io, path::Path};
 use thiserror::Error;
 use winit::event_loop::EventLoop;
 
@@ -33,14 +33,7 @@ pub fn run(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Resu
         .map(|s| s.to_string())
         .ok_or(DesktopError::InvalidRomPath)?;
 
-    let rom_buffer = fs::read(&rom_path)?;
-    let bios_buffer: Box<[u8]> = match bios_path {
-        Some(path) => fs::read(path)?.into_boxed_slice(),
-        None => Box::default(),
-    };
-
-    let emu = emulator::spawn(rom_buffer, bios_buffer, show_logs);
-
+    let emu = emulator::spawn(rom_path, bios_path, show_logs)?;
     let title = format!("Iron Boy Advance - {rom_name}");
     let mut app = Application::new(title, emu);
 

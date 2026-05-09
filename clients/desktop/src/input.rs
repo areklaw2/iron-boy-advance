@@ -9,6 +9,7 @@ use winit::{event::ElementState, keyboard::KeyCode};
 pub const KEYPAD_IDLE: u16 = 0x03FF;
 
 pub enum HotKey {
+    Reset,
     TogglePause,
     ToggleMaxSpeed,
     ToggleFpsOverlay,
@@ -17,8 +18,9 @@ pub enum HotKey {
 
 pub fn keycode_to_hotkey(code: KeyCode) -> Option<HotKey> {
     match code {
+        KeyCode::KeyR => Some(HotKey::Reset),
         KeyCode::KeyP => Some(HotKey::TogglePause),
-        KeyCode::KeyS => Some(HotKey::ToggleMaxSpeed),
+        KeyCode::F2 => Some(HotKey::ToggleMaxSpeed),
         KeyCode::F3 => Some(HotKey::ToggleFpsOverlay),
         KeyCode::F4 => Some(HotKey::Screenshot),
         _ => None,

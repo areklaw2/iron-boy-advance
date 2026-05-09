@@ -198,6 +198,11 @@ impl Application {
             }
             HotKey::TogglePause => self.send_emulator_command(EmulatorCommand::TogglePause), //TODO: add an overlay for paused state
             HotKey::ToggleMaxSpeed => self.send_emulator_command(EmulatorCommand::ToggleMaxSpeed),
+            HotKey::Reset => {
+                self.send_emulator_command(EmulatorCommand::Reset);
+                self.last_frame = None;
+                self.fps_timer = FrameTimer::new();
+            }
         }
 
         true

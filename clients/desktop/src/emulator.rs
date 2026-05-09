@@ -1,4 +1,5 @@
 use std::{
+    fs, io,
     sync::{
         Arc,
         atomic::{AtomicU16, Ordering},
@@ -9,9 +10,10 @@ use std::{
 
 use ironboyadvance_core::{CYCLES_PER_FRAME, GameBoyAdvance};
 
-use crate::{frame::FrameTimer, input::KEYPAD_IDLE};
+use crate::{DesktopError, frame::FrameTimer, input::KEYPAD_IDLE};
 
 pub enum EmulatorCommand {
+    Reset,
     TogglePause,
     ToggleMaxSpeed,
 }
@@ -22,7 +24,21 @@ pub struct EmulatorHandle {
     pub commands: Sender<EmulatorCommand>,
 }
 
-pub fn spawn(rom_buffer: Vec<u8>, bios_buffer: Box<[u8]>, show_logs: bool) -> EmulatorHandle {
+fn read_rom(path: &str) -> io::Result<Vec<u8>> {
+    fs::read(path)
+}
+
+fn read_bios(path: Option<&str>) -> io::Result<Box<[u8]>> {
+    match path {
+        Some(p) => Ok(fs::read(p)?.into_boxed_slice()),
+        None => Ok(Box::default()),
+    }
+}
+
+pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Result<EmulatorHandle, DesktopError> {
+    let rom_buffer = read_rom(&rom_path)?;
+    let bios_buffer = read_bios(bios_path.as_deref())?;
+
     let keypad = Arc::new(AtomicU16::new(KEYPAD_IDLE));
     let (frame_tx, frame_rx) = mpsc::channel::<Vec<u32>>();
     let (command_tx, command_rx) = mpsc::channel::<EmulatorCommand>();
@@ -38,8 +54,8 @@ pub fn spawn(rom_buffer: Vec<u8>, bios_buffer: Box<[u8]>, show_logs: bool) -> Em
         let mut paused = false;
         let mut turbo = false;
 
-        loop {
-            loop {
+        'frame: loop {
+            'commands: loop {
                 match command_rx.try_recv() {
                     Ok(EmulatorCommand::TogglePause) => {
                         paused = !paused;
@@ -49,7 +65,32 @@ pub fn spawn(rom_buffer: Vec<u8>, bios_buffer: Box<[u8]>, show_logs: bool) -> Em
                         turbo = !turbo;
                         tracing::info!("max_speed {}", if turbo { "on" } else { "off" });
                     }
-                    Err(TryRecvError::Empty) => break,
+                    Ok(EmulatorCommand::Reset) => {
+                        let rom = match read_rom(&rom_path) {
+                            Ok(bytes) => bytes,
+                            Err(e) => {
+                                tracing::error!("reset failed reading rom {rom_path}: {e}");
+                                continue 'commands;
+                            }
+                        };
+                        let bios = match read_bios(bios_path.as_deref()) {
+                            Ok(bytes) => bytes,
+                            Err(e) => {
+                                tracing::error!("reset failed reading bios {bios_path:?}: {e}");
+                                continue 'commands;
+                            }
+                        };
+                        match GameBoyAdvance::new(rom, bios, show_logs) {
+                            Ok(new_gba) => {
+                                gba = new_gba;
+                                overshoot = 0;
+                                frame_timer = FrameTimer::new();
+                                tracing::info!("emulator reset");
+                            }
+                            Err(e) => tracing::error!("reset failed building gba: {e}"),
+                        }
+                    }
+                    Err(TryRecvError::Empty) => break 'commands,
                     Err(TryRecvError::Disconnected) => return,
                 }
             }
@@ -58,7 +99,7 @@ pub fn spawn(rom_buffer: Vec<u8>, bios_buffer: Box<[u8]>, show_logs: bool) -> Em
                 gba.handle_pressed_buttons(emu_keypad.load(Ordering::Relaxed));
                 overshoot = gba.run(CYCLES_PER_FRAME, overshoot);
                 if frame_tx.send(gba.frame_buffer().to_vec()).is_err() {
-                    break;
+                    break 'frame;
                 }
             }
 
@@ -69,9 +110,9 @@ pub fn spawn(rom_buffer: Vec<u8>, bios_buffer: Box<[u8]>, show_logs: bool) -> Em
         }
     });
 
-    EmulatorHandle {
+    Ok(EmulatorHandle {
         keypad,
         frames: frame_rx,
         commands: command_tx,
-    }
+    })
 }
