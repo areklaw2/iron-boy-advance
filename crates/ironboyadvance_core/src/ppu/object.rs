@@ -1,11 +1,10 @@
 use bitfields::bitfield;
 use getset::CopyGetters;
-use ironboyadvance_arm7tdmi::{bits::SignExtend, memory::SystemMemoryAccess};
+use ironboyadvance_arm7tdmi::bits::SignExtend;
 
 use crate::ppu::{OBJ_VRAM_START, ScanlineContext, VIEWPORT_WIDTH, color::ColorMode, lcd::BgMode};
 
 const OBJ_2D_CHAR_MAP_TILES: u32 = 1024;
-const OAM_SIZE: usize = 0x400;
 
 const OBJECT_SIZES: [[(u16, u16); 4]; 3] = [
     [(8, 8), (16, 16), (32, 32), (64, 64)], // Square
@@ -262,22 +261,20 @@ pub struct ObjectPixel {
 }
 
 pub struct Object {
-    oam: Vec<u8>,
     obj_buffer: Vec<ObjectEntry>,
 }
 
 impl Object {
     pub fn new() -> Self {
         Self {
-            oam: vec![0; OAM_SIZE],
             obj_buffer: Vec::with_capacity(128),
         }
     }
 
-    pub fn render_scanline(&mut self, ctx: &ScanlineContext, obj_line: &mut [Option<ObjectPixel>; VIEWPORT_WIDTH]) {
+    pub fn render_obj_scanline(&mut self, ctx: &ScanlineContext, obj_line: &mut [Option<ObjectPixel>; VIEWPORT_WIDTH]) {
         let y = ctx.v_count;
         self.obj_buffer.clear();
-        for obj_bytes in self.oam.chunks(8) {
+        for obj_bytes in ctx.oam.chunks(8) {
             let obj_entry = ObjectEntry::from_oam(obj_bytes);
             if obj_entry.is_visible(y) {
                 self.obj_buffer.push(obj_entry);
@@ -359,7 +356,7 @@ impl Object {
                     }
                 }
                 AffineMode::Affine | AffineMode::AffineDouble => {
-                    let (pa, pb, pc, pd) = self.read_obj_affine_matrix(attribute1.affine_index());
+                    let (pa, pb, pc, pd) = read_obj_affine_matrix(ctx.oam, attribute1.affine_index());
                     let bounding_box_pixel_y = ((y as u32).wrapping_sub(obj_y as u32) & 0xFF) as i32;
                     let screen_offset_y = bounding_box_pixel_y - total_object_height as i32 / 2;
 
@@ -406,23 +403,13 @@ impl Object {
             }
         }
     }
-
-    fn read_obj_affine_matrix(&self, index: u8) -> (i32, i32, i32, i32) {
-        let base = (index as usize) * 32;
-        let pa = i16::from_le_bytes([self.oam[base + 0x06], self.oam[base + 0x07]]) as i32;
-        let pb = i16::from_le_bytes([self.oam[base + 0x0E], self.oam[base + 0x0F]]) as i32;
-        let pc = i16::from_le_bytes([self.oam[base + 0x16], self.oam[base + 0x17]]) as i32;
-        let pd = i16::from_le_bytes([self.oam[base + 0x1E], self.oam[base + 0x1F]]) as i32;
-        (pa, pb, pc, pd)
-    }
 }
 
-impl SystemMemoryAccess for Object {
-    fn read_8(&self, address: u32) -> u8 {
-        self.oam[(address & 0x3FF) as usize]
-    }
-
-    fn write_8(&mut self, address: u32, value: u8) {
-        self.oam[(address & 0x3FF) as usize] = value;
-    }
+fn read_obj_affine_matrix(oam: &[u8], obj_index: u8) -> (i32, i32, i32, i32) {
+    let base_address = (obj_index as usize) * 32;
+    let pa = i16::from_le_bytes([oam[base_address + 0x06], oam[base_address + 0x07]]) as i32;
+    let pb = i16::from_le_bytes([oam[base_address + 0x0E], oam[base_address + 0x0F]]) as i32;
+    let pc = i16::from_le_bytes([oam[base_address + 0x16], oam[base_address + 0x17]]) as i32;
+    let pd = i16::from_le_bytes([oam[base_address + 0x1E], oam[base_address + 0x1F]]) as i32;
+    (pa, pb, pc, pd)
 }

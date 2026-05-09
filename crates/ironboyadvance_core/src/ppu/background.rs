@@ -294,32 +294,11 @@ impl Background {
         ]
     }
 
-    pub fn bg_control(&self, bg: usize) -> BgControl {
-        self.bg_controls[bg]
-    }
-
-    pub fn bg_x_offset(&self, bg: usize) -> BgOffset {
-        self.bg_x_offsets[bg]
-    }
-
-    pub fn bg_y_offset(&self, bg: usize) -> BgOffset {
-        self.bg_y_offsets[bg]
-    }
-
-    pub fn bg_pa(&self, affine_bg: usize) -> BgAffineParameter {
-        self.bg_pa[affine_bg]
-    }
-
-    pub fn bg_pc(&self, affine_bg: usize) -> BgAffineParameter {
-        self.bg_pc[affine_bg]
-    }
-
-    pub fn bg_x_current(&self, affine_bg: usize) -> i32 {
-        self.bg_x_current[affine_bg]
-    }
-
-    pub fn bg_y_current(&self, affine_bg: usize) -> i32 {
-        self.bg_y_current[affine_bg]
+    pub fn layer(&self, bg_index: usize) -> BgLayer<'_> {
+        BgLayer {
+            background: self,
+            bg_index,
+        }
     }
 
     pub fn advance_current_reference_points(&mut self) {
@@ -409,5 +388,41 @@ pub fn allowed_backgrounds_by_mode(mode: BgMode) -> [bool; 4] {
         BgMode::Mode2 => [false, false, true, true],
         BgMode::Mode3 | BgMode::Mode4 | BgMode::Mode5 => [false, false, true, false],
         BgMode::Prohibited => [false; 4],
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct BgLayer<'a> {
+    background: &'a Background,
+    bg_index: usize,
+}
+
+impl<'a> BgLayer<'a> {
+    pub fn control(&self) -> BgControl {
+        self.background.bg_controls[self.bg_index]
+    }
+
+    pub fn x_offset(&self) -> BgOffset {
+        self.background.bg_x_offsets[self.bg_index]
+    }
+
+    pub fn y_offset(&self) -> BgOffset {
+        self.background.bg_y_offsets[self.bg_index]
+    }
+
+    pub fn pa(&self) -> BgAffineParameter {
+        self.background.bg_pa[self.bg_index - 2]
+    }
+
+    pub fn pc(&self) -> BgAffineParameter {
+        self.background.bg_pc[self.bg_index - 2]
+    }
+
+    pub fn x_current(&self) -> i32 {
+        self.background.bg_x_current[self.bg_index - 2]
+    }
+
+    pub fn y_current(&self) -> i32 {
+        self.background.bg_y_current[self.bg_index - 2]
     }
 }

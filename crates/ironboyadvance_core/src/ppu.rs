@@ -53,6 +53,7 @@ mod window;
 pub struct ScanlineContext<'a> {
     pub vram: &'a [u8],
     pub palette_ram: &'a [u8],
+    pub oam: &'a [u8],
     pub lcd_control: &'a LcdControl,
     pub v_count: u8,
 }
@@ -75,8 +76,11 @@ pub struct Ppu {
     brightness_coefficient: BrightnessCoefficient,
     palette_ram: Vec<u8>,
     vram: Vec<u8>,
+    oam: Vec<u8>,
     #[getset(get = "pub")]
     frame_buffer: [u32; PIXEL_PER_FRAME],
+    bg_lines: [[Option<u16>; VIEWPORT_WIDTH]; 4],
+    obj_line: [Option<ObjectPixel>; VIEWPORT_WIDTH],
 }
 
 impl Ppu {
@@ -98,7 +102,10 @@ impl Ppu {
             brightness_coefficient: BrightnessCoefficient::from_bits(0),
             palette_ram: vec![0; 0x400],
             vram: vec![0; 0x18000],
+            oam: vec![0; 0x400],
             frame_buffer: [0; PIXEL_PER_FRAME],
+            bg_lines: [[None; VIEWPORT_WIDTH]; 4],
+            obj_line: [None; VIEWPORT_WIDTH],
         }
     }
 }
@@ -132,7 +139,7 @@ impl SystemMemoryAccess for Ppu {
                 self.vram[index]
             }
             // OAM
-            0x07000000..=0x07FFFFFF => self.object.read_8(address),
+            0x07000000..=0x07FFFFFF => self.oam[(address & 0x3FF) as usize],
             _ => panic!("Invalid byte read for Ppu Register: {:#010X}", address),
         }
     }
@@ -173,7 +180,7 @@ impl SystemMemoryAccess for Ppu {
                 self.vram[index] = value;
             }
             // OAM
-            0x07000000..=0x07FFFFFF => self.object.write_8(address, value),
+            0x07000000..=0x07FFFFFF => self.oam[(address & 0x3FF) as usize] = value,
             _ => panic!("Invalid byte write for Ppu Register: {:#010X}", address),
         }
     }
@@ -280,6 +287,7 @@ impl Ppu {
         let ctx = ScanlineContext {
             vram: &self.vram,
             palette_ram: &self.palette_ram,
+            oam: &self.oam,
             lcd_control: &self.lcd_control,
             v_count: self.v_count,
         };
@@ -303,53 +311,51 @@ impl Ppu {
         }
         bg_order[..count].sort_by_key(|&bg| self.background.priority(bg));
 
-        let mut bg_lines = [[None; VIEWPORT_WIDTH]; 4];
+        for bg_line in &mut self.bg_lines {
+            bg_line.fill(None);
+        }
+
         for &bg in &bg_order[..count] {
             match (mode, bg) {
                 (BgMode::Mode0, _) | (BgMode::Mode1, 0 | 1) => {
-                    tiles::render_text_scanline(&self.background, bg, &ctx, &mut bg_lines[bg])
+                    tiles::render_text_scanline(self.background.layer(bg), &ctx, &mut self.bg_lines[bg])
                 }
                 (BgMode::Mode1, 2) | (BgMode::Mode2, 2 | 3) => {
-                    tiles::render_affine_scanline(&self.background, bg, &ctx, &mut bg_lines[bg])
+                    tiles::render_affine_scanline(self.background.layer(bg), &ctx, &mut self.bg_lines[bg])
                 }
-                (BgMode::Mode3, 2) => bitmap::render_mode3(&ctx, &mut bg_lines[bg]),
-                (BgMode::Mode4, 2) => bitmap::render_mode4(&ctx, &mut bg_lines[bg]),
-                (BgMode::Mode5, 2) => bitmap::render_mode5(&ctx, &mut bg_lines[bg]),
+                (BgMode::Mode3, 2) => bitmap::render_mode3(&ctx, &mut self.bg_lines[bg]),
+                (BgMode::Mode4, 2) => bitmap::render_mode4(&ctx, &mut self.bg_lines[bg]),
+                (BgMode::Mode5, 2) => bitmap::render_mode5(&ctx, &mut self.bg_lines[bg]),
                 _ => {}
             }
         }
 
-        let mut obj_line = [None; VIEWPORT_WIDTH];
+        self.obj_line.fill(None);
         if self.lcd_control.screen_display_obj() {
-            self.object.render_scanline(&ctx, &mut obj_line);
+            self.object.render_obj_scanline(&ctx, &mut self.obj_line);
         }
 
-        self.composite_scanline(&bg_order[..count], &bg_lines, &obj_line);
+        self.composite_scanline(&bg_order[..count]);
     }
 
     fn backdrop_color(&self) -> u16 {
         u16::from_le_bytes([self.palette_ram[0], self.palette_ram[1]])
     }
 
-    fn composite_scanline(
-        &mut self,
-        bg_order: &[usize],
-        bg_lines: &[[Option<u16>; VIEWPORT_WIDTH]; 4],
-        obj_line: &[Option<ObjectPixel>; VIEWPORT_WIDTH],
-    ) {
+    fn composite_scanline(&mut self, bg_order: &[usize]) {
         let row = self.v_count as usize * VIEWPORT_WIDTH;
         let backdrop_color = self.backdrop_color();
         let bg_priorities = self.background.priorities();
 
         for (x, frame_pixel) in self.frame_buffer[row..row + VIEWPORT_WIDTH].iter_mut().enumerate() {
-            let obj_pixel = obj_line[x];
+            let obj_pixel = self.obj_line[x];
             let obj_color = obj_pixel.map(|obj| obj.color);
 
             let color = bg_order
                 .iter()
                 .find_map(|&bg| match obj_pixel.is_some_and(|obj| obj.priority <= bg_priorities[bg]) {
                     true => obj_color,
-                    false => bg_lines[bg][x],
+                    false => self.bg_lines[bg][x],
                 })
                 .or(obj_color)
                 .unwrap_or(backdrop_color);

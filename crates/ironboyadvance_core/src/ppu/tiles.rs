@@ -1,18 +1,13 @@
 use crate::ppu::{
     OBJ_VRAM_START, ScanlineContext, VIEWPORT_WIDTH,
-    background::{AffineBgScreenEntry, Background, DisplayAreaOverflow, TextBgScreenEntry},
+    background::{AffineBgScreenEntry, BgLayer, DisplayAreaOverflow, TextBgScreenEntry},
 };
 
-pub fn render_text_scanline(
-    background: &Background,
-    bg: usize,
-    ctx: &ScanlineContext,
-    bg_line: &mut [Option<u16>; VIEWPORT_WIDTH],
-) {
+pub fn render_text_scanline(layer: BgLayer<'_>, ctx: &ScanlineContext, bg_line: &mut [Option<u16>; VIEWPORT_WIDTH]) {
     let y = ctx.v_count;
-    let scroll_x = background.bg_x_offset(bg).offset();
-    let scroll_y = background.bg_y_offset(bg).offset();
-    let bg_control = background.bg_control(bg);
+    let scroll_x = layer.x_offset().offset();
+    let scroll_y = layer.y_offset().offset();
+    let bg_control = layer.control();
     let screen_size = bg_control.screen_size();
     let (map_width, map_height) = screen_size.text_map_pixel_size();
     let screen_block_base = bg_control.screen_base_block().vram_offset();
@@ -53,24 +48,18 @@ pub fn render_text_scanline(
     }
 }
 
-pub fn render_affine_scanline(
-    background: &Background,
-    bg: usize,
-    ctx: &ScanlineContext,
-    bg_line: &mut [Option<u16>; VIEWPORT_WIDTH],
-) {
-    let affine_bg = bg - 2;
-    let pa = background.bg_pa(affine_bg).as_i32();
-    let pc = background.bg_pc(affine_bg).as_i32();
-    let bg_control = background.bg_control(bg);
+pub fn render_affine_scanline(layer: BgLayer<'_>, ctx: &ScanlineContext, bg_line: &mut [Option<u16>; VIEWPORT_WIDTH]) {
+    let pa = layer.pa().as_i32();
+    let pc = layer.pc().as_i32();
+    let bg_control = layer.control();
     let screen_size = bg_control.screen_size();
     let map_size = screen_size.affine_map_pixel_size() as i32;
     let screen_block_base = bg_control.screen_base_block().vram_offset();
     let character_block_base = bg_control.character_base_block().vram_offset();
     let area_overflow = bg_control.display_area_overflow();
     let bytes_per_tile = 64;
-    let bg_x_current = background.bg_x_current(affine_bg);
-    let bg_y_current = background.bg_y_current(affine_bg);
+    let bg_x_current = layer.x_current();
+    let bg_y_current = layer.y_current();
 
     for (x, pixel) in bg_line.iter_mut().enumerate() {
         let mut map_pixel_x = (bg_x_current + pa * x as i32) >> 8;
