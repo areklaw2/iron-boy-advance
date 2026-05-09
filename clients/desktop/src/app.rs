@@ -7,7 +7,7 @@ use winit::{
     dpi::LogicalSize,
     event::{ElementState, KeyEvent, WindowEvent},
     event_loop::ActiveEventLoop,
-    keyboard::{KeyCode, PhysicalKey},
+    keyboard::{KeyCode, ModifiersState, PhysicalKey},
     window::{Window, WindowId},
 };
 
@@ -24,6 +24,7 @@ pub struct Application {
     title: String,
     emulator: EmulatorHandle,
     keypad_tracker: KeypadTracker,
+    modifiers: ModifiersState,
 
     window: Option<Arc<Window>>,
     renderer: Option<Renderer>,
@@ -39,6 +40,7 @@ impl Application {
             title,
             emulator,
             keypad_tracker: KeypadTracker::new(),
+            modifiers: ModifiersState::empty(),
             window: None,
             renderer: None,
             gui: None,
@@ -180,7 +182,7 @@ impl Application {
             return false;
         }
 
-        let Some(hotkey) = keycode_to_hotkey(code) else {
+        let Some(hotkey) = keycode_to_hotkey(self.modifiers, code) else {
             return false;
         };
 
@@ -237,6 +239,9 @@ impl ApplicationHandler for Application {
 
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::ModifiersChanged(modifiers) => {
+                self.modifiers = modifiers.state();
+            }
             WindowEvent::Resized(size) => {
                 if let Some(r) = self.renderer.as_mut() {
                     r.resize(size);
