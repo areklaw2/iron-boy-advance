@@ -33,7 +33,7 @@ impl TextBgScreenEntry {
 }
 #[bitfield(u8)]
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct RotationScalingBgScreenEntry {
+pub struct AffineBgScreenEntry {
     tile_index: u8,
 }
 
@@ -91,7 +91,7 @@ impl ScreenSize {
     }
 
     pub fn affine_screen_entry_index(self, map_tile_x: u16, map_tile_y: u16) -> u16 {
-        map_tile_y * self.affine_map_pixel_size() / 8 + map_tile_x
+        map_tile_y * (self.affine_map_pixel_size() / 8) + map_tile_x
     }
 }
 

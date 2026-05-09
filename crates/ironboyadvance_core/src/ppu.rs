@@ -448,14 +448,14 @@ impl Ppu {
             ]));
 
             let (tile_pixel_x, tile_pixel_y) = screen_entry.apply_flip((map_pixel_x % 8) as u8, (map_pixel_y % 8) as u8);
-            let tile_address = character_block_base + screen_entry.tile_index() as usize * color_mode.bytes_per_tile();
+            let tile_address = character_block_base + screen_entry.tile_index() as usize * bytes_per_tile;
 
             //if BG fetches into OBJ tiles VRAM (>= 0x10000) render transparent
             if tile_address + bytes_per_tile > OBJ_VRAM_START {
                 continue;
             }
 
-            let tile = &self.vram[tile_address..tile_address + color_mode.bytes_per_tile()];
+            let tile = &self.vram[tile_address..tile_address + bytes_per_tile];
             let palette_index = color_mode.palette_index(tile, tile_pixel_x, tile_pixel_y, screen_entry.palette_bank());
             if palette_index == 0 {
                 continue;
@@ -469,8 +469,61 @@ impl Ppu {
         }
     }
 
-    fn render_affine_bg_scanline(&self, _bg: usize, _bg_line: &mut [Option<u16>; VIEWPORT_WIDTH]) {
-        // TODO: affine
+    fn render_affine_bg_scanline(&self, bg: usize, bg_line: &mut [Option<u16>; VIEWPORT_WIDTH]) {
+        let affine_bg = bg - 2;
+        let pa = self.bg_pa[affine_bg].as_i32();
+        let pc = self.bg_pc[affine_bg].as_i32();
+        let screen_size = self.bg_controls[bg].screen_size();
+        let map_size = screen_size.affine_map_pixel_size() as i32;
+        let screen_block_base = self.bg_controls[bg].screen_base_block().vram_offset();
+        let character_block_base = self.bg_controls[bg].character_base_block().vram_offset();
+        let area_overflow = self.bg_controls[bg].display_area_overflow();
+        let bytes_per_tile = 64;
+
+        for (x, pixel) in bg_line.iter_mut().enumerate() {
+            let mut map_pixel_x = (self.bg_x_current[affine_bg] + pa * x as i32) >> 8;
+            let mut map_pixel_y = (self.bg_y_current[affine_bg] + pc * x as i32) >> 8;
+
+            if !(0..map_size).contains(&map_pixel_x) || !(0..map_size).contains(&map_pixel_y) {
+                match area_overflow {
+                    DisplayAreaOverflow::Transparent => {
+                        *pixel = None;
+                        continue;
+                    }
+                    DisplayAreaOverflow::Wraparound => {
+                        map_pixel_x = map_pixel_x.rem_euclid(map_size);
+                        map_pixel_y = map_pixel_y.rem_euclid(map_size);
+                    }
+                }
+            }
+
+            let map_tile_x = (map_pixel_x as u16) / 8;
+            let map_tile_y = (map_pixel_y as u16) / 8;
+            let screen_entry_index = screen_size.affine_screen_entry_index(map_tile_x, map_tile_y);
+
+            let screen_entry_address = screen_block_base + screen_entry_index as usize;
+            let screen_entry = AffineBgScreenEntry::from_bits(self.vram[screen_entry_address]);
+
+            let tile_pixel_x = (map_pixel_x % 8) as usize;
+            let tile_pixel_y = (map_pixel_y % 8) as usize;
+            let tile_address = character_block_base + screen_entry.tile_index() as usize * bytes_per_tile;
+
+            //if BG fetches into OBJ tiles VRAM (>= 0x10000) render transparent
+            if tile_address + bytes_per_tile > OBJ_VRAM_START {
+                continue;
+            }
+
+            let palette_index = self.vram[tile_address + tile_pixel_y * 8 + tile_pixel_x];
+            if palette_index == 0 {
+                continue;
+            }
+
+            let palette_address = palette_index as usize * 2;
+            *pixel = Some(u16::from_le_bytes([
+                self.palette_ram[palette_address],
+                self.palette_ram[palette_address + 1],
+            ]));
+        }
     }
 
     fn render_mode3_scanline(&mut self, bg_line: &mut [Option<u16>; VIEWPORT_WIDTH]) {
