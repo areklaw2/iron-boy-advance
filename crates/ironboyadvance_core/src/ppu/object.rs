@@ -158,7 +158,7 @@ impl ObjectAttribute1 {
             Self::Affine(_) => false,
         }
     }
-    pub fn _affine_index(self) -> u8 {
+    pub fn affine_index(self) -> u8 {
         match self {
             Self::Affine(a) => a.affine_index(),
             Self::Normal(_) => 0,
