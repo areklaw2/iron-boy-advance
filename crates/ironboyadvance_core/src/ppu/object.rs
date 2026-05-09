@@ -1,7 +1,11 @@
 use bitfields::bitfield;
 use getset::CopyGetters;
+use ironboyadvance_arm7tdmi::{bits::SignExtend, memory::SystemMemoryAccess};
 
-use crate::ppu::color::ColorMode;
+use crate::ppu::{OBJ_VRAM_START, ScanlineContext, VIEWPORT_WIDTH, color::ColorMode, lcd::BgMode};
+
+const OBJ_2D_CHAR_MAP_TILES: u32 = 1024;
+const OAM_SIZE: usize = 0x400;
 
 const OBJECT_SIZES: [[(u16, u16); 4]; 3] = [
     [(8, 8), (16, 16), (32, 32), (64, 64)], // Square
@@ -255,4 +259,170 @@ pub struct ObjectPixel {
     pub color: u16,
     pub priority: u8,
     pub object_mode: ObjectMode,
+}
+
+pub struct Object {
+    oam: Vec<u8>,
+    obj_buffer: Vec<ObjectEntry>,
+}
+
+impl Object {
+    pub fn new() -> Self {
+        Self {
+            oam: vec![0; OAM_SIZE],
+            obj_buffer: Vec::with_capacity(128),
+        }
+    }
+
+    pub fn render_scanline(&mut self, ctx: &ScanlineContext, obj_line: &mut [Option<ObjectPixel>; VIEWPORT_WIDTH]) {
+        let y = ctx.v_count;
+        self.obj_buffer.clear();
+        for obj_bytes in self.oam.chunks(8) {
+            let obj_entry = ObjectEntry::from_oam(obj_bytes);
+            if obj_entry.is_visible(y) {
+                self.obj_buffer.push(obj_entry);
+            }
+        }
+
+        for obj_entry in self.obj_buffer.iter().rev() {
+            let attribute0 = obj_entry.attribute0();
+            let attribute1 = obj_entry.attribute1();
+            let attribute2 = obj_entry.attribute2();
+
+            let tile_index = attribute2.tile_index() as u32;
+            if matches!(ctx.lcd_control.bg_mode(), BgMode::Mode3 | BgMode::Mode4 | BgMode::Mode5) && tile_index < 512 {
+                continue;
+            }
+
+            let Some((obj_width, obj_height)) = obj_entry.obj_map_pixel_size() else {
+                continue;
+            };
+
+            let Some((total_object_width, total_object_height)) = obj_entry.total_object_pixel_size() else {
+                continue;
+            };
+
+            let color_mode = attribute0.color_mode();
+            let bytes_per_tile = color_mode.bytes_per_tile() as u32;
+
+            let obj_x = attribute1.x().sign_extend(9);
+            let obj_y = attribute0.y();
+
+            let tile_row_bytes: u32 = match ctx.lcd_control.obj_character_vram_mapping() {
+                true => (obj_width as u32 / 8) * bytes_per_tile,
+                false => OBJ_2D_CHAR_MAP_TILES,
+            };
+
+            let start = (-obj_x).max(0);
+            let end = (VIEWPORT_WIDTH as i32 - obj_x).min(total_object_width as i32);
+
+            let palette_bank = attribute2.palette_bank();
+            let object_mode = attribute0.object_mode();
+            let priority = attribute2.priority();
+
+            match attribute0.affine_mode() {
+                AffineMode::NoAffine => {
+                    let obj_pixel_y = (y as u32).wrapping_sub(obj_y as u32) & 0xFF;
+                    let obj_pixel_y = attribute1.apply_v_flip(obj_pixel_y, obj_height);
+
+                    let obj_tile_y = obj_pixel_y / 8;
+                    let tile_pixel_y = (obj_pixel_y % 8) as u8;
+
+                    let tile_row_base = OBJ_VRAM_START + (tile_index * 32 + obj_tile_y * tile_row_bytes) as usize;
+
+                    for obj_pixel_x in start..end {
+                        let screen_x = (obj_x + obj_pixel_x) as usize;
+                        let obj_pixel_x = attribute1.apply_h_flip(obj_pixel_x as u32, obj_width);
+
+                        let obj_tile_x = obj_pixel_x / 8;
+                        let tile_pixel_x = (obj_pixel_x % 8) as u8;
+
+                        let tile_address = tile_row_base + (obj_tile_x * bytes_per_tile) as usize;
+                        if tile_address + bytes_per_tile as usize > ctx.vram.len() {
+                            continue;
+                        }
+
+                        let tile = &ctx.vram[tile_address..tile_address + bytes_per_tile as usize];
+                        let palette_index = color_mode.palette_index(tile, tile_pixel_x, tile_pixel_y, palette_bank);
+                        if palette_index == 0 {
+                            continue;
+                        }
+
+                        let palette_address = 0x200 + palette_index as usize * 2;
+                        let color =
+                            u16::from_le_bytes([ctx.palette_ram[palette_address], ctx.palette_ram[palette_address + 1]]);
+                        obj_line[screen_x] = Some(ObjectPixel {
+                            color,
+                            priority,
+                            object_mode,
+                        });
+                    }
+                }
+                AffineMode::Affine | AffineMode::AffineDouble => {
+                    let (pa, pb, pc, pd) = self.read_obj_affine_matrix(attribute1.affine_index());
+                    let bounding_box_pixel_y = ((y as u32).wrapping_sub(obj_y as u32) & 0xFF) as i32;
+                    let screen_offset_y = bounding_box_pixel_y - total_object_height as i32 / 2;
+
+                    for bounding_box_pixel_x in start..end {
+                        let screen_x = (obj_x + bounding_box_pixel_x) as usize;
+                        let screen_offset_x = bounding_box_pixel_x - total_object_width as i32 / 2;
+
+                        let obj_pixel_x = obj_width as i32 / 2 + ((pa * screen_offset_x + pb * screen_offset_y) >> 8);
+                        let obj_pixel_y = obj_height as i32 / 2 + ((pc * screen_offset_x + pd * screen_offset_y) >> 8);
+
+                        if !(0..obj_width as i32).contains(&obj_pixel_x) || !(0..obj_height as i32).contains(&obj_pixel_y) {
+                            continue;
+                        }
+
+                        let obj_tile_x = obj_pixel_x as u32 / 8;
+                        let obj_tile_y = obj_pixel_y as u32 / 8;
+                        let tile_pixel_x = (obj_pixel_x % 8) as u8;
+                        let tile_pixel_y = (obj_pixel_y % 8) as u8;
+
+                        let tile_row_base = OBJ_VRAM_START + (tile_index * 32 + obj_tile_y * tile_row_bytes) as usize;
+                        let tile_address = tile_row_base + (obj_tile_x * bytes_per_tile) as usize;
+
+                        if tile_address + bytes_per_tile as usize > ctx.vram.len() {
+                            continue;
+                        }
+
+                        let tile = &ctx.vram[tile_address..tile_address + bytes_per_tile as usize];
+                        let palette_index = color_mode.palette_index(tile, tile_pixel_x, tile_pixel_y, palette_bank);
+                        if palette_index == 0 {
+                            continue;
+                        }
+
+                        let palette_address = 0x200 + palette_index as usize * 2;
+                        let color =
+                            u16::from_le_bytes([ctx.palette_ram[palette_address], ctx.palette_ram[palette_address + 1]]);
+                        obj_line[screen_x] = Some(ObjectPixel {
+                            color,
+                            priority,
+                            object_mode,
+                        });
+                    }
+                }
+                AffineMode::Hidden => {}
+            }
+        }
+    }
+
+    fn read_obj_affine_matrix(&self, index: u8) -> (i32, i32, i32, i32) {
+        let base = (index as usize) * 32;
+        let pa = i16::from_le_bytes([self.oam[base + 0x06], self.oam[base + 0x07]]) as i32;
+        let pb = i16::from_le_bytes([self.oam[base + 0x0E], self.oam[base + 0x0F]]) as i32;
+        let pc = i16::from_le_bytes([self.oam[base + 0x16], self.oam[base + 0x17]]) as i32;
+        let pd = i16::from_le_bytes([self.oam[base + 0x1E], self.oam[base + 0x1F]]) as i32;
+        (pa, pb, pc, pd)
+    }
+}
+
+impl SystemMemoryAccess for Object {
+    fn read_8(&self, address: u32) -> u8 {
+        self.oam[(address & 0x3FF) as usize]
+    }
+
+    fn write_8(&mut self, address: u32, value: u8) {
+        self.oam[(address & 0x3FF) as usize] = value;
+    }
 }

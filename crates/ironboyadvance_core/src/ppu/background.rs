@@ -1,9 +1,9 @@
 use crate::{
     io_registers::RegisterOps,
-    ppu::{SB_ENTRIES, SB_SIDE, color::ColorMode},
+    ppu::{SB_ENTRIES, SB_SIDE, color::ColorMode, lcd::BgMode},
 };
 use bitfields::bitfield;
-use ironboyadvance_arm7tdmi::bits::SignExtend;
+use ironboyadvance_arm7tdmi::{bits::SignExtend, memory::SystemMemoryAccess};
 
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -247,5 +247,167 @@ impl RegisterOps<u16> for BgAffineParameter {
 
     fn write_register(&mut self, bits: u16) {
         self.set_bits(bits);
+    }
+}
+
+pub struct Background {
+    bg_controls: [BgControl; 4],
+    bg_x_offsets: [BgOffset; 4],
+    bg_y_offsets: [BgOffset; 4],
+    bg_x_reference: [BgReferencePoint; 2],
+    bg_y_reference: [BgReferencePoint; 2],
+    bg_x_current: [i32; 2],
+    bg_y_current: [i32; 2],
+    bg_pa: [BgAffineParameter; 2],
+    bg_pb: [BgAffineParameter; 2],
+    bg_pc: [BgAffineParameter; 2],
+    bg_pd: [BgAffineParameter; 2],
+}
+
+impl Background {
+    pub fn new() -> Self {
+        Self {
+            bg_controls: [BgControl::from_bits(0); 4],
+            bg_x_offsets: [BgOffset::from_bits(0); 4],
+            bg_y_offsets: [BgOffset::from_bits(0); 4],
+            bg_x_reference: [BgReferencePoint::from_bits(0); 2],
+            bg_y_reference: [BgReferencePoint::from_bits(0); 2],
+            bg_x_current: [0; 2],
+            bg_y_current: [0; 2],
+            bg_pa: [BgAffineParameter::from_bits(0); 2],
+            bg_pb: [BgAffineParameter::from_bits(0); 2],
+            bg_pc: [BgAffineParameter::from_bits(0); 2],
+            bg_pd: [BgAffineParameter::from_bits(0); 2],
+        }
+    }
+
+    pub fn priority(&self, bg: usize) -> u8 {
+        self.bg_controls[bg].priority()
+    }
+
+    pub fn priorities(&self) -> [u8; 4] {
+        [
+            self.bg_controls[0].priority(),
+            self.bg_controls[1].priority(),
+            self.bg_controls[2].priority(),
+            self.bg_controls[3].priority(),
+        ]
+    }
+
+    pub fn bg_control(&self, bg: usize) -> BgControl {
+        self.bg_controls[bg]
+    }
+
+    pub fn bg_x_offset(&self, bg: usize) -> BgOffset {
+        self.bg_x_offsets[bg]
+    }
+
+    pub fn bg_y_offset(&self, bg: usize) -> BgOffset {
+        self.bg_y_offsets[bg]
+    }
+
+    pub fn bg_pa(&self, affine_bg: usize) -> BgAffineParameter {
+        self.bg_pa[affine_bg]
+    }
+
+    pub fn bg_pc(&self, affine_bg: usize) -> BgAffineParameter {
+        self.bg_pc[affine_bg]
+    }
+
+    pub fn bg_x_current(&self, affine_bg: usize) -> i32 {
+        self.bg_x_current[affine_bg]
+    }
+
+    pub fn bg_y_current(&self, affine_bg: usize) -> i32 {
+        self.bg_y_current[affine_bg]
+    }
+
+    pub fn advance_current_reference_points(&mut self) {
+        self.bg_x_current[0] = self.bg_x_current[0].wrapping_add(self.bg_pb[0].as_i32());
+        self.bg_y_current[0] = self.bg_y_current[0].wrapping_add(self.bg_pd[0].as_i32());
+        self.bg_x_current[1] = self.bg_x_current[1].wrapping_add(self.bg_pb[1].as_i32());
+        self.bg_y_current[1] = self.bg_y_current[1].wrapping_add(self.bg_pd[1].as_i32());
+    }
+
+    pub fn reload_current_reference_points(&mut self) {
+        self.bg_x_current[0] = self.bg_x_reference[0].as_i32();
+        self.bg_y_current[0] = self.bg_y_reference[0].as_i32();
+        self.bg_x_current[1] = self.bg_x_reference[1].as_i32();
+        self.bg_y_current[1] = self.bg_y_reference[1].as_i32();
+    }
+}
+
+impl SystemMemoryAccess for Background {
+    fn read_8(&self, address: u32) -> u8 {
+        match address {
+            // BG0CNT, BG1CNT, BG2CNT, BG3CNT
+            0x04000008..=0x04000009 => self.bg_controls[0].read_byte(address),
+            0x0400000A..=0x0400000B => self.bg_controls[1].read_byte(address),
+            0x0400000C..=0x0400000D => self.bg_controls[2].read_byte(address),
+            0x0400000E..=0x0400000F => self.bg_controls[3].read_byte(address),
+            // BG0HOFS, BG0VOFS, BG1HOFS, BG1VOFS, BG2HOFS, BG2VOFS, BG3HOFS, BG3VOFS
+            // BG2PA, BG2PB, BG2PC, BG2PD, BG2X_L, BG2X_H, BG2Y_L, BG2Y_H
+            // BG3PA, BG3PB, BG3PC, BG3PD, BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
+            0x04000010..=0x0400003F => 0,
+            _ => panic!("Invalid byte read for Background register: {:#010X}", address),
+        }
+    }
+
+    fn write_8(&mut self, address: u32, value: u8) {
+        match address {
+            // BG0CNT, BG1CNT, BG2CNT, BG3CNT
+            0x04000008..=0x04000009 => self.bg_controls[0].write_byte(address, value),
+            0x0400000A..=0x0400000B => self.bg_controls[1].write_byte(address, value),
+            0x0400000C..=0x0400000D => self.bg_controls[2].write_byte(address, value),
+            0x0400000E..=0x0400000F => self.bg_controls[3].write_byte(address, value),
+            // BG0HOFS, BG0VOFS, BG1HOFS, BG1VOFS, BG2HOFS, BG2VOFS, BG3HOFS, BG3VOFS
+            0x04000010..=0x04000011 => self.bg_x_offsets[0].write_byte(address, value),
+            0x04000012..=0x04000013 => self.bg_y_offsets[0].write_byte(address, value),
+            0x04000014..=0x04000015 => self.bg_x_offsets[1].write_byte(address, value),
+            0x04000016..=0x04000017 => self.bg_y_offsets[1].write_byte(address, value),
+            0x04000018..=0x04000019 => self.bg_x_offsets[2].write_byte(address, value),
+            0x0400001A..=0x0400001B => self.bg_y_offsets[2].write_byte(address, value),
+            0x0400001C..=0x0400001D => self.bg_x_offsets[3].write_byte(address, value),
+            0x0400001E..=0x0400001F => self.bg_y_offsets[3].write_byte(address, value),
+            // BG2PA, BG2PB, BG2PC, BG2PD
+            0x04000020..=0x04000021 => self.bg_pa[0].write_byte(address, value),
+            0x04000022..=0x04000023 => self.bg_pb[0].write_byte(address, value),
+            0x04000024..=0x04000025 => self.bg_pc[0].write_byte(address, value),
+            0x04000026..=0x04000027 => self.bg_pd[0].write_byte(address, value),
+            // BG2X_L, BG2X_H, BG2Y_L, BG2Y_H
+            0x04000028..=0x0400002B => {
+                self.bg_x_reference[0].write_byte(address, value);
+                self.bg_x_current[0] = self.bg_x_reference[0].as_i32();
+            }
+            0x0400002C..=0x0400002F => {
+                self.bg_y_reference[0].write_byte(address, value);
+                self.bg_y_current[0] = self.bg_y_reference[0].as_i32();
+            }
+            // BG3PA, BG3PB, BG3PC, BG3PD
+            0x04000030..=0x04000031 => self.bg_pa[1].write_byte(address, value),
+            0x04000032..=0x04000033 => self.bg_pb[1].write_byte(address, value),
+            0x04000034..=0x04000035 => self.bg_pc[1].write_byte(address, value),
+            0x04000036..=0x04000037 => self.bg_pd[1].write_byte(address, value),
+            // BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
+            0x04000038..=0x0400003B => {
+                self.bg_x_reference[1].write_byte(address, value);
+                self.bg_x_current[1] = self.bg_x_reference[1].as_i32();
+            }
+            0x0400003C..=0x0400003F => {
+                self.bg_y_reference[1].write_byte(address, value);
+                self.bg_y_current[1] = self.bg_y_reference[1].as_i32();
+            }
+            _ => panic!("Invalid byte write for Background register: {:#010X}", address),
+        }
+    }
+}
+
+pub fn allowed_backgrounds_by_mode(mode: BgMode) -> [bool; 4] {
+    match mode {
+        BgMode::Mode0 => [true, true, true, true],
+        BgMode::Mode1 => [true, true, true, false],
+        BgMode::Mode2 => [false, false, true, true],
+        BgMode::Mode3 | BgMode::Mode4 | BgMode::Mode5 => [false, false, true, false],
+        BgMode::Prohibited => [false; 4],
     }
 }
