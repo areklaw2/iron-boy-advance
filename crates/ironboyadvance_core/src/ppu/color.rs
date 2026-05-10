@@ -43,3 +43,14 @@ pub fn bgr555_to_rgb888(color: u16) -> u32 {
     let b = ((color >> 10) & 0x1F) as u32;
     ((r << 3 | r >> 2) << 16) | ((g << 3 | g >> 2) << 8) | (b << 3 | b >> 2)
 }
+
+pub fn split_bgr555(color: u16) -> (u16, u16, u16) {
+    let red = color & 0x1F;
+    let green = (color >> 5) & 0x1F;
+    let blue = (color >> 10) & 0x1F;
+    (red, green, blue)
+}
+
+pub fn combine_bgr555(red: u16, green: u16, blue: u16) -> u16 {
+    (red & 0x1F) | ((green & 0x1F) << 5) | ((blue & 0x1F) << 10)
+}

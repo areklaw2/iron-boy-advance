@@ -1,4 +1,5 @@
 use bitfields::bitfield;
+use getset::CopyGetters;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
 use crate::{
@@ -33,11 +34,13 @@ impl RegisterOps<u16> for WindowDimension {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct WindowControl {
-    pub backgrounds: [bool; 4],
-    pub object: bool,
-    pub special_effect: bool,
+    backgrounds: [bool; 4],
+    #[getset(get_copy = "pub")]
+    object: bool,
+    #[getset(get_copy = "pub")]
+    special_effect: bool,
 }
 
 impl WindowControl {
@@ -47,6 +50,10 @@ impl WindowControl {
             object: true,
             special_effect: true,
         }
+    }
+
+    pub fn background(&self, bg: usize) -> bool {
+        self.backgrounds[bg]
     }
 }
 

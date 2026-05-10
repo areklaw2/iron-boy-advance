@@ -6,9 +6,9 @@ use crate::{
     ppu::{
         background::Background,
         color::bgr555_to_rgb888,
-        effects::*,
+        effects::{Effects, MosaicSize},
         lcd::*,
-        object::{Object, ObjectPixel},
+        object::Object,
         window::*,
     },
     scheduler::event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
@@ -51,6 +51,30 @@ mod object;
 mod tiles;
 mod window;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Layer {
+    Bg(u8),
+    Obj { semi_transparent: bool },
+    Backdrop,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Pixel {
+    pub color: u16,
+    pub priority: u8,
+    pub layer: Layer,
+}
+
+impl Pixel {
+    pub fn backdrop(color: u16) -> Self {
+        Self {
+            color,
+            priority: 4,
+            layer: Layer::Backdrop,
+        }
+    }
+}
+
 pub struct ScanlineContext<'a> {
     pub vram: &'a [u8],
     pub palette_ram: &'a [u8],
@@ -69,16 +93,14 @@ pub struct Ppu {
     object: Object,
     window: Window,
     mosiac_size: MosaicSize,
-    color_special_effects_selection: ColorSpecialEffectsSelection,
-    alpha_blending_coefficients: AlphaBlendingCoefficients,
-    brightness_coefficient: BrightnessCoefficient,
+    effects: Effects,
     palette_ram: Vec<u8>,
     vram: Vec<u8>,
     oam: Vec<u8>,
     #[getset(get = "pub")]
     frame_buffer: [u32; PIXEL_PER_FRAME],
-    bg_lines: [[Option<u16>; VIEWPORT_WIDTH]; 4],
-    obj_line: [Option<ObjectPixel>; VIEWPORT_WIDTH],
+    bg_lines: [[Option<Pixel>; VIEWPORT_WIDTH]; 4],
+    obj_line: [Option<Pixel>; VIEWPORT_WIDTH],
     win_obj_line: [bool; VIEWPORT_WIDTH],
     win_control_line: [WindowControl; VIEWPORT_WIDTH],
 }
@@ -94,9 +116,7 @@ impl Ppu {
             object: Object::new(),
             window: Window::new(),
             mosiac_size: MosaicSize::from_bits(0),
-            color_special_effects_selection: ColorSpecialEffectsSelection::from_bits(0),
-            alpha_blending_coefficients: AlphaBlendingCoefficients::from_bits(0),
-            brightness_coefficient: BrightnessCoefficient::from_bits(0),
+            effects: Effects::new(),
             palette_ram: vec![0; 0x400],
             vram: vec![0; 0x18000],
             oam: vec![0; 0x400],
@@ -128,9 +148,7 @@ impl SystemMemoryAccess for Ppu {
             // MOSIAC — write-only
             0x0400004C..=0x0400004F => 0,
             // BLDCNT, BLDALPHA, BLDY
-            0x04000050..=0x04000051 => self.color_special_effects_selection.read_byte(address),
-            0x04000052..=0x04000053 => self.alpha_blending_coefficients.read_byte(address),
-            0x04000054..=0x04000057 => self.brightness_coefficient.read_byte(address),
+            0x04000050..=0x04000057 => self.effects.read_8(address),
             // Palette RAM
             0x05000000..=0x05FFFFFF => self.palette_ram[(address & 0x3FF) as usize],
             // VRAM (with 128KB mirror)
@@ -163,9 +181,7 @@ impl SystemMemoryAccess for Ppu {
             // MOSIAC
             0x0400004C..=0x0400004F => self.mosiac_size.write_byte(address, value),
             // BLDCNT, BLDALPHA, BLDY
-            0x04000050..=0x04000051 => self.color_special_effects_selection.write_byte(address, value),
-            0x04000052..=0x04000053 => self.alpha_blending_coefficients.write_byte(address, value),
-            0x04000054..=0x04000057 => self.brightness_coefficient.write_byte(address, value),
+            0x04000050..=0x04000057 => self.effects.write_8(address, value),
             // Palette RAM
             0x05000000..=0x05FFFFFF => self.palette_ram[(address & 0x3FF) as usize] = value,
             // VRAM (with 128KB mirror)
@@ -334,44 +350,56 @@ impl Ppu {
 
     fn composite_scanline(&mut self, bg_order: &[usize]) {
         let row = self.v_count as usize * VIEWPORT_WIDTH;
-        let backdrop_color = u16::from_le_bytes([self.palette_ram[0], self.palette_ram[1]]);
+        let backdrop_pixel = Pixel::backdrop(u16::from_le_bytes([self.palette_ram[0], self.palette_ram[1]]));
         let bg_priorities = self.background.priorities();
 
         for (x, frame_pixel) in self.frame_buffer[row..row + VIEWPORT_WIDTH].iter_mut().enumerate() {
             let win_control = self.win_control_line[x];
-            let obj_pixel = self.obj_line[x];
-            let mut color = backdrop_color;
-            let mut color_resolved = false;
+            let mut obj_pixel = self.obj_line[x].filter(|_| win_control.object());
+
+            let mut first_target: Option<Pixel> = None;
+            let mut second_target: Option<Pixel> = None;
 
             for &bg in bg_order {
-                if !win_control.backgrounds[bg] {
+                if let Some(obj) = obj_pixel
+                    && obj.priority <= bg_priorities[bg]
+                {
+                    obj_pixel = None;
+                    if first_target.is_none() {
+                        first_target = Some(obj);
+                    } else {
+                        second_target = Some(obj);
+                        break;
+                    }
+                }
+
+                if !win_control.background(bg) {
                     continue;
                 }
 
-                if let Some(obj_pixel) = obj_pixel
-                    && win_control.object
-                    && obj_pixel.priority <= bg_priorities[bg]
-                {
-                    color = obj_pixel.color;
-                    color_resolved = true;
-                    break;
-                }
-
-                if let Some(bg_pixel) = self.bg_lines[bg][x] {
-                    color = bg_pixel;
-                    color_resolved = true;
-                    break;
+                if let Some(pixel) = self.bg_lines[bg][x] {
+                    if first_target.is_none() {
+                        first_target = Some(pixel);
+                    } else {
+                        second_target = Some(pixel);
+                        break;
+                    }
                 }
             }
 
-            if !color_resolved
-                && win_control.object
-                && let Some(obj_pixel) = obj_pixel
-            {
-                color = obj_pixel.color;
+            // OBJ at lower priority than every walked BG falls in here.
+            if let Some(obj) = obj_pixel {
+                if first_target.is_none() {
+                    first_target = Some(obj);
+                } else if second_target.is_none() {
+                    second_target = Some(obj);
+                }
             }
 
-            *frame_pixel = bgr555_to_rgb888(color);
+            let first = first_target.unwrap_or(backdrop_pixel);
+            let second = second_target.unwrap_or(backdrop_pixel);
+            let final_color = self.effects.resolve_pixel(first, second, win_control.special_effect());
+            *frame_pixel = bgr555_to_rgb888(final_color);
         }
     }
 }

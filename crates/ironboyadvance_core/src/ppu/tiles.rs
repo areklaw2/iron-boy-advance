@@ -1,7 +1,7 @@
 use bitfields::bitfield;
 
 use crate::ppu::{
-    OBJ_VRAM_START, ScanlineContext, VIEWPORT_WIDTH,
+    Layer, OBJ_VRAM_START, Pixel, ScanlineContext, VIEWPORT_WIDTH,
     background::{Background, DisplayAreaOverflow},
 };
 
@@ -39,7 +39,12 @@ pub struct AffineBgScreenEntry {
 }
 
 impl Background {
-    pub fn render_text_scanline(&self, ctx: &ScanlineContext, bg_index: usize, bg_line: &mut [Option<u16>; VIEWPORT_WIDTH]) {
+    pub fn render_text_scanline(
+        &self,
+        ctx: &ScanlineContext,
+        bg_index: usize,
+        bg_line: &mut [Option<Pixel>; VIEWPORT_WIDTH],
+    ) {
         let y = ctx.v_count;
         let scroll_x = self.bg_x_offset(bg_index).offset();
         let scroll_y = self.bg_y_offset(bg_index).offset();
@@ -50,6 +55,8 @@ impl Background {
         let character_block_base = bg_control.character_base_block().vram_offset();
         let color_mode = bg_control.color_mode();
         let bytes_per_tile = color_mode.bytes_per_tile();
+        let priority = bg_control.priority();
+        let layer = Layer::Bg(bg_index as u8);
 
         for (x, pixel) in bg_line.iter_mut().enumerate() {
             let map_pixel_x = (x as u16 + scroll_x) % map_width;
@@ -77,10 +84,8 @@ impl Background {
             }
 
             let palette_address = palette_index as usize * 2;
-            *pixel = Some(u16::from_le_bytes([
-                ctx.palette_ram[palette_address],
-                ctx.palette_ram[palette_address + 1],
-            ]));
+            let color = u16::from_le_bytes([ctx.palette_ram[palette_address], ctx.palette_ram[palette_address + 1]]);
+            *pixel = Some(Pixel { color, priority, layer });
         }
     }
 
@@ -88,7 +93,7 @@ impl Background {
         &self,
         ctx: &ScanlineContext,
         bg_index: usize,
-        bg_line: &mut [Option<u16>; VIEWPORT_WIDTH],
+        bg_line: &mut [Option<Pixel>; VIEWPORT_WIDTH],
     ) {
         let pa = self.bg_pa(bg_index).as_i32();
         let pc = self.bg_pc(bg_index).as_i32();
@@ -101,6 +106,8 @@ impl Background {
         let bytes_per_tile = 64;
         let bg_x_current = self.bg_x_current(bg_index);
         let bg_y_current = self.bg_y_current(bg_index);
+        let priority = bg_control.priority();
+        let layer = Layer::Bg(bg_index as u8);
 
         for (x, pixel) in bg_line.iter_mut().enumerate() {
             let mut map_pixel_x = (bg_x_current + pa * x as i32) >> 8;
@@ -141,10 +148,8 @@ impl Background {
             }
 
             let palette_address = palette_index as usize * 2;
-            *pixel = Some(u16::from_le_bytes([
-                ctx.palette_ram[palette_address],
-                ctx.palette_ram[palette_address + 1],
-            ]));
+            let color = u16::from_le_bytes([ctx.palette_ram[palette_address], ctx.palette_ram[palette_address + 1]]);
+            *pixel = Some(Pixel { color, priority, layer });
         }
     }
 }

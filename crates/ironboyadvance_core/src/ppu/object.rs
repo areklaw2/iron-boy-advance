@@ -2,7 +2,9 @@ use bitfields::bitfield;
 use getset::CopyGetters;
 use ironboyadvance_arm7tdmi::bits::SignExtend;
 
-use crate::ppu::{OBJ_PALETTE_START, OBJ_VRAM_START, ScanlineContext, VIEWPORT_WIDTH, color::ColorMode, lcd::BgMode};
+use crate::ppu::{
+    Layer, OBJ_PALETTE_START, OBJ_VRAM_START, Pixel, ScanlineContext, VIEWPORT_WIDTH, color::ColorMode, lcd::BgMode,
+};
 
 const OBJ_2D_CHAR_MAP_TILES: u32 = 1024;
 
@@ -253,13 +255,6 @@ impl ObjectEntry {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ObjectPixel {
-    pub color: u16,
-    pub priority: u8,
-    pub object_mode: ObjectMode,
-}
-
 pub struct Object {
     obj_buffer: Vec<ObjectEntry>,
 }
@@ -274,7 +269,7 @@ impl Object {
     pub fn render_obj_scanline(
         &mut self,
         ctx: &ScanlineContext,
-        obj_line: &mut [Option<ObjectPixel>; VIEWPORT_WIDTH],
+        obj_line: &mut [Option<Pixel>; VIEWPORT_WIDTH],
         win_obj_line: &mut [bool; VIEWPORT_WIDTH],
     ) {
         let y = ctx.v_count;
@@ -358,10 +353,12 @@ impl Object {
                                     ctx.palette_ram[palette_address],
                                     ctx.palette_ram[palette_address + 1],
                                 ]);
-                                obj_line[screen_x] = Some(ObjectPixel {
+                                obj_line[screen_x] = Some(Pixel {
                                     color,
                                     priority,
-                                    object_mode,
+                                    layer: Layer::Obj {
+                                        semi_transparent: matches!(object_mode, ObjectMode::SemiTransparent),
+                                    },
                                 });
                             }
                         }
@@ -409,10 +406,12 @@ impl Object {
                                     ctx.palette_ram[palette_address],
                                     ctx.palette_ram[palette_address + 1],
                                 ]);
-                                obj_line[screen_x] = Some(ObjectPixel {
+                                obj_line[screen_x] = Some(Pixel {
                                     color,
                                     priority,
-                                    object_mode,
+                                    layer: Layer::Obj {
+                                        semi_transparent: matches!(object_mode, ObjectMode::SemiTransparent),
+                                    },
                                 });
                             }
                         }
