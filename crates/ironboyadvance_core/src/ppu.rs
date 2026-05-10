@@ -309,14 +309,14 @@ impl Ppu {
         for &bg in &bg_order[..count] {
             match (mode, bg) {
                 (BgMode::Mode0, _) | (BgMode::Mode1, 0 | 1) => {
-                    tiles::render_text_scanline(self.background.layer(bg), &ctx, &mut self.bg_lines[bg])
+                    self.background.render_text_scanline(&ctx, bg, &mut self.bg_lines[bg])
                 }
                 (BgMode::Mode1, 2) | (BgMode::Mode2, 2 | 3) => {
-                    tiles::render_affine_scanline(self.background.layer(bg), &ctx, &mut self.bg_lines[bg])
+                    self.background.render_affine_scanline(&ctx, bg, &mut self.bg_lines[bg])
                 }
-                (BgMode::Mode3, 2) => bitmap::render_mode3(&ctx, &mut self.bg_lines[bg]),
-                (BgMode::Mode4, 2) => bitmap::render_mode4(&ctx, &mut self.bg_lines[bg]),
-                (BgMode::Mode5, 2) => bitmap::render_mode5(&ctx, &mut self.bg_lines[bg]),
+                (BgMode::Mode3, 2) => self.background.render_mode3(&ctx, &mut self.bg_lines[bg]),
+                (BgMode::Mode4, 2) => self.background.render_mode4(&ctx, &mut self.bg_lines[bg]),
+                (BgMode::Mode5, 2) => self.background.render_mode5(&ctx, &mut self.bg_lines[bg]),
                 _ => {}
             }
         }
