@@ -2,7 +2,7 @@ use bitfields::bitfield;
 use getset::CopyGetters;
 use ironboyadvance_arm7tdmi::bits::SignExtend;
 
-use crate::ppu::{OBJ_VRAM_START, ScanlineContext, VIEWPORT_WIDTH, color::ColorMode, lcd::BgMode};
+use crate::ppu::{OBJ_PALETTE_START, OBJ_VRAM_START, ScanlineContext, VIEWPORT_WIDTH, color::ColorMode, lcd::BgMode};
 
 const OBJ_2D_CHAR_MAP_TILES: u32 = 1024;
 
@@ -271,7 +271,12 @@ impl Object {
         }
     }
 
-    pub fn render_obj_scanline(&mut self, ctx: &ScanlineContext, obj_line: &mut [Option<ObjectPixel>; VIEWPORT_WIDTH]) {
+    pub fn render_obj_scanline(
+        &mut self,
+        ctx: &ScanlineContext,
+        obj_line: &mut [Option<ObjectPixel>; VIEWPORT_WIDTH],
+        win_obj_line: &mut [bool; VIEWPORT_WIDTH],
+    ) {
         let y = ctx.v_count;
         self.obj_buffer.clear();
         for obj_bytes in ctx.oam.chunks(8) {
@@ -345,14 +350,21 @@ impl Object {
                             continue;
                         }
 
-                        let palette_address = 0x200 + palette_index as usize * 2;
-                        let color =
-                            u16::from_le_bytes([ctx.palette_ram[palette_address], ctx.palette_ram[palette_address + 1]]);
-                        obj_line[screen_x] = Some(ObjectPixel {
-                            color,
-                            priority,
-                            object_mode,
-                        });
+                        match object_mode {
+                            ObjectMode::ObjectWindow => win_obj_line[screen_x] = true,
+                            _ => {
+                                let palette_address = OBJ_PALETTE_START + palette_index as usize * 2;
+                                let color = u16::from_le_bytes([
+                                    ctx.palette_ram[palette_address],
+                                    ctx.palette_ram[palette_address + 1],
+                                ]);
+                                obj_line[screen_x] = Some(ObjectPixel {
+                                    color,
+                                    priority,
+                                    object_mode,
+                                });
+                            }
+                        }
                     }
                 }
                 AffineMode::Affine | AffineMode::AffineDouble => {
@@ -389,14 +401,21 @@ impl Object {
                             continue;
                         }
 
-                        let palette_address = 0x200 + palette_index as usize * 2;
-                        let color =
-                            u16::from_le_bytes([ctx.palette_ram[palette_address], ctx.palette_ram[palette_address + 1]]);
-                        obj_line[screen_x] = Some(ObjectPixel {
-                            color,
-                            priority,
-                            object_mode,
-                        });
+                        match object_mode {
+                            ObjectMode::ObjectWindow => win_obj_line[screen_x] = true,
+                            _ => {
+                                let palette_address = OBJ_PALETTE_START + palette_index as usize * 2;
+                                let color = u16::from_le_bytes([
+                                    ctx.palette_ram[palette_address],
+                                    ctx.palette_ram[palette_address + 1],
+                                ]);
+                                obj_line[screen_x] = Some(ObjectPixel {
+                                    color,
+                                    priority,
+                                    object_mode,
+                                });
+                            }
+                        }
                     }
                 }
                 AffineMode::Hidden => {}

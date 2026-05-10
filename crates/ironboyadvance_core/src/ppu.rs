@@ -4,7 +4,7 @@ use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use crate::{
     io_registers::RegisterOps,
     ppu::{
-        background::{Background, allowed_backgrounds_by_mode},
+        background::Background,
         color::bgr555_to_rgb888,
         effects::*,
         lcd::*,
@@ -40,6 +40,7 @@ const SB_SIDE: u16 = 32;
 const SB_ENTRIES: u16 = SB_SIDE * SB_SIDE;
 
 const OBJ_VRAM_START: usize = 0x10000;
+const OBJ_PALETTE_START: usize = 0x200;
 
 mod background;
 mod bitmap;
@@ -66,10 +67,7 @@ pub struct Ppu {
     v_count: u8,
     background: Background,
     object: Object,
-    win_x_dimensions: [WindowDimension; 2],
-    win_y_dimensions: [WindowDimension; 2],
-    win_inside: WindowInside,
-    win_outside: WindowOutside,
+    window: Window,
     mosiac_size: MosaicSize,
     color_special_effects_selection: ColorSpecialEffectsSelection,
     alpha_blending_coefficients: AlphaBlendingCoefficients,
@@ -81,6 +79,8 @@ pub struct Ppu {
     frame_buffer: [u32; PIXEL_PER_FRAME],
     bg_lines: [[Option<u16>; VIEWPORT_WIDTH]; 4],
     obj_line: [Option<ObjectPixel>; VIEWPORT_WIDTH],
+    win_obj_line: [bool; VIEWPORT_WIDTH],
+    win_control_line: [WindowControl; VIEWPORT_WIDTH],
 }
 
 impl Ppu {
@@ -92,10 +92,7 @@ impl Ppu {
             v_count: 0,
             background: Background::new(),
             object: Object::new(),
-            win_x_dimensions: [WindowDimension::from_bits(0); 2],
-            win_y_dimensions: [WindowDimension::from_bits(0); 2],
-            win_inside: WindowInside::from_bits(0),
-            win_outside: WindowOutside::from_bits(0),
+            window: Window::new(),
             mosiac_size: MosaicSize::from_bits(0),
             color_special_effects_selection: ColorSpecialEffectsSelection::from_bits(0),
             alpha_blending_coefficients: AlphaBlendingCoefficients::from_bits(0),
@@ -106,6 +103,8 @@ impl Ppu {
             frame_buffer: [0; PIXEL_PER_FRAME],
             bg_lines: [[None; VIEWPORT_WIDTH]; 4],
             obj_line: [None; VIEWPORT_WIDTH],
+            win_obj_line: [false; VIEWPORT_WIDTH],
+            win_control_line: [WindowControl::no_windowing_control(); VIEWPORT_WIDTH],
         }
     }
 }
@@ -124,8 +123,10 @@ impl SystemMemoryAccess for Ppu {
             0x04000006..=0x04000007 => (self.v_count as u16).read_byte(address),
             // Background Registers
             0x04000008..=0x0400003F => self.background.read_8(address),
-            // WIN0H, WIN1H, WIN0V, WIN1V, WININ, WINOUT, MOSIAC — write-only
-            0x04000040..=0x0400004F => 0,
+            // WIN0H, WIN1H, WIN0V, WIN1V, WININ, WINOUT
+            0x04000040..=0x0400004B => self.window.read_8(address),
+            // MOSIAC — write-only
+            0x0400004C..=0x0400004F => 0,
             // BLDCNT, BLDALPHA, BLDY
             0x04000050..=0x04000051 => self.color_special_effects_selection.read_byte(address),
             0x04000052..=0x04000053 => self.alpha_blending_coefficients.read_byte(address),
@@ -157,14 +158,8 @@ impl SystemMemoryAccess for Ppu {
             0x04000006..=0x04000007 => {}
             // Background Registers
             0x04000008..=0x0400003F => self.background.write_8(address, value),
-            // WIN0H, WIN1H, WIN0V, WIN1V
-            0x04000040..=0x04000041 => self.win_x_dimensions[0].write_byte(address, value),
-            0x04000042..=0x04000043 => self.win_x_dimensions[1].write_byte(address, value),
-            0x04000044..=0x04000045 => self.win_y_dimensions[0].write_byte(address, value),
-            0x04000046..=0x04000047 => self.win_y_dimensions[1].write_byte(address, value),
-            // WININ, WINOUT
-            0x04000048..=0x04000049 => self.win_inside.write_byte(address, value),
-            0x0400004A..=0x0400004B => self.win_outside.write_byte(address, value),
+            // WIN0H, WIN1H, WIN0V, WIN1V, WININ, WINOUT
+            0x04000040..=0x0400004B => self.window.write_8(address, value),
             // MOSIAC
             0x0400004C..=0x0400004F => self.mosiac_size.write_byte(address, value),
             // BLDCNT, BLDALPHA, BLDY
@@ -292,28 +287,24 @@ impl Ppu {
             v_count: self.v_count,
         };
 
+        for bg_line in &mut self.bg_lines {
+            bg_line.fill(None);
+        }
+        self.obj_line.fill(None);
+        self.win_obj_line.fill(false);
+        self.win_control_line.fill(WindowControl::no_windowing_control());
+
         let mode = self.lcd_control.bg_mode();
-        let allowed = allowed_backgrounds_by_mode(mode);
-        let enabled = [
-            self.lcd_control.screen_display_bg0(),
-            self.lcd_control.screen_display_bg1(),
-            self.lcd_control.screen_display_bg2(),
-            self.lcd_control.screen_display_bg3(),
-        ];
 
         let mut bg_order = [0usize; 4];
         let mut count = 0;
         for bg in 0..4 {
-            if allowed[bg] && enabled[bg] {
+            if self.lcd_control.bg_mode_supported(bg) && self.lcd_control.bg_enabled(bg) {
                 bg_order[count] = bg;
                 count += 1
             }
         }
         bg_order[..count].sort_by_key(|&bg| self.background.priority(bg));
-
-        for bg_line in &mut self.bg_lines {
-            bg_line.fill(None);
-        }
 
         for &bg in &bg_order[..count] {
             match (mode, bg) {
@@ -330,35 +321,56 @@ impl Ppu {
             }
         }
 
-        self.obj_line.fill(None);
         if self.lcd_control.screen_display_obj() {
-            self.object.render_obj_scanline(&ctx, &mut self.obj_line);
+            self.object
+                .render_obj_scanline(&ctx, &mut self.obj_line, &mut self.win_obj_line);
         }
+
+        self.window
+            .build_win_control_line(&ctx, &self.win_obj_line, &mut self.win_control_line);
 
         self.composite_scanline(&bg_order[..count]);
     }
 
-    fn backdrop_color(&self) -> u16 {
-        u16::from_le_bytes([self.palette_ram[0], self.palette_ram[1]])
-    }
-
     fn composite_scanline(&mut self, bg_order: &[usize]) {
         let row = self.v_count as usize * VIEWPORT_WIDTH;
-        let backdrop_color = self.backdrop_color();
+        let backdrop_color = u16::from_le_bytes([self.palette_ram[0], self.palette_ram[1]]);
         let bg_priorities = self.background.priorities();
 
         for (x, frame_pixel) in self.frame_buffer[row..row + VIEWPORT_WIDTH].iter_mut().enumerate() {
+            let win_control = self.win_control_line[x];
             let obj_pixel = self.obj_line[x];
-            let obj_color = obj_pixel.map(|obj| obj.color);
+            let mut color = backdrop_color;
+            let mut color_resolved = false;
 
-            let color = bg_order
-                .iter()
-                .find_map(|&bg| match obj_pixel.is_some_and(|obj| obj.priority <= bg_priorities[bg]) {
-                    true => obj_color,
-                    false => self.bg_lines[bg][x],
-                })
-                .or(obj_color)
-                .unwrap_or(backdrop_color);
+            for &bg in bg_order {
+                if !win_control.backgrounds[bg] {
+                    continue;
+                }
+
+                if let Some(obj_pixel) = obj_pixel
+                    && win_control.object
+                    && obj_pixel.priority <= bg_priorities[bg]
+                {
+                    color = obj_pixel.color;
+                    color_resolved = true;
+                    break;
+                }
+
+                if let Some(bg_pixel) = self.bg_lines[bg][x] {
+                    color = bg_pixel;
+                    color_resolved = true;
+                    break;
+                }
+            }
+
+            if !color_resolved
+                && win_control.object
+                && let Some(obj_pixel) = obj_pixel
+            {
+                color = obj_pixel.color;
+            }
+
             *frame_pixel = bgr555_to_rgb888(color);
         }
     }

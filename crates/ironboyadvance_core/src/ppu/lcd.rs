@@ -79,6 +79,34 @@ pub struct LcdControl {
     obj_window_display: bool,
 }
 
+impl LcdControl {
+    pub fn bg_enabled(&self, bg: usize) -> bool {
+        match bg {
+            0 => self.screen_display_bg0(),
+            1 => self.screen_display_bg1(),
+            2 => self.screen_display_bg2(),
+            3 => self.screen_display_bg3(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn bg_mode_supported(&self, bg: usize) -> bool {
+        let allowed_bg_mask = match self.bg_mode() {
+            BgMode::Mode0 => 0b1111,
+            BgMode::Mode1 => 0b0111,
+            BgMode::Mode2 => 0b1100,
+            BgMode::Mode3 | BgMode::Mode4 | BgMode::Mode5 => 0b0100,
+            BgMode::Prohibited => 0,
+        };
+
+        (allowed_bg_mask >> bg) & 1 == 1
+    }
+
+    pub fn any_window_enabled(&self) -> bool {
+        self.window_0_display() || self.window_1_display() || self.obj_window_display()
+    }
+}
+
 impl RegisterOps<u16> for LcdControl {
     fn register(&self) -> u16 {
         self.into_bits()

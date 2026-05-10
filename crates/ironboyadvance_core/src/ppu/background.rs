@@ -1,41 +1,9 @@
 use crate::{
     io_registers::RegisterOps,
-    ppu::{SB_ENTRIES, SB_SIDE, color::ColorMode, lcd::BgMode},
+    ppu::{SB_ENTRIES, SB_SIDE, color::ColorMode},
 };
 use bitfields::bitfield;
 use ironboyadvance_arm7tdmi::{bits::SignExtend, memory::SystemMemoryAccess};
-
-#[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct TextBgScreenEntry {
-    #[bits(10)]
-    tile_index: u16,
-    horizontal_flip: bool,
-    vertical_flip: bool,
-    #[bits(4)]
-    palette_bank: u8,
-}
-
-impl TextBgScreenEntry {
-    pub fn apply_flip(self, tile_pixel_x: u8, tile_pixel_y: u8) -> (u8, u8) {
-        let tile_pixel_x = if self.horizontal_flip() {
-            7 - tile_pixel_x
-        } else {
-            tile_pixel_x
-        };
-        let tile_pixel_y = if self.vertical_flip() {
-            7 - tile_pixel_y
-        } else {
-            tile_pixel_y
-        };
-        (tile_pixel_x, tile_pixel_y)
-    }
-}
-#[bitfield(u8)]
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct AffineBgScreenEntry {
-    tile_index: u8,
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ScreenSize {
@@ -378,16 +346,6 @@ impl SystemMemoryAccess for Background {
             }
             _ => panic!("Invalid byte write for Background register: {:#010X}", address),
         }
-    }
-}
-
-pub fn allowed_backgrounds_by_mode(mode: BgMode) -> [bool; 4] {
-    match mode {
-        BgMode::Mode0 => [true, true, true, true],
-        BgMode::Mode1 => [true, true, true, false],
-        BgMode::Mode2 => [false, false, true, true],
-        BgMode::Mode3 | BgMode::Mode4 | BgMode::Mode5 => [false, false, true, false],
-        BgMode::Prohibited => [false; 4],
     }
 }
 
