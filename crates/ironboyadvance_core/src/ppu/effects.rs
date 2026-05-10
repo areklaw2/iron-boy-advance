@@ -5,7 +5,7 @@ use crate::{
     io_registers::RegisterOps,
     ppu::{
         Layer, Pixel,
-        color::{combine_bgr555, split_bgr555},
+        color::{bgr555_to_channels, channels_to_bgr555},
     },
 };
 
@@ -106,30 +106,6 @@ impl RegisterOps<u32> for Brightness {
     }
 }
 
-#[bitfield(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct MosaicSize {
-    #[bits(4)]
-    bg_mosaic_h_size: u8, // (minus 1)
-    #[bits(4)]
-    bg_mosaic_v_size: u8, // (minus 1)
-    #[bits(4)]
-    obj_mosaic_h_size: u8, // (minus 1)
-    #[bits(4)]
-    obj_mosaic_v_size: u8, // (minus 1)
-    _not_used_16_31: u16,
-}
-
-impl RegisterOps<u32> for MosaicSize {
-    fn register(&self) -> u32 {
-        self.into_bits()
-    }
-
-    fn write_register(&mut self, bits: u32) {
-        self.set_bits(bits);
-    }
-}
-
 pub struct Effects {
     special_effect_control: SpecialEffectsControl,
     alpha_blending: AlphaBlending,
@@ -219,10 +195,12 @@ impl Effects {
 impl SystemMemoryAccess for Effects {
     fn read_8(&self, address: u32) -> u8 {
         match address {
-            // BLDCNT, BLDALPHA, BLDY
+            // BLDCNT
             0x04000050..=0x04000051 => self.special_effect_control.read_byte(address),
+            // BLDALPHA
             0x04000052..=0x04000053 => self.alpha_blending.read_byte(address),
-            0x04000054..=0x04000057 => self.brightness.read_byte(address),
+            // BLDY — write-only
+            0x04000054..=0x04000057 => 0,
             _ => panic!("Invalid byte read for Effects register: {:#010X}", address),
         }
     }
@@ -239,11 +217,11 @@ impl SystemMemoryAccess for Effects {
 }
 
 fn alpha_blend(first: u16, second: u16, eva: u8, evb: u8) -> u16 {
-    let (first_red, first_green, first_blue) = split_bgr555(first);
-    let (second_red, second_green, second_blue) = split_bgr555(second);
+    let (first_red, first_green, first_blue) = bgr555_to_channels(first);
+    let (second_red, second_green, second_blue) = bgr555_to_channels(second);
     let blend =
         |first: u16, second: u16| -> u16 { ((first as u32 * eva as u32 + second as u32 * evb as u32) / 16).min(31) as u16 };
-    combine_bgr555(
+    channels_to_bgr555(
         blend(first_red, second_red),
         blend(first_green, second_green),
         blend(first_blue, second_blue),
@@ -251,13 +229,13 @@ fn alpha_blend(first: u16, second: u16, eva: u8, evb: u8) -> u16 {
 }
 
 fn brighten(color: u16, evy: u8) -> u16 {
-    let (red, green, blue) = split_bgr555(color);
+    let (red, green, blue) = bgr555_to_channels(color);
     let increase = |color: u16| -> u16 { color + ((31 - color) as u32 * evy as u32 / 16) as u16 };
-    combine_bgr555(increase(red), increase(green), increase(blue))
+    channels_to_bgr555(increase(red), increase(green), increase(blue))
 }
 
 fn darken(color: u16, evy: u8) -> u16 {
-    let (red, green, blue) = split_bgr555(color);
+    let (red, green, blue) = bgr555_to_channels(color);
     let decrease = |color: u16| -> u16 { color - (color as u32 * evy as u32 / 16) as u16 };
-    combine_bgr555(decrease(red), decrease(green), decrease(blue))
+    channels_to_bgr555(decrease(red), decrease(green), decrease(blue))
 }

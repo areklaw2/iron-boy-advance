@@ -4,12 +4,7 @@ use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use crate::{
     io_registers::RegisterOps,
     ppu::{
-        background::Background,
-        color::bgr555_to_rgb888,
-        effects::{Effects, MosaicSize},
-        lcd::*,
-        object::Object,
-        window::*,
+        background::Background, color::bgr555_to_rgb888, effects::Effects, lcd::*, mosaic::Mosaic, object::Object, window::*,
     },
     scheduler::event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
 };
@@ -47,6 +42,7 @@ mod bitmap;
 mod color;
 mod effects;
 mod lcd;
+mod mosaic;
 mod object;
 mod tiles;
 mod window;
@@ -92,7 +88,7 @@ pub struct Ppu {
     background: Background,
     object: Object,
     window: Window,
-    mosiac_size: MosaicSize,
+    mosaic: Mosaic,
     effects: Effects,
     palette_ram: Vec<u8>,
     vram: Vec<u8>,
@@ -115,7 +111,7 @@ impl Ppu {
             background: Background::new(),
             object: Object::new(),
             window: Window::new(),
-            mosiac_size: MosaicSize::from_bits(0),
+            mosaic: Mosaic::new(),
             effects: Effects::new(),
             palette_ram: vec![0; 0x400],
             vram: vec![0; 0x18000],
@@ -145,8 +141,8 @@ impl SystemMemoryAccess for Ppu {
             0x04000008..=0x0400003F => self.background.read_8(address),
             // WIN0H, WIN1H, WIN0V, WIN1V, WININ, WINOUT
             0x04000040..=0x0400004B => self.window.read_8(address),
-            // MOSIAC — write-only
-            0x0400004C..=0x0400004F => 0,
+            // MOSAIC
+            0x0400004C..=0x0400004F => self.mosaic.read_8(address),
             // BLDCNT, BLDALPHA, BLDY
             0x04000050..=0x04000057 => self.effects.read_8(address),
             // Palette RAM
@@ -178,8 +174,8 @@ impl SystemMemoryAccess for Ppu {
             0x04000008..=0x0400003F => self.background.write_8(address, value),
             // WIN0H, WIN1H, WIN0V, WIN1V, WININ, WINOUT
             0x04000040..=0x0400004B => self.window.write_8(address, value),
-            // MOSIAC
-            0x0400004C..=0x0400004F => self.mosiac_size.write_byte(address, value),
+            // MOSAIC
+            0x0400004C..=0x0400004F => self.mosaic.write_8(address, value),
             // BLDCNT, BLDALPHA, BLDY
             0x04000050..=0x04000057 => self.effects.write_8(address, value),
             // Palette RAM
@@ -357,18 +353,18 @@ impl Ppu {
             let win_control = self.win_control_line[x];
             let mut obj_pixel = self.obj_line[x].filter(|_| win_control.object());
 
-            let mut first_target: Option<Pixel> = None;
-            let mut second_target: Option<Pixel> = None;
+            let mut first_pixel: Option<Pixel> = None;
+            let mut second_pixel: Option<Pixel> = None;
 
             for &bg in bg_order {
                 if let Some(obj) = obj_pixel
                     && obj.priority <= bg_priorities[bg]
                 {
                     obj_pixel = None;
-                    if first_target.is_none() {
-                        first_target = Some(obj);
+                    if first_pixel.is_none() {
+                        first_pixel = Some(obj);
                     } else {
-                        second_target = Some(obj);
+                        second_pixel = Some(obj);
                         break;
                     }
                 }
@@ -378,10 +374,10 @@ impl Ppu {
                 }
 
                 if let Some(pixel) = self.bg_lines[bg][x] {
-                    if first_target.is_none() {
-                        first_target = Some(pixel);
+                    if first_pixel.is_none() {
+                        first_pixel = Some(pixel);
                     } else {
-                        second_target = Some(pixel);
+                        second_pixel = Some(pixel);
                         break;
                     }
                 }
@@ -389,15 +385,15 @@ impl Ppu {
 
             // OBJ at lower priority than every walked BG falls in here.
             if let Some(obj) = obj_pixel {
-                if first_target.is_none() {
-                    first_target = Some(obj);
-                } else if second_target.is_none() {
-                    second_target = Some(obj);
+                if first_pixel.is_none() {
+                    first_pixel = Some(obj);
+                } else if second_pixel.is_none() {
+                    second_pixel = Some(obj);
                 }
             }
 
-            let first = first_target.unwrap_or(backdrop_pixel);
-            let second = second_target.unwrap_or(backdrop_pixel);
+            let first = first_pixel.unwrap_or(backdrop_pixel);
+            let second = second_pixel.unwrap_or(backdrop_pixel);
             let final_color = self.effects.resolve_pixel(first, second, win_control.special_effect());
             *frame_pixel = bgr555_to_rgb888(final_color);
         }

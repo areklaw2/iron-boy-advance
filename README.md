@@ -28,9 +28,10 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
 - [ ] UI
   - [ ] Desktop frontend
     - [ ] Graphics Views
-    - [ ] Palette Viewer
-    - [ ] Sprite Viewer
-    - [ ] Tile Viewer
+      - [ ] Palette Viewer
+      - [ ] Sprite Viewer
+      - [ ] Tile Viewer
+      - [ ] Map Viewer
     - [ ] Backround Only Viewer
     - [ ] Window Only Viewer
     - [ ] Audio Channel Visualizer
