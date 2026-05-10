@@ -45,7 +45,6 @@ impl Background {
         bg_index: usize,
         bg_line: &mut [Option<Pixel>; VIEWPORT_WIDTH],
     ) {
-        let y = ctx.v_count;
         let scroll_x = self.bg_x_offset(bg_index).offset();
         let scroll_y = self.bg_y_offset(bg_index).offset();
         let bg_control = self.bg_control(bg_index);
@@ -57,9 +56,19 @@ impl Background {
         let bytes_per_tile = color_mode.bytes_per_tile();
         let priority = bg_control.priority();
         let layer = Layer::Bg(bg_index as u8);
+        let mosaic_enabled = bg_control.mosaic_enabled();
+        let mosaic_h_size = ctx.mosaic.size().bg_mosaic_h() as u16 + 1;
+        let y = match mosaic_enabled {
+            true => ctx.mosaic.bg_source_y(),
+            false => ctx.v_count,
+        };
 
         for (x, pixel) in bg_line.iter_mut().enumerate() {
-            let map_pixel_x = (x as u16 + scroll_x) % map_width;
+            let x = match mosaic_enabled {
+                true => x as u16 - x as u16 % mosaic_h_size,
+                false => x as u16,
+            };
+            let map_pixel_x = (x + scroll_x) % map_width;
             let map_pixel_y = (y as u16 + scroll_y) % map_height;
             let screen_entry_index = screen_size.text_screen_entry_index(map_pixel_x / 8, map_pixel_y / 8);
 
@@ -104,14 +113,20 @@ impl Background {
         let character_block_base = bg_control.character_base_block().vram_offset();
         let area_overflow = bg_control.display_area_overflow();
         let bytes_per_tile = 64;
-        let bg_x_current = self.bg_x_current(bg_index);
-        let bg_y_current = self.bg_y_current(bg_index);
+        let bg_x_affine = self.bg_x_affine(bg_index);
+        let bg_y_affine = self.bg_y_affine(bg_index);
         let priority = bg_control.priority();
         let layer = Layer::Bg(bg_index as u8);
+        let mosaic_enabled = bg_control.mosaic_enabled();
+        let mosaic_h_size = ctx.mosaic.size().bg_mosaic_h() as i32 + 1;
 
         for (x, pixel) in bg_line.iter_mut().enumerate() {
-            let mut map_pixel_x = (bg_x_current + pa * x as i32) >> 8;
-            let mut map_pixel_y = (bg_y_current + pc * x as i32) >> 8;
+            let x = match mosaic_enabled {
+                true => x as i32 - x as i32 % mosaic_h_size,
+                false => x as i32,
+            };
+            let mut map_pixel_x = (bg_x_affine + pa * x) >> 8;
+            let mut map_pixel_y = (bg_y_affine + pc * x) >> 8;
 
             if !(0..map_size).contains(&map_pixel_x) || !(0..map_size).contains(&map_pixel_y) {
                 match area_overflow {

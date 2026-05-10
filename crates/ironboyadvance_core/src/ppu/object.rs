@@ -92,7 +92,7 @@ pub struct ObjectAttribute0 {
     affine_mode: AffineMode,
     #[bits(2)]
     object_mode: ObjectMode,
-    mosaic: bool,
+    mosaic_enabled: bool,
     #[bits(1)]
     color_mode: ColorMode,
     #[bits(2)]
@@ -316,6 +316,12 @@ impl Object {
             let palette_bank = attribute2.palette_bank();
             let object_mode = attribute0.object_mode();
             let priority = attribute2.priority();
+            let mosaic_enabled = attribute0.mosaic_enabled();
+            let mosaic_h_block = ctx.mosaic.size().obj_mosaic_h() as i32 + 1;
+            let y = match mosaic_enabled {
+                true => ctx.mosaic.obj_source_y(),
+                false => y,
+            };
 
             match attribute0.affine_mode() {
                 AffineMode::NoAffine => {
@@ -329,6 +335,10 @@ impl Object {
 
                     for obj_pixel_x in start..end {
                         let screen_x = (obj_x + obj_pixel_x) as usize;
+                        let obj_pixel_x = match mosaic_enabled {
+                            true => obj_pixel_x - obj_pixel_x.rem_euclid(mosaic_h_block),
+                            false => obj_pixel_x,
+                        };
                         let obj_pixel_x = attribute1.apply_h_flip(obj_pixel_x as u32, obj_width);
 
                         let obj_tile_x = obj_pixel_x / 8;
@@ -371,6 +381,10 @@ impl Object {
 
                     for bounding_box_pixel_x in start..end {
                         let screen_x = (obj_x + bounding_box_pixel_x) as usize;
+                        let bounding_box_pixel_x = match mosaic_enabled {
+                            true => bounding_box_pixel_x - bounding_box_pixel_x.rem_euclid(mosaic_h_block),
+                            false => bounding_box_pixel_x,
+                        };
                         let screen_offset_x = bounding_box_pixel_x - total_object_width as i32 / 2;
 
                         let obj_pixel_x = obj_width as i32 / 2 + ((pa * screen_offset_x + pb * screen_offset_y) >> 8);

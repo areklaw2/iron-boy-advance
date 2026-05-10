@@ -6,23 +6,49 @@ const BITMAP_BG_INDEX: usize = 2;
 
 impl Background {
     pub fn render_mode3(&self, ctx: &ScanlineContext, bg_line: &mut [Option<Pixel>; VIEWPORT_WIDTH]) {
-        let priority = self.bg_control(BITMAP_BG_INDEX).priority();
+        let bg_control = self.bg_control(BITMAP_BG_INDEX);
+
+        let mosaic_enabled = bg_control.mosaic_enabled();
+        let mosaic_h_block = ctx.mosaic.size().bg_mosaic_h() as usize + 1;
+        let y = match mosaic_enabled {
+            true => ctx.mosaic.bg_source_y() as usize,
+            false => ctx.v_count as usize,
+        };
+
         let layer = Layer::Bg(BITMAP_BG_INDEX as u8);
-        let row = (ctx.v_count as usize) * VIEWPORT_WIDTH;
+        let priority = bg_control.priority();
+
         for (x, pixel) in bg_line.iter_mut().enumerate() {
-            let vram_address = (row + x) * 2;
+            let x = match mosaic_enabled {
+                true => x - x % mosaic_h_block,
+                false => x,
+            };
+            let vram_address = (y * VIEWPORT_WIDTH + x) * 2;
             let color = u16::from_le_bytes([ctx.vram[vram_address], ctx.vram[vram_address + 1]]);
             *pixel = Some(Pixel { color, priority, layer });
         }
     }
 
     pub fn render_mode4(&self, ctx: &ScanlineContext, bg_line: &mut [Option<Pixel>; VIEWPORT_WIDTH]) {
-        let priority = self.bg_control(BITMAP_BG_INDEX).priority();
-        let layer = Layer::Bg(BITMAP_BG_INDEX as u8);
         let frame_base_address = ctx.lcd_control.display_frame_select().base_address();
-        let row = (ctx.v_count as usize) * VIEWPORT_WIDTH;
+        let bg_control = self.bg_control(BITMAP_BG_INDEX);
+
+        let mosaic_enabled = bg_control.mosaic_enabled();
+        let mosaic_h_block = ctx.mosaic.size().bg_mosaic_h() as usize + 1;
+        let y = match mosaic_enabled {
+            true => ctx.mosaic.bg_source_y() as usize,
+            false => ctx.v_count as usize,
+        };
+
+        let layer = Layer::Bg(BITMAP_BG_INDEX as u8);
+        let priority = bg_control.priority();
+
         for (x, pixel) in bg_line.iter_mut().enumerate() {
-            let palette_index = ctx.vram[frame_base_address + row + x];
+            let x = match mosaic_enabled {
+                true => x - x % mosaic_h_block,
+                false => x,
+            };
+            let palette_index = ctx.vram[frame_base_address + y * VIEWPORT_WIDTH + x];
             if palette_index == 0 {
                 continue;
             }
@@ -34,15 +60,28 @@ impl Background {
     }
 
     pub fn render_mode5(&self, ctx: &ScanlineContext, bg_line: &mut [Option<Pixel>; VIEWPORT_WIDTH]) {
-        let y = ctx.v_count as usize;
+        let bg_control = self.bg_control(BITMAP_BG_INDEX);
+
+        let mosaic_enabled = bg_control.mosaic_enabled();
+        let mosaic_h_block = ctx.mosaic.size().bg_mosaic_h() as usize + 1;
+        let y = match mosaic_enabled {
+            true => ctx.mosaic.bg_source_y() as usize,
+            false => ctx.v_count as usize,
+        };
+
         if y >= BG_MODE_5_HEIGHT {
             return;
         }
 
-        let priority = self.bg_control(BITMAP_BG_INDEX).priority();
         let layer = Layer::Bg(BITMAP_BG_INDEX as u8);
+        let priority = bg_control.priority();
+
         let frame_base_address = ctx.lcd_control.display_frame_select().base_address();
         for (x, pixel) in bg_line[..BG_MODE_5_WIDTH].iter_mut().enumerate() {
+            let x = match mosaic_enabled {
+                true => x - x % mosaic_h_block,
+                false => x,
+            };
             let vram_address = frame_base_address + (y * BG_MODE_5_WIDTH + x) * 2;
             let color = u16::from_le_bytes([ctx.vram[vram_address], ctx.vram[vram_address + 1]]);
             *pixel = Some(Pixel { color, priority, layer });

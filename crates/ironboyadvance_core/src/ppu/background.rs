@@ -126,7 +126,7 @@ pub struct BgControl {
     character_base_block: CharacterBaseBlock, // BG Tile Data
     #[bits(2)]
     _reserved: u8,
-    mosaic: bool,
+    mosaic_enabled: bool,
     #[bits(1)]
     color_mode: ColorMode,
     #[bits(5)]
@@ -222,10 +222,10 @@ pub struct Background {
     bg_controls: [BgControl; 4],
     bg_x_offsets: [BgOffset; 4],
     bg_y_offsets: [BgOffset; 4],
-    bg_x_reference: [BgReferencePoint; 2],
-    bg_y_reference: [BgReferencePoint; 2],
-    bg_x_current: [i32; 2],
-    bg_y_current: [i32; 2],
+    bg_x_references: [BgReferencePoint; 2],
+    bg_y_references: [BgReferencePoint; 2],
+    bg_x_affine: [i32; 2],
+    bg_y_affine: [i32; 2],
     bg_pa: [BgAffineParameter; 2],
     bg_pb: [BgAffineParameter; 2],
     bg_pc: [BgAffineParameter; 2],
@@ -238,10 +238,10 @@ impl Background {
             bg_controls: [BgControl::from_bits(0); 4],
             bg_x_offsets: [BgOffset::from_bits(0); 4],
             bg_y_offsets: [BgOffset::from_bits(0); 4],
-            bg_x_reference: [BgReferencePoint::from_bits(0); 2],
-            bg_y_reference: [BgReferencePoint::from_bits(0); 2],
-            bg_x_current: [0; 2],
-            bg_y_current: [0; 2],
+            bg_x_references: [BgReferencePoint::from_bits(0); 2],
+            bg_y_references: [BgReferencePoint::from_bits(0); 2],
+            bg_x_affine: [0; 2],
+            bg_y_affine: [0; 2],
             bg_pa: [BgAffineParameter::from_bits(0); 2],
             bg_pb: [BgAffineParameter::from_bits(0); 2],
             bg_pc: [BgAffineParameter::from_bits(0); 2],
@@ -282,26 +282,30 @@ impl Background {
         self.bg_pc[bg_index - 2]
     }
 
-    pub fn bg_x_current(&self, bg_index: usize) -> i32 {
-        self.bg_x_current[bg_index - 2]
+    pub fn bg_x_affine(&self, bg_index: usize) -> i32 {
+        self.bg_x_affine[bg_index - 2]
     }
 
-    pub fn bg_y_current(&self, bg_index: usize) -> i32 {
-        self.bg_y_current[bg_index - 2]
+    pub fn bg_y_affine(&self, bg_index: usize) -> i32 {
+        self.bg_y_affine[bg_index - 2]
     }
 
-    pub fn advance_current_reference_points(&mut self) {
-        self.bg_x_current[0] = self.bg_x_current[0].wrapping_add(self.bg_pb[0].as_i32());
-        self.bg_y_current[0] = self.bg_y_current[0].wrapping_add(self.bg_pd[0].as_i32());
-        self.bg_x_current[1] = self.bg_x_current[1].wrapping_add(self.bg_pb[1].as_i32());
-        self.bg_y_current[1] = self.bg_y_current[1].wrapping_add(self.bg_pd[1].as_i32());
+    pub fn advance_affine_points(&mut self, should_advance: [bool; 2]) {
+        if should_advance[0] {
+            self.bg_x_affine[0] = self.bg_x_affine[0].wrapping_add(self.bg_pb[0].as_i32());
+            self.bg_y_affine[0] = self.bg_y_affine[0].wrapping_add(self.bg_pd[0].as_i32());
+        }
+        if should_advance[1] {
+            self.bg_x_affine[1] = self.bg_x_affine[1].wrapping_add(self.bg_pb[1].as_i32());
+            self.bg_y_affine[1] = self.bg_y_affine[1].wrapping_add(self.bg_pd[1].as_i32());
+        }
     }
 
-    pub fn reload_current_reference_points(&mut self) {
-        self.bg_x_current[0] = self.bg_x_reference[0].as_i32();
-        self.bg_y_current[0] = self.bg_y_reference[0].as_i32();
-        self.bg_x_current[1] = self.bg_x_reference[1].as_i32();
-        self.bg_y_current[1] = self.bg_y_reference[1].as_i32();
+    pub fn reload_affine_points(&mut self) {
+        self.bg_x_affine[0] = self.bg_x_references[0].as_i32();
+        self.bg_y_affine[0] = self.bg_y_references[0].as_i32();
+        self.bg_x_affine[1] = self.bg_x_references[1].as_i32();
+        self.bg_y_affine[1] = self.bg_y_references[1].as_i32();
     }
 }
 
@@ -344,12 +348,12 @@ impl SystemMemoryAccess for Background {
             0x04000026..=0x04000027 => self.bg_pd[0].write_byte(address, value),
             // BG2X_L, BG2X_H, BG2Y_L, BG2Y_H
             0x04000028..=0x0400002B => {
-                self.bg_x_reference[0].write_byte(address, value);
-                self.bg_x_current[0] = self.bg_x_reference[0].as_i32();
+                self.bg_x_references[0].write_byte(address, value);
+                self.bg_x_affine[0] = self.bg_x_references[0].as_i32();
             }
             0x0400002C..=0x0400002F => {
-                self.bg_y_reference[0].write_byte(address, value);
-                self.bg_y_current[0] = self.bg_y_reference[0].as_i32();
+                self.bg_y_references[0].write_byte(address, value);
+                self.bg_y_affine[0] = self.bg_y_references[0].as_i32();
             }
             // BG3PA, BG3PB, BG3PC, BG3PD
             0x04000030..=0x04000031 => self.bg_pa[1].write_byte(address, value),
@@ -358,12 +362,12 @@ impl SystemMemoryAccess for Background {
             0x04000036..=0x04000037 => self.bg_pd[1].write_byte(address, value),
             // BG3X_L, BG3X_H, BG3Y_L, BG3Y_H
             0x04000038..=0x0400003B => {
-                self.bg_x_reference[1].write_byte(address, value);
-                self.bg_x_current[1] = self.bg_x_reference[1].as_i32();
+                self.bg_x_references[1].write_byte(address, value);
+                self.bg_x_affine[1] = self.bg_x_references[1].as_i32();
             }
             0x0400003C..=0x0400003F => {
-                self.bg_y_reference[1].write_byte(address, value);
-                self.bg_y_current[1] = self.bg_y_reference[1].as_i32();
+                self.bg_y_references[1].write_byte(address, value);
+                self.bg_y_affine[1] = self.bg_y_references[1].as_i32();
             }
             _ => panic!("Invalid byte write for Background register: {:#010X}", address),
         }

@@ -76,6 +76,7 @@ pub struct ScanlineContext<'a> {
     pub palette_ram: &'a [u8],
     pub oam: &'a [u8],
     pub lcd_control: &'a LcdControl,
+    pub mosaic: &'a Mosaic,
     pub v_count: u8,
 }
 
@@ -221,7 +222,7 @@ impl Ppu {
             events.push((EventType::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 
-        self.background.advance_current_reference_points();
+        self.advance_affine_points();
         events.push((EventType::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
         events
     }
@@ -277,7 +278,7 @@ impl Ppu {
             }
 
             self.lcd_status.set_v_blank_flag(false);
-            self.background.reload_current_reference_points();
+            self.background.reload_affine_points();
             self.render_scanline();
             events.push((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         }
@@ -291,11 +292,14 @@ impl Ppu {
             return;
         }
 
+        self.mosaic.update_sources(self.v_count);
+
         let ctx = ScanlineContext {
             vram: &self.vram,
             palette_ram: &self.palette_ram,
             oam: &self.oam,
             lcd_control: &self.lcd_control,
+            mosaic: &self.mosaic,
             v_count: self.v_count,
         };
 
@@ -397,5 +401,13 @@ impl Ppu {
             let final_color = self.effects.resolve_pixel(first, second, win_control.special_effect());
             *frame_pixel = bgr555_to_rgb888(final_color);
         }
+    }
+
+    fn advance_affine_points(&mut self) {
+        let next_y = self.v_count.wrapping_add(1);
+        let bg_v_size = self.mosaic.size().bg_mosaic_v() + 1;
+        let bg_mosaic_block_start = next_y.is_multiple_of(bg_v_size);
+        let should_advance = [2, 3].map(|bg| !self.background.bg_control(bg).mosaic_enabled() || bg_mosaic_block_start);
+        self.background.advance_affine_points(should_advance);
     }
 }
