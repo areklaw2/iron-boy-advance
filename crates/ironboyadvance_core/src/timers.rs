@@ -1,11 +1,48 @@
+use bitfields::bitfield;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use tracing::debug;
 
-pub struct Timers {}
+use crate::scheduler::event::{FutureEvent, TimersEvent};
+
+const PRESCALER_CYCLES: [u16; 4] = [1, 64, 256, 1024];
+
+#[bitfield(u16)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct TimerControl {
+    #[bits(2)]
+    prescaler: u8,
+    cascade: bool,
+    #[bits(3)]
+    _not_used_3_5: u8,
+    irq_enable: bool,
+    enabled: bool,
+    _not_used_8_15: u8,
+}
+
+#[derive(Copy, Clone, Default)]
+pub struct Timer {
+    counter: u16,
+    reload: u16,
+    control: TimerControl,
+    start_time: u16,
+}
+
+pub struct Timers {
+    timers: [Timer; 4],
+}
 
 impl Timers {
     pub fn new() -> Self {
-        Timers {}
+        Self {
+            timers: [Timer::default(); 4],
+        }
+    }
+
+    pub fn handle_event(&mut self, event: TimersEvent) -> Vec<FutureEvent> {
+        match event {
+            TimersEvent::ControlWrite(_) => todo!(),
+            TimersEvent::ReloadWrite(_) => todo!(),
+        }
     }
 }
 

@@ -31,7 +31,10 @@ pub enum PpuEvent {
 pub enum ApuEvent {}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum TimerEvent {}
+pub enum TimersEvent {
+    ControlWrite(u8),
+    ReloadWrite(u8),
+}
 
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -40,7 +43,7 @@ pub enum EventType {
     Interrupt(InterruptEvent),
     Ppu(PpuEvent),
     Apu(ApuEvent),
-    Timer(TimerEvent),
+    Timers(TimersEvent),
 }
 
 pub type FutureEvent = (EventType, usize);

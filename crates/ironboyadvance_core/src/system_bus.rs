@@ -15,7 +15,7 @@ use crate::{
     ppu::HDRAW_CYCLES,
     scheduler::{
         Scheduler,
-        event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
+        event::{EventType, FutureEvent, InterruptEvent, PpuEvent, TimersEvent},
     },
     system_control::HaltMode,
 };
@@ -290,5 +290,9 @@ impl SystemBus {
 
     pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent) -> Vec<FutureEvent> {
         self.io_registers.ppu_mut().handle_event(ppu_event)
+    }
+
+    pub fn handle_timers_event(&mut self, timers_event: TimersEvent) -> Vec<FutureEvent> {
+        self.io_registers.timers_mut().handle_event(timers_event)
     }
 }

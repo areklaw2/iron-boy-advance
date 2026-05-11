@@ -37,7 +37,7 @@ struct KeyControl {
     buttons: u16,
     #[bits(4)]
     _not_used_10_13: u8,
-    irq_enable_flag: bool,
+    irq_enable: bool,
     irq_condition: bool,
 }
 
@@ -83,7 +83,7 @@ impl Keypad {
     }
 
     pub fn keypad_interrupt_raised(&self) -> bool {
-        if self.key_control.irq_enable_flag() {
+        if self.key_control.irq_enable() {
             let pressed = !self.key_input.into_bits() & 0x03FF;
             let selected = self.key_control.into_bits() & 0x03FF;
             return match self.key_control.irq_condition() {

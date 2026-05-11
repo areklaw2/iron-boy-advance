@@ -110,7 +110,7 @@ impl GameBoyAdvance {
             let future_events: Vec<FutureEvent> = match event {
                 EventType::FrameComplete => return true,
                 EventType::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
-                EventType::Timer(_timer_event) => vec![],
+                EventType::Timers(timers_event) => self.arm7tdmi.bus_mut().handle_timers_event(timers_event),
                 EventType::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event),
                 EventType::Apu(_apu_event) => vec![],
             };
