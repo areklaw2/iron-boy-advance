@@ -55,3 +55,9 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
   - bios :white_check_mark:
   - ppu :white_check_mark:
 - [arm-wrestler](https://github.com/destoer/armwrestler-gba-fixed) :white_check_mark:
+
+## License
+
+Copyright (C) 2026 Aza Walker
+
+Iron Boy Advance is licensed under the terms of the GNU General Public License (GPL) 3.0 or any later version. See [LICENSE](LICENSE) for details.
