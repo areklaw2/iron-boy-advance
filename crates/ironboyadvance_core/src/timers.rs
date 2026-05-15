@@ -1,30 +1,145 @@
+use std::{cell::RefCell, rc::Rc};
+
 use bitfields::bitfield;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
-use tracing::debug;
 
-use crate::scheduler::event::{FutureEvent, TimersEvent};
+use crate::{
+    io_registers::RegisterOps,
+    scheduler::{
+        Scheduler,
+        event::{EventType, InterruptEvent, TimerEvent},
+    },
+};
 
-const PRESCALER_CYCLES: [u16; 4] = [1, 64, 256, 1024];
+const PRESCALER_CYCLES: [usize; 4] = [1, 64, 256, 1024];
+
+const TIMER_OVERFLOW_INTERRUPTS: [InterruptEvent; 4] = [
+    InterruptEvent::Timer0Overflow,
+    InterruptEvent::Timer1Overflow,
+    InterruptEvent::Timer2Overflow,
+    InterruptEvent::Timer3Overflow,
+];
 
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TimerControl {
     #[bits(2)]
     prescaler: u8,
-    cascade: bool,
+    cascade_enabled: bool,
     #[bits(3)]
     _not_used_3_5: u8,
-    irq_enable: bool,
+    irq_enabled: bool,
     enabled: bool,
     _not_used_8_15: u8,
 }
 
-#[derive(Copy, Clone, Default)]
+impl TimerControl {
+    pub fn cycles_per_tick(&self) -> usize {
+        PRESCALER_CYCLES[self.prescaler() as usize]
+    }
+}
+
+impl RegisterOps<u16> for TimerControl {
+    fn register(&self) -> u16 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u16) {
+        self.set_bits(bits);
+    }
+}
+
 pub struct Timer {
-    counter: u16,
+    id: usize,
+    counter: usize,
     reload: u16,
     control: TimerControl,
-    start_time: u16,
+    start_time: usize,
+    active: bool,
+    scheduler: Rc<RefCell<Scheduler>>,
+}
+
+impl Timer {
+    pub fn new(id: usize, scheduler: Rc<RefCell<Scheduler>>) -> Self {
+        let start_time = scheduler.borrow().timestamp();
+        Self {
+            id,
+            counter: 0,
+            reload: 0,
+            control: TimerControl::from_bits(0),
+            start_time,
+            active: false,
+            scheduler,
+        }
+    }
+
+    fn delta_time(&self) -> usize {
+        (self.scheduler.borrow().timestamp() - self.start_time) / self.control.cycles_per_tick()
+    }
+
+    pub fn read_counter(&self) -> u16 {
+        let mut counter = self.counter;
+        if self.active {
+            counter = counter.wrapping_add(self.delta_time())
+        }
+        counter as u16
+    }
+
+    pub fn write_reload(&mut self, address: u32, value: u8) {
+        self.scheduler.borrow_mut().schedule((
+            EventType::Timer(TimerEvent::ReloadWrite {
+                timer_id: self.id,
+                address,
+                value,
+            }),
+            1,
+        ));
+    }
+
+    pub fn write_control(&mut self, address: u32, value: u8) {
+        if address & 1 == 1 {
+            return; // TMxCNT_H high byte contains unused bits, nothing to schedule
+        }
+
+        self.scheduler.borrow_mut().schedule((
+            EventType::Timer(TimerEvent::ControlWrite {
+                timer_id: self.id,
+                value,
+            }),
+            1,
+        ));
+    }
+
+    fn reload(&mut self) {
+        self.counter = self.reload as usize;
+
+        if self.control.irq_enabled() {
+            self.scheduler
+                .borrow_mut()
+                .schedule((EventType::Interrupt(TIMER_OVERFLOW_INTERRUPTS[self.id]), 0));
+        }
+    }
+
+    fn stop(&mut self) {
+        self.active = false;
+        self.scheduler
+            .borrow_mut()
+            .cancel_events(EventType::Timer(TimerEvent::Overflow { timer_id: self.id }));
+    }
+
+    fn start(&mut self) {
+        let current_time = self.scheduler.borrow().timestamp();
+        let cycles_per_tick = self.control.cycles_per_tick();
+        let prescaler_offset = current_time % cycles_per_tick;
+
+        self.start_time = current_time - prescaler_offset;
+        self.active = true;
+
+        let cycles = (0x10000 - self.counter) * cycles_per_tick - prescaler_offset;
+        self.scheduler
+            .borrow_mut()
+            .schedule((EventType::Timer(TimerEvent::Overflow { timer_id: self.id }), cycles));
+    }
 }
 
 pub struct Timers {
@@ -32,37 +147,106 @@ pub struct Timers {
 }
 
 impl Timers {
-    pub fn new() -> Self {
+    pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
         Self {
-            timers: [Timer::default(); 4],
+            timers: std::array::from_fn(|index| Timer::new(index, scheduler.clone())),
         }
     }
 
-    pub fn handle_event(&mut self, event: TimersEvent) -> Vec<FutureEvent> {
+    pub fn handle_event(&mut self, event: TimerEvent) {
         match event {
-            TimersEvent::ControlWrite(_) => todo!(),
-            TimersEvent::ReloadWrite(_) => todo!(),
+            TimerEvent::Overflow { timer_id } => self.handle_overflow(timer_id),
+            TimerEvent::ControlWrite { timer_id, value } => self.handle_control_write(timer_id, value),
+            TimerEvent::ReloadWrite {
+                timer_id,
+                address,
+                value,
+            } => self.handle_reload_write(timer_id, address, value),
+        }
+    }
+
+    fn handle_overflow(&mut self, timer_id: usize) {
+        self.cascade(timer_id);
+        self.timers[timer_id].start();
+    }
+
+    fn handle_reload_write(&mut self, timer_id: usize, address: u32, value: u8) {
+        self.timers[timer_id].reload.write_byte(address, value);
+    }
+
+    fn handle_control_write(&mut self, timer_id: usize, value: u8) {
+        let new_control = TimerControl::from_bits(value as u16);
+        let was_enabled = self.timers[timer_id].control.enabled();
+
+        if self.timers[timer_id].active {
+            let timer = &self.timers[timer_id];
+            let counter = timer.counter.wrapping_add(timer.delta_time());
+            if counter >= 0x10000 {
+                self.cascade(timer_id);
+            }
+
+            self.timers[timer_id].stop();
+        }
+
+        self.timers[timer_id].control = new_control;
+        if !new_control.enabled() {
+            return;
+        }
+
+        if !was_enabled {
+            self.timers[timer_id].counter = self.timers[timer_id].reload as usize;
+        }
+
+        if !new_control.cascade_enabled() {
+            self.timers[timer_id].start();
+        }
+    }
+
+    fn cascade(&mut self, timer_id: usize) {
+        self.timers[timer_id].reload();
+
+        if timer_id <= 1 {
+            //TODO: Handle sample rate for DMA sound channel A and/or B
+        }
+
+        if timer_id < 3 {
+            let next = &mut self.timers[timer_id + 1];
+            if next.control.enabled() && next.control.cascade_enabled() {
+                next.counter = next.counter.wrapping_add(1);
+                if next.counter == 0x10000 {
+                    self.cascade(timer_id + 1);
+                }
+            }
         }
     }
 }
 
-// 4000100h - TM0CNT_L - Timer 0 Counter/Reload (R/W)
-// 4000104h - TM1CNT_L - Timer 1 Counter/Reload (R/W)
-// 4000108h - TM2CNT_L - Timer 2 Counter/Reload (R/W)
-// 400010Ch - TM3CNT_L - Timer 3 Counter/Reload (R/W)
-
-// 4000102h - TM0CNT_H - Timer 0 Control (R/W)
-// 4000106h - TM1CNT_H - Timer 1 Control (R/W)
-// 400010Ah - TM2CNT_H - Timer 2 Control (R/W)
-// 400010Eh - TM3CNT_H - Timer 3 Control (R/W)
-
 impl SystemMemoryAccess for Timers {
     fn read_8(&self, address: u32) -> u8 {
-        debug!("{}", address);
-        0
+        match address {
+            0x04000100..=0x04000101 => self.timers[0].read_counter().read_byte(address),
+            0x04000102..=0x04000103 => self.timers[0].control.read_byte(address),
+            0x04000104..=0x04000105 => self.timers[1].read_counter().read_byte(address),
+            0x04000106..=0x04000107 => self.timers[1].control.read_byte(address),
+            0x04000108..=0x04000109 => self.timers[2].read_counter().read_byte(address),
+            0x0400010A..=0x0400010B => self.timers[2].control.read_byte(address),
+            0x0400010C..=0x0400010D => self.timers[3].read_counter().read_byte(address),
+            0x0400010E..=0x0400010F => self.timers[3].control.read_byte(address),
+            _ => panic!("Invalid byte read for Timers: {:#010X}", address),
+        }
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
-        debug!("{}, {}", address, value)
+        match address {
+            0x04000100..=0x04000101 => self.timers[0].write_reload(address, value),
+            0x04000102..=0x04000103 => self.timers[0].write_control(address, value),
+            0x04000104..=0x04000105 => self.timers[1].write_reload(address, value),
+            0x04000106..=0x04000107 => self.timers[1].write_control(address, value),
+            0x04000108..=0x04000109 => self.timers[2].write_reload(address, value),
+            0x0400010A..=0x0400010B => self.timers[2].write_control(address, value),
+            0x0400010C..=0x0400010D => self.timers[3].write_reload(address, value),
+            0x0400010E..=0x0400010F => self.timers[3].write_control(address, value),
+            _ => panic!("Invalid byte write for Timers: {:#010X}", address),
+        }
     }
 }

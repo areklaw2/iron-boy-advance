@@ -105,21 +105,25 @@ impl GameBoyAdvance {
     }
 
     fn handle_events(&mut self) -> bool {
-        let mut scheduler = self.scheduler.borrow_mut();
-        while let Some((event, timestamp)) = scheduler.pop() {
+        loop {
+            let Some((event, timestamp)) = self.scheduler.borrow_mut().pop() else {
+                return false;
+            };
+
             let future_events: Vec<FutureEvent> = match event {
                 EventType::FrameComplete => return true,
                 EventType::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
-                EventType::Timers(timers_event) => self.arm7tdmi.bus_mut().handle_timers_event(timers_event),
+                EventType::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
                 EventType::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event),
                 EventType::Apu(_apu_event) => vec![],
             };
 
             for (event_type, time) in future_events {
-                scheduler.schedule_at_timestamp(event_type, timestamp + time);
+                self.scheduler
+                    .borrow_mut()
+                    .schedule_at_timestamp(event_type, timestamp + time);
             }
         }
-        false
     }
 
     pub fn frame_buffer(&self) -> &[u32] {
