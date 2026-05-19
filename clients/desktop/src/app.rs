@@ -60,10 +60,6 @@ impl Application {
             self.fps_timer.count_frame();
         }
 
-        if let Some(ref fb) = self.last_frame {
-            renderer.upload_frame(fb);
-        }
-
         gui.overlay_mut().set_fps(self.fps_timer.fps());
 
         let output = match renderer.acquire() {
@@ -78,6 +74,10 @@ impl Application {
                 return;
             }
         };
+
+        if let Some(ref fb) = self.last_frame {
+            renderer.upload_frame(fb);
+        }
 
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -199,6 +199,7 @@ impl Application {
                 }
             }
             HotKey::TogglePause => self.send_emulator_command(EmulatorCommand::TogglePause), //TODO: add an overlay for paused state
+            //TODO: add opt-in pause-on-minimize/unfocus config
             HotKey::ToggleMaxSpeed => self.send_emulator_command(EmulatorCommand::ToggleMaxSpeed),
             HotKey::Reset => {
                 self.send_emulator_command(EmulatorCommand::Reset);
