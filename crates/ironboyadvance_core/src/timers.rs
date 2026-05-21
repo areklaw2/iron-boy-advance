@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-const PRESCALER_CYCLES: [usize; 4] = [1, 64, 256, 1024];
+const PRESCALER_SELECTIONS: [usize; 4] = [1, 64, 256, 1024];
 
 const TIMER_OVERFLOW_INTERRUPTS: [InterruptEvent; 4] = [
     InterruptEvent::Timer0Overflow,
@@ -24,7 +24,7 @@ const TIMER_OVERFLOW_INTERRUPTS: [InterruptEvent; 4] = [
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TimerControl {
     #[bits(2)]
-    prescaler: u8,
+    prescaler_selection: u8,
     cascade_enabled: bool,
     #[bits(3)]
     _not_used_3_5: u8,
@@ -34,8 +34,8 @@ pub struct TimerControl {
 }
 
 impl TimerControl {
-    pub fn cycles_per_tick(&self) -> usize {
-        PRESCALER_CYCLES[self.prescaler() as usize]
+    pub fn prescaler(&self) -> usize {
+        PRESCALER_SELECTIONS[self.prescaler_selection() as usize]
     }
 }
 
@@ -74,7 +74,7 @@ impl Timer {
     }
 
     fn delta_time(&self) -> usize {
-        (self.scheduler.borrow().timestamp() - self.start_time) / self.control.cycles_per_tick()
+        (self.scheduler.borrow().timestamp() - self.start_time) / self.control.prescaler()
     }
 
     pub fn read_counter(&self) -> u16 {
@@ -129,13 +129,13 @@ impl Timer {
 
     fn start(&mut self) {
         let current_time = self.scheduler.borrow().timestamp();
-        let cycles_per_tick = self.control.cycles_per_tick();
-        let prescaler_offset = current_time % cycles_per_tick;
+        let prescalar = self.control.prescaler();
+        let elapsed_time = current_time % prescalar;
 
-        self.start_time = current_time - prescaler_offset;
+        self.start_time = current_time - elapsed_time;
         self.active = true;
 
-        let cycles = (0x10000 - self.counter) * cycles_per_tick - prescaler_offset;
+        let cycles = (0x10000 - self.counter) * prescalar - elapsed_time;
         self.scheduler
             .borrow_mut()
             .schedule((EventType::Timer(TimerEvent::Overflow { timer_id: self.id }), cycles));
