@@ -58,6 +58,6 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
 
 ## License
 
-Copyright (C) 2026 Aza Walker
-
 Iron Boy Advance is licensed under the terms of the GNU General Public License (GPL) 3.0 or any later version. See [LICENSE](LICENSE) for details.
+
+Copyright (C) 2026 Aza Walker
