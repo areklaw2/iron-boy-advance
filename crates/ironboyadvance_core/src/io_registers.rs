@@ -9,14 +9,15 @@ use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use tracing::debug;
 
 use crate::{
-    interrupt_control::InterruptController, keypad::Keypad, ppu::Ppu, scheduler::Scheduler,
-    system_control::SystemController, timers::TimerController,
+    dma_control::DmaController, interrupt_control::InterruptController, keypad::Keypad, ppu::Ppu, scheduler::Scheduler,
+    system_control::SystemController, timer_control::TimerController,
 };
 
 #[derive(Getters, MutGetters, Setters)]
 #[getset(get = "pub", get_mut = "pub")]
 pub struct IoRegisters {
     ppu: Ppu,
+    dma_controller: DmaController,
     timer_controller: TimerController,
     // TODO remove when doing sound this just gets the bios to pass
     sound_bias: u16,
@@ -29,6 +30,7 @@ impl IoRegisters {
     pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
         IoRegisters {
             ppu: Ppu::new(),
+            dma_controller: DmaController::new(scheduler.clone()),
             timer_controller: TimerController::new(scheduler),
             keypad: Keypad::new(),
             interrupt_controller: InterruptController::new(),
@@ -45,7 +47,9 @@ impl SystemMemoryAccess for IoRegisters {
             0x04000000..=0x04000057 => self.ppu.read_8(address),
             // TODO remove when doing sound this just gets the bios to pass
             0x04000088..=0x04000089 => self.sound_bias.read_byte(address),
-            // Timers
+            // DMA Control
+            0x040000B0..=0x040000DF => self.dma_controller.read_8(address),
+            // Timer Control
             0x04000100..=0x0400010F => self.timer_controller.read_8(address),
             // Keypad
             0x04000130..=0x04000133 => self.keypad.read_8(address),
@@ -71,7 +75,9 @@ impl SystemMemoryAccess for IoRegisters {
             0x04000000..=0x04000057 => self.ppu.write_8(address, value),
             // TODO remove when doing sound this just gets the bios to pass
             0x04000088..=0x04000089 => self.sound_bias.write_byte(address, value),
-            // Timers
+            // DMA Control
+            0x040000B0..=0x040000DF => self.dma_controller.write_8(address, value),
+            // Timer Control
             0x04000100..=0x0400010F => self.timer_controller.write_8(address, value),
             // Keypad
             0x04000130..=0x04000133 => self.keypad.write_8(address, value),

@@ -17,6 +17,7 @@ use crate::{
 
 mod bios;
 mod cartridge;
+mod dma_control;
 mod interrupt_control;
 mod io_registers;
 mod keypad;
@@ -25,7 +26,7 @@ mod ppu;
 mod scheduler;
 mod system_bus;
 mod system_control;
-mod timers;
+mod timer_control;
 
 pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 

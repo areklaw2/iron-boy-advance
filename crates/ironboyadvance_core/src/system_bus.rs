@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use getset::{Getters, MutGetters};
 use ironboyadvance_arm7tdmi::{
     CpuState,
-    memory::{MemoryAccessWidth, MemoryInterface, SystemMemoryAccess, decompose_access_pattern},
+    memory::{MemoryAccess, MemoryAccessWidth, MemoryInterface, SystemMemoryAccess},
 };
 use tracing::debug;
 
@@ -81,6 +81,9 @@ impl MemoryInterface for SystemBus {
     }
 
     fn idle_cycle(&mut self) {
+        if self.io_registers.dma_controller().is_active() {
+            self.run_dma();
+        }
         self.scheduler.borrow_mut().step(1);
     }
 
@@ -265,7 +268,16 @@ impl SystemBus {
     }
 
     pub fn cycle(&mut self, address: u32, access_pattern: u8, width: MemoryAccessWidth) {
-        let access = decompose_access_pattern(access_pattern)[0];
+        if self.io_registers.dma_controller().is_active() && (access_pattern & (MemoryAccess::Dma | MemoryAccess::Lock)) == 0
+        {
+            self.run_dma();
+        }
+
+        let access = match MemoryAccess::Sequential.is_set(access_pattern) {
+            true => MemoryAccess::Sequential,
+            false => MemoryAccess::NonSequential,
+        };
+
         let index = ((address >> 24) & 0xF) as usize;
         let cycles = self.io_registers.system_controller().cycles(index, width, access);
         self.scheduler.borrow_mut().step(cycles);
@@ -296,4 +308,6 @@ impl SystemBus {
         self.io_registers.timer_controller_mut().handle_event(timer_event);
         vec![] // returning empty vec to satisfy caller
     }
+
+    fn run_dma(&mut self) {}
 }

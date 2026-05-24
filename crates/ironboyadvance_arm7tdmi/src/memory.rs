@@ -11,34 +11,18 @@ pub enum MemoryAccess {
     Lock = 0b1000,
 }
 
+impl MemoryAccess {
+    pub fn is_set(self, access_pattern: u8) -> bool {
+        access_pattern & self as u8 != 0
+    }
+}
+
 impl BitOr for MemoryAccess {
     type Output = u8;
 
     fn bitor(self, rhs: Self) -> Self::Output {
         self as u8 | rhs as u8
     }
-}
-
-// TODO: write a test for this
-pub fn decompose_access_pattern(access_pattern: u8) -> Vec<MemoryAccess> {
-    let mut decomposition = Vec::new();
-    match access_pattern & MemoryAccess::Sequential as u8 != 0 {
-        true => decomposition.push(MemoryAccess::Sequential),
-        false => decomposition.push(MemoryAccess::NonSequential),
-    };
-
-    if access_pattern & MemoryAccess::Instruction as u8 != 0 {
-        decomposition.push(MemoryAccess::Instruction);
-    }
-
-    if access_pattern & MemoryAccess::Dma as u8 != 0 {
-        decomposition.push(MemoryAccess::Dma);
-    }
-
-    if access_pattern & MemoryAccess::Lock as u8 != 0 {
-        decomposition.push(MemoryAccess::Lock);
-    }
-    decomposition
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

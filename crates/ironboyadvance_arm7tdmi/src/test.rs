@@ -5,7 +5,7 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    use crate::memory::{MemoryAccess, MemoryInterface, SystemMemoryAccess, decompose_access_pattern};
+    use crate::memory::{MemoryAccess, MemoryInterface, SystemMemoryAccess};
     use crate::{
         AluOperationsOpcode,
         arm::ArmInstruction,
@@ -86,8 +86,7 @@ mod tests {
 
     impl TestBus {
         fn take_read_transaction(&mut self, access_pattern: u8) -> Transaction {
-            let access = decompose_access_pattern(access_pattern);
-            let kind = match access.contains(&MemoryAccess::Instruction) {
+            let kind = match MemoryAccess::Instruction.is_set(access_pattern) {
                 true => TransactionKind::InstructionRead,
                 false => TransactionKind::GeneralRead,
             };
