@@ -142,11 +142,11 @@ impl Timer {
     }
 }
 
-pub struct Timers {
+pub struct TimerController {
     timers: [Timer; 4],
 }
 
-impl Timers {
+impl TimerController {
     pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
         Self {
             timers: std::array::from_fn(|index| Timer::new(index, scheduler.clone())),
@@ -221,7 +221,7 @@ impl Timers {
     }
 }
 
-impl SystemMemoryAccess for Timers {
+impl SystemMemoryAccess for TimerController {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             0x04000100..=0x04000101 => self.timers[0].read_counter().read_byte(address),

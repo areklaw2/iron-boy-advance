@@ -293,7 +293,7 @@ impl SystemBus {
     }
 
     pub fn handle_timer_event(&mut self, timer_event: TimerEvent) -> Vec<FutureEvent> {
-        self.io_registers.timers_mut().handle_event(timer_event);
+        self.io_registers.timer_controller_mut().handle_event(timer_event);
         vec![] // returning empty vec to satisfy caller
     }
 }
