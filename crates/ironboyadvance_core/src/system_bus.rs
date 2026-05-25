@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use getset::{Getters, MutGetters};
 use ironboyadvance_arm7tdmi::{
     CpuState,
-    memory::{MemoryAccess, MemoryAccessWidth, MemoryInterface, SystemMemoryAccess},
+    memory::{CpuContext, MemoryAccess, MemoryAccessWidth, MemoryInterface, SystemMemoryAccess},
 };
 use tracing::debug;
 
@@ -44,9 +44,7 @@ pub struct SystemBus {
     io_registers: IoRegisters,
     cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler>>,
-    cpu_state: CpuState,
-    pc: u32,
-    pipeline: [u32; 2],
+    cpu_context: CpuContext,
 }
 
 impl MemoryInterface for SystemBus {
@@ -87,17 +85,8 @@ impl MemoryInterface for SystemBus {
         self.scheduler.borrow_mut().step(1);
     }
 
-    fn update_pc_ref(&mut self, pc: u32) {
-        self.bios.set_pc_ref(pc);
-        self.pc = pc;
-    }
-
-    fn update_cpu_state_ref(&mut self, cpu_state: CpuState) {
-        self.cpu_state = cpu_state
-    }
-
-    fn update_pipeline_ref(&mut self, decoded: u32, prefetched: u32) {
-        self.pipeline = [decoded, prefetched];
+    fn cpu_context_mut(&mut self) -> &mut CpuContext {
+        &mut self.cpu_context
     }
 }
 
@@ -230,20 +219,18 @@ impl SystemBus {
             io_registers: IoRegisters::new(scheduler.clone()),
             cartridge,
             scheduler,
-            cpu_state: CpuState::Arm,
-            pc: 0,
-            pipeline: [0; 2],
+            cpu_context: CpuContext::default(),
         }
     }
 
     fn open_bus_read(&self, address: u32, width: MemoryAccessWidth) -> u32 {
         //TODO: add dma check
-        let value = match self.cpu_state {
-            CpuState::Arm => self.pipeline[1],
+        let value = match self.cpu_context.cpu_state {
+            CpuState::Arm => self.cpu_context.pipeline[1],
             CpuState::Thumb => {
-                let decoded = self.pipeline[0] & 0xFFFF;
-                let fetched = self.pipeline[1] & 0xFFFF;
-                let pc = self.pc;
+                let decoded = self.cpu_context.pipeline[0] & 0xFFFF;
+                let fetched = self.cpu_context.pipeline[1] & 0xFFFF;
+                let pc = self.cpu_context.pc;
                 match pc & 0xFF00_0000 {
                     // Approximation, cant get to $+6 for aligned and $+2 for unaligned
                     // See GBATEK - GBA Unpredictable Things.
@@ -272,6 +259,8 @@ impl SystemBus {
         {
             self.run_dma();
         }
+
+        self.bios.set_pc_ref(self.cpu_context.pc);
 
         let access = match MemoryAccess::Sequential.is_set(access_pattern) {
             true => MemoryAccess::Sequential,

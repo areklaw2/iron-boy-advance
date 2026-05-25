@@ -1,9 +1,3 @@
-desktop rom *flags:
-  cargo run --release --bin IronBoyAdvance -- --rom "{{rom}}" {{flags}}
-
-desktop-bios bios rom *flags:
-  cargo run --bin IronBoyAdvance -- --bios {{bios}} --rom "{{rom}}"  {{flags}}
-
 run rom *flags:
   cargo run --bin IronBoyAdvance -- --rom "{{rom}}" {{flags}}
 

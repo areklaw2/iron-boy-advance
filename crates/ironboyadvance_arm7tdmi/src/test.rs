@@ -5,7 +5,7 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    use crate::memory::{MemoryAccess, MemoryInterface, SystemMemoryAccess};
+    use crate::memory::{CpuContext, MemoryAccess, MemoryInterface, SystemMemoryAccess};
     use crate::{
         AluOperationsOpcode,
         arm::ArmInstruction,
@@ -82,6 +82,7 @@ mod tests {
         base_address: u32,
         opcode: u32,
         transactions: VecDeque<Transaction>,
+        cpu_context: CpuContext,
     }
 
     impl TestBus {
@@ -138,6 +139,10 @@ mod tests {
         }
 
         fn idle_cycle(&mut self) {}
+
+        fn cpu_context_mut(&mut self) -> &mut CpuContext {
+            &mut self.cpu_context
+        }
     }
 
     impl SystemMemoryAccess for TestBus {
@@ -161,6 +166,7 @@ mod tests {
                 base_address,
                 opcode,
                 transactions,
+                cpu_context: CpuContext::default(),
             }
         }
     }

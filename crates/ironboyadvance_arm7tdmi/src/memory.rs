@@ -32,6 +32,23 @@ pub enum MemoryAccessWidth {
     Word,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct CpuContext {
+    pub pc: u32,
+    pub cpu_state: CpuState,
+    pub pipeline: [u32; 2],
+}
+
+impl Default for CpuContext {
+    fn default() -> Self {
+        Self {
+            pc: 0,
+            cpu_state: CpuState::Arm,
+            pipeline: [0; 2],
+        }
+    }
+}
+
 pub trait MemoryInterface {
     fn load_8(&mut self, address: u32, access_pattern: u8) -> u32;
 
@@ -47,11 +64,7 @@ pub trait MemoryInterface {
 
     fn idle_cycle(&mut self);
 
-    fn update_pc_ref(&mut self, _pc: u32) {}
-
-    fn update_cpu_state_ref(&mut self, _cpu_state: CpuState) {}
-
-    fn update_pipeline_ref(&mut self, _decoded: u32, _prefetched: u32) {}
+    fn cpu_context_mut(&mut self) -> &mut CpuContext;
 }
 
 pub trait SystemMemoryAccess {
