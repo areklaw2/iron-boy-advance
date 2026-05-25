@@ -7,7 +7,7 @@ use crate::{
     io_registers::RegisterOps,
     scheduler::{
         Scheduler,
-        event::{EventType, InterruptEvent, TimerEvent},
+        event::{GbaEvent, InterruptEvent, TimerEvent},
     },
 };
 
@@ -56,11 +56,11 @@ pub struct Timer {
     control: TimerControl,
     start_time: usize,
     active: bool,
-    scheduler: Rc<RefCell<Scheduler>>,
+    scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
 }
 
 impl Timer {
-    pub fn new(id: usize, scheduler: Rc<RefCell<Scheduler>>) -> Self {
+    pub fn new(id: usize, scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Self {
         let start_time = scheduler.borrow().timestamp();
         Self {
             id,
@@ -87,7 +87,7 @@ impl Timer {
 
     pub fn write_reload(&mut self, address: u32, value: u8) {
         self.scheduler.borrow_mut().schedule((
-            EventType::Timer(TimerEvent::ReloadWrite {
+            GbaEvent::Timer(TimerEvent::ReloadWrite {
                 timer_id: self.id,
                 address,
                 value,
@@ -102,7 +102,7 @@ impl Timer {
         }
 
         self.scheduler.borrow_mut().schedule((
-            EventType::Timer(TimerEvent::ControlWrite {
+            GbaEvent::Timer(TimerEvent::ControlWrite {
                 timer_id: self.id,
                 value,
             }),
@@ -116,7 +116,7 @@ impl Timer {
         if self.control.irq_enabled() {
             self.scheduler
                 .borrow_mut()
-                .schedule((EventType::Interrupt(TIMER_OVERFLOW_INTERRUPTS[self.id]), 0));
+                .schedule((GbaEvent::Interrupt(TIMER_OVERFLOW_INTERRUPTS[self.id]), 0));
         }
     }
 
@@ -124,7 +124,7 @@ impl Timer {
         self.active = false;
         self.scheduler
             .borrow_mut()
-            .cancel_events(EventType::Timer(TimerEvent::Overflow { timer_id: self.id }));
+            .cancel_events(GbaEvent::Timer(TimerEvent::Overflow { timer_id: self.id }));
     }
 
     fn start(&mut self) {
@@ -138,7 +138,7 @@ impl Timer {
         let cycles = (0x10000 - self.counter) * prescalar - elapsed_time;
         self.scheduler
             .borrow_mut()
-            .schedule((EventType::Timer(TimerEvent::Overflow { timer_id: self.id }), cycles));
+            .schedule((GbaEvent::Timer(TimerEvent::Overflow { timer_id: self.id }), cycles));
     }
 }
 
@@ -147,7 +147,7 @@ pub struct TimerController {
 }
 
 impl TimerController {
-    pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
+    pub fn new(scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Self {
         Self {
             timers: std::array::from_fn(|index| Timer::new(index, scheduler.clone())),
         }

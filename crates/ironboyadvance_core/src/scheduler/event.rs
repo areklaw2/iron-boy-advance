@@ -1,6 +1,4 @@
-use std::cmp::Ordering;
-
-use getset::CopyGetters;
+use crate::scheduler::SystemEvent;
 
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -41,7 +39,7 @@ pub enum TimerEvent {
 
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum EventType {
+pub enum GbaEvent {
     FrameComplete,
     Interrupt(InterruptEvent),
     Ppu(PpuEvent),
@@ -49,11 +47,11 @@ pub enum EventType {
     Timer(TimerEvent),
 }
 
-impl EventType {
-    pub fn priority(&self) -> u8 {
+impl SystemEvent for GbaEvent {
+    fn priority(&self) -> u8 {
         match self {
-            EventType::FrameComplete | EventType::Interrupt(_) | EventType::Ppu(_) | EventType::Apu(_) => 0,
-            EventType::Timer(timer_event) => match timer_event {
+            GbaEvent::FrameComplete | GbaEvent::Interrupt(_) | GbaEvent::Ppu(_) | GbaEvent::Apu(_) => 0,
+            GbaEvent::Timer(timer_event) => match timer_event {
                 TimerEvent::Overflow { .. } => 0,
                 TimerEvent::ReloadWrite { .. } => 1,
                 TimerEvent::ControlWrite { .. } => 2,
@@ -62,35 +60,4 @@ impl EventType {
     }
 }
 
-pub type FutureEvent = (EventType, usize);
-
-#[derive(Debug, Clone, Eq, CopyGetters)]
-#[getset(get_copy = "pub")]
-pub struct Event {
-    event_type: EventType,
-    time: usize,
-}
-
-impl Event {
-    pub fn new(event_type: EventType, time: usize) -> Event {
-        Event { event_type, time }
-    }
-}
-
-impl Ord for Event {
-    fn cmp(&self, other: &Self) -> Ordering {
-        (other.time, other.event_type.priority()).cmp(&(self.time, self.event_type.priority()))
-    }
-}
-
-impl PartialOrd for Event {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for Event {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
+pub type FutureGbaEvent = (GbaEvent, usize);

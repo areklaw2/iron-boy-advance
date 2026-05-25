@@ -3,15 +3,15 @@ use std::{cell::RefCell, rc::Rc};
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use tracing::debug;
 
-use crate::scheduler::Scheduler;
+use crate::scheduler::{Scheduler, event::GbaEvent};
 
 #[allow(unused)]
 pub struct DmaController {
-    scheduler: Rc<RefCell<Scheduler>>,
+    scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
 }
 
 impl DmaController {
-    pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
+    pub fn new(scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Self {
         Self { scheduler }
     }
 

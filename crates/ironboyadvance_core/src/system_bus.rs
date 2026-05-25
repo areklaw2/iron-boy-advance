@@ -15,7 +15,7 @@ use crate::{
     ppu::HDRAW_CYCLES,
     scheduler::{
         Scheduler,
-        event::{EventType, FutureEvent, InterruptEvent, PpuEvent, TimerEvent},
+        event::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
     },
     system_control::HaltMode,
 };
@@ -43,7 +43,7 @@ pub struct SystemBus {
     #[getset(get = "pub", get_mut = "pub")]
     io_registers: IoRegisters,
     cartridge: Cartridge,
-    scheduler: Rc<RefCell<Scheduler>>,
+    scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
     cpu_context: CpuContext,
 }
 
@@ -208,10 +208,10 @@ impl SystemMemoryAccess for SystemBus {
 }
 
 impl SystemBus {
-    pub fn new(cartridge: Cartridge, bios: Bios, scheduler: Rc<RefCell<Scheduler>>) -> Self {
+    pub fn new(cartridge: Cartridge, bios: Bios, scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Self {
         scheduler
             .borrow_mut()
-            .schedule((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
+            .schedule((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
 
         SystemBus {
             bios,
@@ -276,7 +276,7 @@ impl SystemBus {
         self.io_registers.interrupt_controller().interrupt_pending()
     }
 
-    pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) -> Vec<FutureEvent> {
+    pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) -> Vec<FutureGbaEvent> {
         self.io_registers.interrupt_controller_mut().raise_interrupt(interrupt_event);
         vec![] // returning empty vec to satisfy caller
     }
@@ -289,11 +289,11 @@ impl SystemBus {
         self.io_registers.system_controller_mut().set_halt_mode(HaltMode::Running);
     }
 
-    pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent) -> Vec<FutureEvent> {
+    pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent) -> Vec<FutureGbaEvent> {
         self.io_registers.ppu_mut().handle_event(ppu_event)
     }
 
-    pub fn handle_timer_event(&mut self, timer_event: TimerEvent) -> Vec<FutureEvent> {
+    pub fn handle_timer_event(&mut self, timer_event: TimerEvent) -> Vec<FutureGbaEvent> {
         self.io_registers.timer_controller_mut().handle_event(timer_event);
         vec![] // returning empty vec to satisfy caller
     }

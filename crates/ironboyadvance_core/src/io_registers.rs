@@ -9,8 +9,13 @@ use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 use tracing::debug;
 
 use crate::{
-    dma_control::DmaController, interrupt_control::InterruptController, keypad::Keypad, ppu::Ppu, scheduler::Scheduler,
-    system_control::SystemController, timer_control::TimerController,
+    dma_control::DmaController,
+    interrupt_control::InterruptController,
+    keypad::Keypad,
+    ppu::Ppu,
+    scheduler::{Scheduler, event::GbaEvent},
+    system_control::SystemController,
+    timer_control::TimerController,
 };
 
 #[derive(Getters, MutGetters, Setters)]
@@ -27,7 +32,7 @@ pub struct IoRegisters {
 }
 
 impl IoRegisters {
-    pub fn new(scheduler: Rc<RefCell<Scheduler>>) -> Self {
+    pub fn new(scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Self {
         IoRegisters {
             ppu: Ppu::new(),
             dma_controller: DmaController::new(scheduler.clone()),

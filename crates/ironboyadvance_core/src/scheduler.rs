@@ -1,27 +1,62 @@
-use event::{Event, EventType, FutureEvent};
-use std::collections::BinaryHeap;
+use getset::CopyGetters;
+use std::{cmp::Ordering, collections::BinaryHeap};
 
 pub mod event;
 
-pub struct Scheduler {
+pub trait SystemEvent: Copy + Eq + Ord {
+    fn priority(&self) -> u8;
+}
+
+#[derive(Debug, Clone, Eq, CopyGetters)]
+#[getset(get_copy = "pub")]
+pub struct Event<E: SystemEvent> {
+    event_type: E,
     time: usize,
-    events: BinaryHeap<Event>,
+}
+
+impl<E: SystemEvent> Event<E> {
+    pub fn new(event_type: E, time: usize) -> Event<E> {
+        Event { event_type, time }
+    }
+}
+
+impl<E: SystemEvent> Ord for Event<E> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (other.time, other.event_type.priority()).cmp(&(self.time, self.event_type.priority()))
+    }
+}
+
+impl<E: SystemEvent> PartialOrd for Event<E> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<E: SystemEvent> PartialEq for Event<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+pub struct Scheduler<E: SystemEvent> {
+    time: usize,
+    events: BinaryHeap<Event<E>>,
 }
 
 #[allow(unused)]
-impl Scheduler {
-    pub fn new() -> Scheduler {
+impl<E: SystemEvent> Scheduler<E> {
+    pub fn new() -> Scheduler<E> {
         Scheduler {
             time: 0,
             events: BinaryHeap::new(),
         }
     }
 
-    pub fn peek(&self) -> Option<EventType> {
+    pub fn peek(&self) -> Option<E> {
         self.events.peek().map(|e| e.event_type())
     }
 
-    pub fn pop(&mut self) -> Option<(EventType, usize)> {
+    pub fn pop(&mut self) -> Option<(E, usize)> {
         match self.events.peek() {
             Some(event) => {
                 if self.time >= event.time() {
@@ -35,7 +70,7 @@ impl Scheduler {
         }
     }
 
-    pub fn cancel_events(&mut self, event_type: EventType) {
+    pub fn cancel_events(&mut self, event_type: E) {
         let mut new_events = BinaryHeap::new();
         self.events
             .iter()
@@ -44,13 +79,13 @@ impl Scheduler {
         self.events = new_events
     }
 
-    pub fn schedule(&mut self, event: FutureEvent) {
+    pub fn schedule(&mut self, event: (E, usize)) {
         let (event_type, delta_time) = event;
         let event = Event::new(event_type, self.time + delta_time);
         self.events.push(event);
     }
 
-    pub fn schedule_at_timestamp(&mut self, event_type: EventType, timestamp: usize) {
+    pub fn schedule_at_timestamp(&mut self, event_type: E, timestamp: usize) {
         self.events.push(Event::new(event_type, timestamp));
     }
 

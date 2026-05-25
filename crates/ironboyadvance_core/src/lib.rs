@@ -9,7 +9,7 @@ use crate::{
     cartridge::{Cartridge, CartridgeError},
     scheduler::{
         Scheduler,
-        event::{EventType, FutureEvent, InterruptEvent},
+        event::{FutureGbaEvent, GbaEvent, InterruptEvent},
     },
     system_bus::SystemBus,
     system_control::HaltMode,
@@ -46,7 +46,7 @@ pub struct GameBoyAdvance {
     arm7tdmi: Arm7tdmiCpu<SystemBus>,
     // may end up making a common cpu trait
     // sharp_sm83: SharpSm83Cpu<SystemBus>,
-    scheduler: Rc<RefCell<Scheduler>>,
+    scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
 }
 
 impl GameBoyAdvance {
@@ -88,7 +88,7 @@ impl GameBoyAdvance {
 
         self.scheduler
             .borrow_mut()
-            .schedule_at_timestamp(EventType::FrameComplete, end_time);
+            .schedule_at_timestamp(GbaEvent::FrameComplete, end_time);
 
         'events: loop {
             while self.scheduler.borrow().timestamp() < self.scheduler.borrow().timestamp_of_next_event() {
@@ -111,12 +111,12 @@ impl GameBoyAdvance {
                 return false;
             };
 
-            let future_events: Vec<FutureEvent> = match event {
-                EventType::FrameComplete => return true,
-                EventType::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
-                EventType::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
-                EventType::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event),
-                EventType::Apu(_apu_event) => vec![],
+            let future_events: Vec<FutureGbaEvent> = match event {
+                GbaEvent::FrameComplete => return true,
+                GbaEvent::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
+                GbaEvent::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
+                GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event),
+                GbaEvent::Apu(_apu_event) => vec![],
             };
 
             for (event_type, time) in future_events {

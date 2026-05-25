@@ -6,7 +6,7 @@ use crate::{
     ppu::{
         background::Background, color::bgr555_to_rgb888, effects::Effects, lcd::*, mosaic::Mosaic, object::Object, window::*,
     },
-    scheduler::event::{EventType, FutureEvent, InterruptEvent, PpuEvent},
+    scheduler::event::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent},
 };
 
 const CYCLES_PER_PIXEL: usize = 4;
@@ -205,7 +205,7 @@ impl Ppu {
         }
     }
 
-    pub fn handle_event(&mut self, event: PpuEvent) -> Vec<FutureEvent> {
+    pub fn handle_event(&mut self, event: PpuEvent) -> Vec<FutureGbaEvent> {
         match event {
             PpuEvent::HDraw => self.handle_hdraw_complete(),
             PpuEvent::HBlank => self.handle_hblank_complete(),
@@ -214,73 +214,73 @@ impl Ppu {
         }
     }
 
-    fn handle_hdraw_complete(&mut self) -> Vec<FutureEvent> {
+    fn handle_hdraw_complete(&mut self) -> Vec<FutureGbaEvent> {
         let mut events = vec![];
         self.lcd_status.set_h_blank_flag(true);
 
         if self.lcd_status.h_blank_irq_enable() {
-            events.push((EventType::Interrupt(InterruptEvent::LcdHBlank), 0));
+            events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 
         self.advance_affine_points();
-        events.push((EventType::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
+        events.push((GbaEvent::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
         events
     }
 
-    fn handle_hblank_complete(&mut self) -> Vec<FutureEvent> {
+    fn handle_hblank_complete(&mut self) -> Vec<FutureGbaEvent> {
         let mut events = vec![];
         if let Some(v_count_match) = self.set_v_count(self.v_count + 1) {
-            events.push((EventType::Interrupt(v_count_match), 0));
+            events.push((GbaEvent::Interrupt(v_count_match), 0));
         }
 
         self.lcd_status.set_h_blank_flag(false);
 
         if (self.v_count as usize) < VDRAW_SCANLINES {
             self.render_scanline();
-            events.push((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
+            events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         } else {
             self.lcd_status.set_v_blank_flag(true);
 
             if self.lcd_status.v_blank_irq_enable() {
-                events.push((EventType::Interrupt(InterruptEvent::LcdVBlank), 0));
+                events.push((GbaEvent::Interrupt(InterruptEvent::LcdVBlank), 0));
             }
 
-            events.push((EventType::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
+            events.push((GbaEvent::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
         }
         events
     }
 
-    fn handle_vblank_hdraw_complete(&mut self) -> Vec<FutureEvent> {
+    fn handle_vblank_hdraw_complete(&mut self) -> Vec<FutureGbaEvent> {
         let mut events = vec![];
         self.lcd_status.set_h_blank_flag(true);
 
         if self.lcd_status.h_blank_irq_enable() {
-            events.push((EventType::Interrupt(InterruptEvent::LcdHBlank), 0));
+            events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 
-        events.push((EventType::Ppu(PpuEvent::VBlankHBlank), HBLANK_CYCLES));
+        events.push((GbaEvent::Ppu(PpuEvent::VBlankHBlank), HBLANK_CYCLES));
         events
     }
 
-    fn handle_vblank_hblank_complete(&mut self) -> Vec<FutureEvent> {
+    fn handle_vblank_hblank_complete(&mut self) -> Vec<FutureGbaEvent> {
         let mut events = vec![];
         self.lcd_status.set_h_blank_flag(false);
 
         if (self.v_count as usize) < MAX_V_COUNT {
             if let Some(v_count_match) = self.set_v_count(self.v_count + 1) {
-                events.push((EventType::Interrupt(v_count_match), 0));
+                events.push((GbaEvent::Interrupt(v_count_match), 0));
             }
 
-            events.push((EventType::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
+            events.push((GbaEvent::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
         } else {
             if let Some(v_count_match) = self.set_v_count(0) {
-                events.push((EventType::Interrupt(v_count_match), 0));
+                events.push((GbaEvent::Interrupt(v_count_match), 0));
             }
 
             self.lcd_status.set_v_blank_flag(false);
             self.background.reload_affine_points();
             self.render_scanline();
-            events.push((EventType::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
+            events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         }
         events
     }
