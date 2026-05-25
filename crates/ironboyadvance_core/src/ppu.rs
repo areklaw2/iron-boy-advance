@@ -2,11 +2,11 @@ use getset::Getters;
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
 
 use crate::{
+    events::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent},
     io_registers::RegisterOps,
     ppu::{
         background::Background, color::bgr555_to_rgb888, effects::Effects, lcd::*, mosaic::Mosaic, object::Object, window::*,
     },
-    scheduler::event::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent},
 };
 
 const CYCLES_PER_PIXEL: usize = 4;

@@ -6,16 +6,12 @@ use std::{
 
 use getset::{Getters, MutGetters, Setters};
 use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::scheduler::Scheduler;
 use tracing::debug;
 
 use crate::{
-    dma_control::DmaController,
-    interrupt_control::InterruptController,
-    keypad::Keypad,
-    ppu::Ppu,
-    scheduler::{Scheduler, event::GbaEvent},
-    system_control::SystemController,
-    timer_control::TimerController,
+    dma_control::DmaController, events::GbaEvent, interrupt_control::InterruptController, keypad::Keypad, ppu::Ppu,
+    system_control::SystemController, timer_control::TimerController,
 };
 
 #[derive(Getters, MutGetters, Setters)]

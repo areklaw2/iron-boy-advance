@@ -1,8 +1,6 @@
 use getset::CopyGetters;
 use std::{cmp::Ordering, collections::BinaryHeap};
 
-pub mod event;
-
 pub trait SystemEvent: Copy + Eq + Ord {
     fn priority(&self) -> u8;
 }
@@ -43,7 +41,6 @@ pub struct Scheduler<E: SystemEvent> {
     events: BinaryHeap<Event<E>>,
 }
 
-#[allow(unused)]
 impl<E: SystemEvent> Scheduler<E> {
     pub fn new() -> Scheduler<E> {
         Scheduler {
@@ -119,5 +116,11 @@ impl<E: SystemEvent> Scheduler<E> {
 
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
+    }
+}
+
+impl<E: SystemEvent> Default for Scheduler<E> {
+    fn default() -> Self {
+        Self::new()
     }
 }

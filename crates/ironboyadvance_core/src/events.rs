@@ -1,4 +1,4 @@
-use crate::scheduler::SystemEvent;
+use ironboyadvance_common::scheduler::SystemEvent;
 
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]

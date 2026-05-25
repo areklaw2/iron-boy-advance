@@ -2,15 +2,13 @@ use std::{cell::RefCell, rc::Rc};
 
 use getset::Getters;
 use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
+use ironboyadvance_common::scheduler::Scheduler;
 use thiserror::Error;
 
 use crate::{
     bios::{Bios, BiosError},
     cartridge::{Cartridge, CartridgeError},
-    scheduler::{
-        Scheduler,
-        event::{FutureGbaEvent, GbaEvent, InterruptEvent},
-    },
+    events::{FutureGbaEvent, GbaEvent, InterruptEvent},
     system_bus::SystemBus,
     system_control::HaltMode,
 };
@@ -18,12 +16,12 @@ use crate::{
 mod bios;
 mod cartridge;
 mod dma_control;
+mod events;
 mod interrupt_control;
 mod io_registers;
 mod keypad;
 mod memory;
 mod ppu;
-mod scheduler;
 mod system_bus;
 mod system_control;
 mod timer_control;

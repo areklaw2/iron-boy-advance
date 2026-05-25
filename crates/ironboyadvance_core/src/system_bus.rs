@@ -5,18 +5,16 @@ use ironboyadvance_arm7tdmi::{
     CpuState,
     memory::{CpuContext, MemoryAccess, MemoryAccessWidth, MemoryInterface, SystemMemoryAccess},
 };
+use ironboyadvance_common::scheduler::Scheduler;
 use tracing::debug;
 
 use crate::{
     bios::Bios,
     cartridge::Cartridge,
+    events::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
     ppu::HDRAW_CYCLES,
-    scheduler::{
-        Scheduler,
-        event::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
-    },
     system_control::HaltMode,
 };
 

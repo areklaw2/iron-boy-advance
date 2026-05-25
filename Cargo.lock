@@ -1241,12 +1241,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ironboyadvance_common"
+version = "0.1.0"
+dependencies = [
+ "getset",
+]
+
+[[package]]
 name = "ironboyadvance_core"
 version = "0.1.0"
 dependencies = [
  "bitfields",
  "getset",
  "ironboyadvance_arm7tdmi",
+ "ironboyadvance_common",
  "ironboyadvance_sharp_sm83",
  "thiserror 2.0.18",
  "tracing",
