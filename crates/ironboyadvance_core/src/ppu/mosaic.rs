@@ -1,8 +1,8 @@
 use bitfields::bitfield;
 use getset::CopyGetters;
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::memory::SystemMemoryAccess;
 
-use crate::io_registers::RegisterOps;
+use ironboyadvance_common::register_ops::RegisterOps;
 
 #[bitfield(u32)]
 #[derive(Copy, Clone, PartialEq, Eq)]

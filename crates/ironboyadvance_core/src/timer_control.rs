@@ -1,13 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
 use bitfields::bitfield;
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
-use ironboyadvance_common::scheduler::Scheduler;
+use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps, scheduler::Scheduler};
 
-use crate::{
-    events::{GbaEvent, InterruptEvent, TimerEvent},
-    io_registers::RegisterOps,
-};
+use crate::events::{GbaEvent, InterruptEvent, TimerEvent};
 
 const PRESCALER_SELECTIONS: [usize; 4] = [1, 64, 256, 1024];
 

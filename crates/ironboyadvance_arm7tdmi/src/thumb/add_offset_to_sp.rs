@@ -1,7 +1,9 @@
+use ironboyadvance_common::memory::MemoryAccess;
+
 use crate::{
     BitOps, CpuAction,
     cpu::{Arm7tdmiCpu, Instruction, SP},
-    memory::{MemoryAccess, MemoryInterface},
+    memory::MemoryInterface,
 };
 
 #[derive(Debug, Clone, Copy)]

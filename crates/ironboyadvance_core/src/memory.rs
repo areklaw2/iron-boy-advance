@@ -1,4 +1,4 @@
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::memory::SystemMemoryAccess;
 
 pub struct Memory {
     wram_board: Vec<u8>,

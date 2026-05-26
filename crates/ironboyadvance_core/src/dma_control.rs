@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::memory::SystemMemoryAccess;
 use ironboyadvance_common::scheduler::Scheduler;
 use tracing::debug;
 

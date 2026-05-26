@@ -1,8 +1,9 @@
+use ironboyadvance_common::{bits::SignExtend, memory::MemoryAccess};
+
 use crate::{
     BitOps, Condition, CpuAction,
-    bits::SignExtend,
     cpu::{Arm7tdmiCpu, Instruction},
-    memory::{MemoryAccess, MemoryInterface},
+    memory::MemoryInterface,
 };
 
 #[derive(Debug, Clone, Copy)]

@@ -1,6 +1,6 @@
 use bitfields::bitfield;
 
-use crate::io_registers::RegisterOps;
+use ironboyadvance_common::register_ops::RegisterOps;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BgMode {

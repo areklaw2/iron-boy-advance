@@ -1,11 +1,13 @@
 use getset::CopyGetters;
 
+use ironboyadvance_common::memory::MemoryAccess;
+
 use crate::{
     AluOperationsOpcode, BitOps, CpuAction, LoRegister,
     alu::*,
     barrel_shifter::{asr, lsl, lsr, ror},
     cpu::{Arm7tdmiCpu, Instruction},
-    memory::{MemoryAccess, MemoryInterface},
+    memory::MemoryInterface,
 };
 
 #[derive(Debug, Clone, Copy, CopyGetters)]

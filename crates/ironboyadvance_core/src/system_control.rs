@@ -1,12 +1,12 @@
 use bitfields::bitfield;
 use getset::{CopyGetters, Setters};
-use ironboyadvance_arm7tdmi::memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess};
+use ironboyadvance_common::{
+    memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess},
+    register_ops::RegisterOps,
+};
 use tracing::debug;
 
-use crate::{
-    io_registers::RegisterOps,
-    system_bus::{PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE},
-};
+use crate::system_bus::{PALETTE_RAM_BASE, ROM_WS0_LO, ROM_WS1_LO, ROM_WS2_LO, SRAM_LO, VRAM_BASE, WRAM_BOARD_BASE};
 
 const INDEX_WRAM_BOARD: usize = (WRAM_BOARD_BASE >> 24) as usize;
 const INDEX_PALETTE_RAM: usize = (PALETTE_RAM_BASE >> 24) as usize;

@@ -3,9 +3,12 @@ use std::{cell::RefCell, rc::Rc};
 use getset::{Getters, MutGetters};
 use ironboyadvance_arm7tdmi::{
     CpuState,
-    memory::{CpuContext, MemoryAccess, MemoryAccessWidth, MemoryInterface, SystemMemoryAccess},
+    memory::{CpuContext, MemoryInterface},
 };
-use ironboyadvance_common::scheduler::Scheduler;
+use ironboyadvance_common::{
+    memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess},
+    scheduler::Scheduler,
+};
 use tracing::debug;
 
 use crate::{

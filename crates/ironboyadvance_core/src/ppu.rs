@@ -1,9 +1,8 @@
 use getset::Getters;
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps};
 
 use crate::{
     events::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent},
-    io_registers::RegisterOps,
     ppu::{
         background::Background, color::bgr555_to_rgb888, effects::Effects, lcd::*, mosaic::Mosaic, object::Object, window::*,
     },

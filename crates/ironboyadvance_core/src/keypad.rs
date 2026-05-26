@@ -1,7 +1,7 @@
 use bitfields::bitfield;
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::memory::SystemMemoryAccess;
 
-use crate::io_registers::RegisterOps;
+use ironboyadvance_common::register_ops::RegisterOps;
 
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]

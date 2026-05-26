@@ -1,9 +1,7 @@
-use crate::{
-    io_registers::RegisterOps,
-    ppu::{SB_ENTRIES, SB_SIDE, color::ColorMode},
-};
 use bitfields::bitfield;
-use ironboyadvance_arm7tdmi::{bits::SignExtend, memory::SystemMemoryAccess};
+use ironboyadvance_common::{bits::SignExtend, memory::SystemMemoryAccess, register_ops::RegisterOps};
+
+use crate::ppu::{SB_ENTRIES, SB_SIDE, color::ColorMode};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ScreenSize {

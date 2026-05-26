@@ -1,10 +1,12 @@
 use getset::CopyGetters;
 
+use ironboyadvance_common::memory::MemoryAccess;
+
 use crate::{
     BitOps, Condition, CpuAction, CpuMode, Register,
     barrel_shifter::ror,
     cpu::{Arm7tdmiCpu, Instruction},
-    memory::{MemoryAccess, MemoryInterface},
+    memory::MemoryInterface,
     psr::ProgramStatusRegister,
 };
 

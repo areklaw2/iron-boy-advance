@@ -5,7 +5,9 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    use crate::memory::{CpuContext, MemoryAccess, MemoryInterface, SystemMemoryAccess};
+    use ironboyadvance_common::memory::{MemoryAccess, SystemMemoryAccess};
+
+    use crate::memory::{CpuContext, MemoryInterface};
     use crate::{
         AluOperationsOpcode,
         arm::ArmInstruction,

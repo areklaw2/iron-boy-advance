@@ -1,6 +1,6 @@
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps};
 
-use crate::{events::InterruptEvent, io_registers::RegisterOps};
+use crate::events::InterruptEvent;
 
 pub struct InterruptController {
     interrupt_master_enable: u32,

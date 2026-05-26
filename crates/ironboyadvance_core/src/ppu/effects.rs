@@ -1,12 +1,9 @@
 use bitfields::bitfield;
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps};
 
-use crate::{
-    io_registers::RegisterOps,
-    ppu::{
-        Layer, Pixel,
-        color::{bgr555_to_channels, channels_to_bgr555},
-    },
+use crate::ppu::{
+    Layer, Pixel,
+    color::{bgr555_to_channels, channels_to_bgr555},
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

@@ -1,11 +1,8 @@
 use bitfields::bitfield;
 use getset::CopyGetters;
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps};
 
-use crate::{
-    io_registers::RegisterOps,
-    ppu::{ScanlineContext, VIEWPORT_WIDTH},
-};
+use crate::ppu::{ScanlineContext, VIEWPORT_WIDTH};
 
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]

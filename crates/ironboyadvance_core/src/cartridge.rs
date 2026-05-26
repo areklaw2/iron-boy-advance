@@ -1,5 +1,5 @@
 use header::Header;
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::memory::SystemMemoryAccess;
 use thiserror::Error;
 
 use crate::{

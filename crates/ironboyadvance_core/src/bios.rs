@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use getset::CopyGetters;
-use ironboyadvance_arm7tdmi::memory::SystemMemoryAccess;
+use ironboyadvance_common::memory::SystemMemoryAccess;
 use thiserror::Error;
 
 const BIOS_END: u32 = 0x3FFF;

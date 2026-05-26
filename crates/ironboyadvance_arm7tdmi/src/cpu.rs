@@ -1,10 +1,11 @@
 use getset::{Getters, MutGetters, Setters};
+use ironboyadvance_common::memory::MemoryAccess;
 use tracing::debug;
 
 use crate::{
     Condition, CpuAction, Exception,
     arm::{self, ArmInstruction, ArmInstructionFactory, generate_arm_lut},
-    memory::{CpuContext, MemoryAccess, MemoryInterface},
+    memory::{CpuContext, MemoryInterface},
     thumb::{self, ThumbInstruction, ThumbInstructionFactory, generate_thumb_lut},
 };
 

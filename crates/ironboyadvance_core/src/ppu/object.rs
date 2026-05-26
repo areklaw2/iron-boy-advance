@@ -1,6 +1,6 @@
 use bitfields::bitfield;
 use getset::CopyGetters;
-use ironboyadvance_arm7tdmi::bits::SignExtend;
+use ironboyadvance_common::bits::SignExtend;
 
 use crate::ppu::{
     Layer, OBJ_PALETTE_START, OBJ_VRAM_START, Pixel, ScanlineContext, VIEWPORT_WIDTH, color::ColorMode, lcd::BgMode,

@@ -1,9 +1,9 @@
 use crate::{
     BitOps, CpuAction,
-    bits::SignExtend,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };
+use ironboyadvance_common::bits::SignExtend;
 
 #[derive(Debug, Clone, Copy)]
 pub struct UnconditionalBranch {
