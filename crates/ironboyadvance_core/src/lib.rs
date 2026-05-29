@@ -67,6 +67,8 @@ impl GameBoyAdvance {
                 if self.arm7tdmi.bus().interrupt_pending() {
                     self.arm7tdmi.bus_mut().un_halt();
                     self.arm7tdmi.irq();
+                } else if self.arm7tdmi.bus().dma_active() {
+                    self.arm7tdmi.bus_mut().run_dma();
                 } else {
                     self.scheduler.borrow_mut().step_to_next_event();
                 }
@@ -115,6 +117,7 @@ impl GameBoyAdvance {
                 GbaEvent::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
                 GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event),
                 GbaEvent::Apu(_apu_event) => vec![],
+                GbaEvent::Dma(channel_id) => self.arm7tdmi.bus_mut().handle_dma_event(channel_id),
             };
 
             for (event_type, time) in future_events {

@@ -41,7 +41,7 @@ impl Bios {
         })
     }
 
-    pub fn set_pc_ref(&self, pc: u32) {
+    pub fn set_pc(&self, pc: u32) {
         self.pc_in_bios.set(pc <= BIOS_END);
     }
 }

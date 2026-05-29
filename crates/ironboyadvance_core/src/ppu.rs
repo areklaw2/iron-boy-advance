@@ -1,4 +1,4 @@
-use getset::Getters;
+use getset::{CopyGetters, Getters};
 use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps};
 
 use crate::{
@@ -79,11 +79,12 @@ pub struct ScanlineContext<'a> {
     pub v_count: u8,
 }
 
-#[derive(Getters)]
+#[derive(Getters, CopyGetters)]
 pub struct Ppu {
     lcd_control: LcdControl,
     green_swap: bool,
     lcd_status: LcdStatus,
+    #[getset(get_copy = "pub")]
     v_count: u8,
     background: Background,
     object: Object,

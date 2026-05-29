@@ -1,10 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use getset::{Getters, MutGetters};
-use ironboyadvance_arm7tdmi::{
-    CpuState,
-    memory::{CpuContext, MemoryInterface},
-};
+use ironboyadvance_arm7tdmi::memory::MemoryInterface;
 use ironboyadvance_common::{
     memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess},
     scheduler::Scheduler,
@@ -14,10 +11,11 @@ use tracing::debug;
 use crate::{
     bios::Bios,
     cartridge::Cartridge,
+    dma_control::{ChunkSize, RequestType},
     events::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
-    ppu::HDRAW_CYCLES,
+    ppu::{HDRAW_CYCLES, VIEWPORT_HEIGHT},
     system_control::HaltMode,
 };
 
@@ -45,38 +43,49 @@ pub struct SystemBus {
     io_registers: IoRegisters,
     cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
-    cpu_context: CpuContext,
+    pc: u32,
+    open_bus_value: u32,
 }
 
 impl MemoryInterface for SystemBus {
     fn load_8(&mut self, address: u32, access: u8) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::Byte);
-        self.read_8(address) as u32
+        let value = self.read_8(address) as u32;
+        self.open_bus_value = value;
+        value
     }
 
     fn load_16(&mut self, address: u32, access: u8) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::HalfWord);
-        self.read_16(address) as u32
+        let value = self.read_16(address) as u32;
+        self.open_bus_value = (value << 16) | value;
+        value
     }
 
     fn load_32(&mut self, address: u32, access: u8) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::Word);
-        self.read_32(address)
+        let value = self.read_32(address);
+        self.open_bus_value = value;
+        value
     }
 
     fn store_8(&mut self, address: u32, value: u8, access: u8) {
         self.cycle(address, access, MemoryAccessWidth::Byte);
         self.write_8(address, value);
+        self.open_bus_value = u32::from(value);
     }
 
     fn store_16(&mut self, address: u32, value: u16, access: u8) {
         self.cycle(address, access, MemoryAccessWidth::HalfWord);
         self.write_16(address, value);
+        let value = u32::from(value);
+        self.open_bus_value = (value << 16) | value;
     }
 
     fn store_32(&mut self, address: u32, value: u32, access: u8) {
         self.cycle(address, access, MemoryAccessWidth::Word);
         self.write_32(address, value);
+        self.open_bus_value = value;
     }
 
     fn idle_cycle(&mut self) {
@@ -86,8 +95,8 @@ impl MemoryInterface for SystemBus {
         self.scheduler.borrow_mut().step(1);
     }
 
-    fn cpu_context_mut(&mut self) -> &mut CpuContext {
-        &mut self.cpu_context
+    fn set_pc(&mut self, pc: u32) {
+        self.pc = pc;
     }
 }
 
@@ -220,38 +229,16 @@ impl SystemBus {
             io_registers: IoRegisters::new(scheduler.clone()),
             cartridge,
             scheduler,
-            cpu_context: CpuContext::default(),
+            pc: 0,
+            open_bus_value: 0,
         }
     }
 
     fn open_bus_read(&self, address: u32, width: MemoryAccessWidth) -> u32 {
-        //TODO: add dma check
-        let value = match self.cpu_context.cpu_state {
-            CpuState::Arm => self.cpu_context.pipeline[1],
-            CpuState::Thumb => {
-                let decoded = self.cpu_context.pipeline[0] & 0xFFFF;
-                let fetched = self.cpu_context.pipeline[1] & 0xFFFF;
-                let pc = self.cpu_context.pc;
-                match pc & 0xFF00_0000 {
-                    // Approximation, cant get to $+6 for aligned and $+2 for unaligned
-                    // See GBATEK - GBA Unpredictable Things.
-                    BIOS_BASE | OAM_BASE => match pc & 2 == 0 {
-                        true => (fetched << 16) | decoded,
-                        false => (fetched << 16) | fetched,
-                    },
-                    WRAM_CHIP_BASE => match pc & 2 == 0 {
-                        true => (decoded << 16) | fetched,
-                        false => (fetched << 16) | decoded,
-                    },
-                    _ => (fetched << 16) | fetched,
-                }
-            }
-        };
-
         match width {
-            MemoryAccessWidth::Byte => value >> ((address & 3) * 8),
-            MemoryAccessWidth::HalfWord => value >> ((address & 2) * 8),
-            MemoryAccessWidth::Word => value,
+            MemoryAccessWidth::Byte => self.open_bus_value >> ((address & 3) * 8),
+            MemoryAccessWidth::HalfWord => self.open_bus_value >> ((address & 2) * 8),
+            MemoryAccessWidth::Word => self.open_bus_value,
         }
     }
 
@@ -261,7 +248,7 @@ impl SystemBus {
             self.run_dma();
         }
 
-        self.bios.set_pc_ref(self.cpu_context.pc);
+        self.bios.set_pc(self.pc);
 
         let access = match MemoryAccess::Sequential.is_set(access_pattern) {
             true => MemoryAccess::Sequential,
@@ -279,7 +266,7 @@ impl SystemBus {
 
     pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) -> Vec<FutureGbaEvent> {
         self.io_registers.interrupt_controller_mut().raise_interrupt(interrupt_event);
-        vec![] // returning empty vec to satisfy caller
+        vec![]
     }
 
     pub fn halt_mode(&self) -> HaltMode {
@@ -291,13 +278,72 @@ impl SystemBus {
     }
 
     pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent) -> Vec<FutureGbaEvent> {
-        self.io_registers.ppu_mut().handle_event(ppu_event)
+        let events = self.io_registers.ppu_mut().handle_event(ppu_event);
+
+        match ppu_event {
+            PpuEvent::HDraw => {
+                let v_count = self.io_registers.ppu().v_count();
+                self.io_registers.dma_controller_mut().request_dma(RequestType::HBlank);
+                if (2..=159).contains(&v_count) {
+                    self.io_registers.dma_controller_mut().request_dma(RequestType::Video);
+                }
+            }
+            PpuEvent::HBlank if self.io_registers.ppu().v_count() as usize == VIEWPORT_HEIGHT => {
+                self.io_registers.dma_controller_mut().request_dma(RequestType::VBlank);
+            }
+            PpuEvent::VBlankHDraw => {
+                let v_count = self.io_registers.ppu().v_count();
+                if matches!(v_count, 160 | 161) {
+                    self.io_registers.dma_controller_mut().request_dma(RequestType::Video);
+                }
+            }
+            PpuEvent::VBlankHBlank => {
+                if self.io_registers.ppu().v_count() == 162 {
+                    self.io_registers.dma_controller_mut().stop_video_transfer();
+                }
+            }
+            _ => {}
+        }
+
+        events
+    }
+
+    pub fn handle_dma_event(&mut self, channel_id: usize) -> Vec<FutureGbaEvent> {
+        self.io_registers.dma_controller_mut().handle_event(channel_id);
+        vec![]
     }
 
     pub fn handle_timer_event(&mut self, timer_event: TimerEvent) -> Vec<FutureGbaEvent> {
         self.io_registers.timer_controller_mut().handle_event(timer_event);
-        vec![] // returning empty vec to satisfy caller
+        vec![]
     }
 
-    fn run_dma(&mut self) {}
+    pub fn run_dma(&mut self) {
+        self.scheduler.borrow_mut().step(1);
+
+        while let Some(transfer) = self.io_registers.dma_controller().next_transfer() {
+            match transfer.chunk_size {
+                ChunkSize::Size16 => {
+                    let value = self.load_16(transfer.source, transfer.source_access) as u16;
+                    self.store_16(transfer.destination, value, transfer.destination_access);
+                }
+                ChunkSize::Size32 => {
+                    let value = self.load_32(transfer.source, transfer.source_access);
+                    self.store_32(transfer.destination, value, transfer.destination_access);
+                }
+            }
+
+            self.io_registers.dma_controller_mut().complete_transfer();
+
+            while let Some(id) = self.io_registers.dma_controller().pending_dma_request() {
+                self.io_registers.dma_controller_mut().handle_event(id);
+            }
+        }
+
+        self.scheduler.borrow_mut().step(1);
+    }
+
+    pub fn dma_active(&self) -> bool {
+        self.io_registers.dma_controller().is_active()
+    }
 }

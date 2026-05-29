@@ -45,12 +45,13 @@ pub enum GbaEvent {
     Ppu(PpuEvent),
     Apu(ApuEvent),
     Timer(TimerEvent),
+    Dma(usize),
 }
 
 impl SystemEvent for GbaEvent {
     fn priority(&self) -> u8 {
         match self {
-            GbaEvent::FrameComplete | GbaEvent::Interrupt(_) | GbaEvent::Ppu(_) | GbaEvent::Apu(_) => 0,
+            GbaEvent::FrameComplete | GbaEvent::Interrupt(_) | GbaEvent::Ppu(_) | GbaEvent::Apu(_) | GbaEvent::Dma(_) => 0,
             GbaEvent::Timer(timer_event) => match timer_event {
                 TimerEvent::Overflow { .. } => 0,
                 TimerEvent::ReloadWrite { .. } => 1,

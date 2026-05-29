@@ -5,7 +5,7 @@ use tracing::debug;
 use crate::{
     Condition, CpuAction, Exception,
     arm::{self, ArmInstruction, ArmInstructionFactory, generate_arm_lut},
-    memory::{CpuContext, MemoryInterface},
+    memory::MemoryInterface,
     thumb::{self, ThumbInstruction, ThumbInstructionFactory, generate_thumb_lut},
 };
 
@@ -77,8 +77,8 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
         self.bus.idle_cycle();
     }
 
-    fn cpu_context_mut(&mut self) -> &mut CpuContext {
-        self.bus.cpu_context_mut()
+    fn set_pc(&mut self, pc: u32) {
+        self.bus.set_pc(pc);
     }
 }
 
@@ -128,16 +128,13 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
 
     pub fn cycle(&mut self) {
         let pc = self.general_registers[PC] & !0x1;
-        let context = self.bus.cpu_context_mut();
-        context.pc = pc;
-        context.cpu_state = self.cpsr.state();
+        self.bus.set_pc(pc);
 
         match self.cpsr.state() {
             CpuState::Arm => {
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_32(pc, self.next_memory_access);
-                self.cpu_context_mut().pipeline = self.pipeline;
                 let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
                 let instruction = (self.arm_lut[lut_index as usize])(instruction);
                 self.last_instruction = Some(LastInstruction::Arm(instruction));
@@ -164,7 +161,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 let instruction = self.pipeline[0];
                 self.pipeline[0] = self.pipeline[1];
                 self.pipeline[1] = self.load_16(pc, self.next_memory_access);
-                self.cpu_context_mut().pipeline = self.pipeline;
                 let lut_index = (instruction) as u16 >> 6;
                 let instruction = (self.thumb_lut[lut_index as usize])(instruction as u16);
                 self.last_instruction = Some(LastInstruction::Thumb(instruction));
@@ -223,9 +219,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     pub(crate) fn pipeline_flush(&mut self) {
-        let context = self.bus.cpu_context_mut();
-        context.pc = self.general_registers[PC];
-        context.cpu_state = self.cpsr.state();
+        self.bus.set_pc(self.general_registers[PC]);
         match self.cpsr.state() {
             CpuState::Arm => {
                 self.pipeline[0] = self.load_32(
@@ -239,7 +233,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 );
                 self.advance_pc_arm();
                 self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Sequential;
-                self.cpu_context_mut().pipeline = self.pipeline;
             }
             CpuState::Thumb => {
                 self.pipeline[0] = self.load_16(
@@ -253,7 +246,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 );
                 self.advance_pc_thumb();
                 self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Sequential;
-                self.cpu_context_mut().pipeline = self.pipeline;
             }
         }
     }
