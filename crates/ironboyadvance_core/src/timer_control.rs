@@ -218,29 +218,37 @@ impl TimerController {
 impl SystemMemoryAccess for TimerController {
     fn read_8(&self, address: u32) -> u8 {
         match address {
+            // TM0CNT_L, TM0CNT_H
             0x04000100..=0x04000101 => self.timers[0].read_counter().read_byte(address),
             0x04000102..=0x04000103 => self.timers[0].control.read_byte(address),
+            // TM1CNT_L,  TM1CNT_H
             0x04000104..=0x04000105 => self.timers[1].read_counter().read_byte(address),
             0x04000106..=0x04000107 => self.timers[1].control.read_byte(address),
+            // TM2CNT_L, TM2CNT_H
             0x04000108..=0x04000109 => self.timers[2].read_counter().read_byte(address),
             0x0400010A..=0x0400010B => self.timers[2].control.read_byte(address),
+            // TM3CNT_L, TM3CNT_H
             0x0400010C..=0x0400010D => self.timers[3].read_counter().read_byte(address),
             0x0400010E..=0x0400010F => self.timers[3].control.read_byte(address),
-            _ => panic!("Invalid byte read for Timers: {:#010X}", address),
+            _ => panic!("Invalid byte read for TimerController: {:#010X}", address),
         }
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
+            // TM0CNT_L, TM0CNT_H
             0x04000100..=0x04000101 => self.timers[0].write_reload(address, value),
             0x04000102..=0x04000103 => self.timers[0].write_control(address, value),
+            // TM1CNT_L,  TM1CNT_H
             0x04000104..=0x04000105 => self.timers[1].write_reload(address, value),
             0x04000106..=0x04000107 => self.timers[1].write_control(address, value),
+            // TM2CNT_L, TM2CNT_H
             0x04000108..=0x04000109 => self.timers[2].write_reload(address, value),
             0x0400010A..=0x0400010B => self.timers[2].write_control(address, value),
+            // TM3CNT_L, TM3CNT_H
             0x0400010C..=0x0400010D => self.timers[3].write_reload(address, value),
             0x0400010E..=0x0400010F => self.timers[3].write_control(address, value),
-            _ => panic!("Invalid byte write for Timers: {:#010X}", address),
+            _ => panic!("Invalid byte write for TimerController: {:#010X}", address),
         }
     }
 }

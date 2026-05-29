@@ -198,7 +198,7 @@ impl Ppu {
         self.v_count = value;
         let is_match = self.lcd_status.v_count_setting() == self.v_count;
         self.lcd_status.set_v_counter_flag(is_match);
-        match self.lcd_status.v_counter_irq_enable() && self.lcd_status.v_counter_flag() {
+        match self.lcd_status.v_counter_irq_enabled() && self.lcd_status.v_counter_flag() {
             true => Some(InterruptEvent::LcdVCounterMatch),
             false => None,
         }
@@ -217,7 +217,7 @@ impl Ppu {
         let mut events = vec![];
         self.lcd_status.set_h_blank_flag(true);
 
-        if self.lcd_status.h_blank_irq_enable() {
+        if self.lcd_status.h_blank_irq_enabled() {
             events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 
@@ -240,7 +240,7 @@ impl Ppu {
         } else {
             self.lcd_status.set_v_blank_flag(true);
 
-            if self.lcd_status.v_blank_irq_enable() {
+            if self.lcd_status.v_blank_irq_enabled() {
                 events.push((GbaEvent::Interrupt(InterruptEvent::LcdVBlank), 0));
             }
 
@@ -253,7 +253,7 @@ impl Ppu {
         let mut events = vec![];
         self.lcd_status.set_h_blank_flag(true);
 
-        if self.lcd_status.h_blank_irq_enable() {
+        if self.lcd_status.h_blank_irq_enabled() {
             events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 

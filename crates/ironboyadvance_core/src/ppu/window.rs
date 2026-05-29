@@ -57,19 +57,19 @@ impl WindowControl {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct WindowInside {
-    window_0_bg0_enable: bool,
-    window_0_bg1_enable: bool,
-    window_0_bg2_enable: bool,
-    window_0_bg3_enable: bool,
-    window_0_obj_enable: bool,
+    window_0_bg0_enabled: bool,
+    window_0_bg1_enabled: bool,
+    window_0_bg2_enabled: bool,
+    window_0_bg3_enabled: bool,
+    window_0_obj_enabled: bool,
     window_0_special_effect: bool,
     #[bits(2)]
     _not_used_6_7: u8,
-    window_1_bg0_enable: bool,
-    window_1_bg1_enable: bool,
-    window_1_bg2_enable: bool,
-    window_1_bg3_enable: bool,
-    window_1_obj_enable: bool,
+    window_1_bg0_enabled: bool,
+    window_1_bg1_enabled: bool,
+    window_1_bg2_enabled: bool,
+    window_1_bg3_enabled: bool,
+    window_1_obj_enabled: bool,
     window_1_special_effect: bool,
     #[bits(2)]
     _not_used_14_15: u8,
@@ -79,12 +79,12 @@ impl WindowInside {
     pub fn window_0_control(&self) -> WindowControl {
         WindowControl {
             backgrounds: [
-                self.window_0_bg0_enable(),
-                self.window_0_bg1_enable(),
-                self.window_0_bg2_enable(),
-                self.window_0_bg3_enable(),
+                self.window_0_bg0_enabled(),
+                self.window_0_bg1_enabled(),
+                self.window_0_bg2_enabled(),
+                self.window_0_bg3_enabled(),
             ],
-            object: self.window_0_obj_enable(),
+            object: self.window_0_obj_enabled(),
             special_effect: self.window_0_special_effect(),
         }
     }
@@ -92,12 +92,12 @@ impl WindowInside {
     pub fn window_1_control(&self) -> WindowControl {
         WindowControl {
             backgrounds: [
-                self.window_1_bg0_enable(),
-                self.window_1_bg1_enable(),
-                self.window_1_bg2_enable(),
-                self.window_1_bg3_enable(),
+                self.window_1_bg0_enabled(),
+                self.window_1_bg1_enabled(),
+                self.window_1_bg2_enabled(),
+                self.window_1_bg3_enabled(),
             ],
-            object: self.window_1_obj_enable(),
+            object: self.window_1_obj_enabled(),
             special_effect: self.window_1_special_effect(),
         }
     }
@@ -116,19 +116,19 @@ impl RegisterOps<u16> for WindowInside {
 #[bitfield(u16)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct WindowOutside {
-    outside_bg0_enable: bool,
-    outside_bg1_enable: bool,
-    outside_bg2_enable: bool,
-    outside_bg3_enable: bool,
-    outside_obj_enable: bool,
+    outside_bg0_enabled: bool,
+    outside_bg1_enabled: bool,
+    outside_bg2_enabled: bool,
+    outside_bg3_enabled: bool,
+    outside_obj_enabled: bool,
     outside_special_effect: bool,
     #[bits(2)]
     _not_used_6_7: u8,
-    obj_window_bg0_enable: bool,
-    obj_window_bg1_enable: bool,
-    obj_window_bg2_enable: bool,
-    obj_window_bg3_enable: bool,
-    obj_window_obj_enable: bool,
+    obj_window_bg0_enabled: bool,
+    obj_window_bg1_enabled: bool,
+    obj_window_bg2_enabled: bool,
+    obj_window_bg3_enabled: bool,
+    obj_window_obj_enabled: bool,
     obj_window_special_effect: bool,
     #[bits(2)]
     _not_used_14_15: u8,
@@ -138,12 +138,12 @@ impl WindowOutside {
     pub fn window_outside_control(&self) -> WindowControl {
         WindowControl {
             backgrounds: [
-                self.outside_bg0_enable(),
-                self.outside_bg1_enable(),
-                self.outside_bg2_enable(),
-                self.outside_bg3_enable(),
+                self.outside_bg0_enabled(),
+                self.outside_bg1_enabled(),
+                self.outside_bg2_enabled(),
+                self.outside_bg3_enabled(),
             ],
-            object: self.outside_obj_enable(),
+            object: self.outside_obj_enabled(),
             special_effect: self.outside_special_effect(),
         }
     }
@@ -151,12 +151,12 @@ impl WindowOutside {
     pub fn obj_window_control(&self) -> WindowControl {
         WindowControl {
             backgrounds: [
-                self.obj_window_bg0_enable(),
-                self.obj_window_bg1_enable(),
-                self.obj_window_bg2_enable(),
-                self.obj_window_bg3_enable(),
+                self.obj_window_bg0_enabled(),
+                self.obj_window_bg1_enabled(),
+                self.obj_window_bg2_enabled(),
+                self.obj_window_bg3_enabled(),
             ],
-            object: self.obj_window_obj_enable(),
+            object: self.obj_window_obj_enabled(),
             special_effect: self.obj_window_special_effect(),
         }
     }

@@ -145,7 +145,7 @@ struct WaitStateControl {
     #[bits(2)]
     phi_terminal_output: u8,
     _not_used_13: bool,
-    game_pak_prefetch_buffer_enable: bool,
+    game_pak_prefetch_buffer_enabled: bool,
     game_pak_type_flag: bool,
     _not_used_16_31: u16,
 }

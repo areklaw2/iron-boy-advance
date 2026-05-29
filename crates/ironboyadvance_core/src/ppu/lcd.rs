@@ -123,9 +123,9 @@ pub struct LcdStatus {
     v_blank_flag: bool,
     h_blank_flag: bool,
     v_counter_flag: bool,
-    v_blank_irq_enable: bool,
-    h_blank_irq_enable: bool,
-    v_counter_irq_enable: bool,
+    v_blank_irq_enabled: bool,
+    h_blank_irq_enabled: bool,
+    v_counter_irq_enabled: bool,
     #[bits(2)]
     _reserved: u8,
     #[bits(8)]
