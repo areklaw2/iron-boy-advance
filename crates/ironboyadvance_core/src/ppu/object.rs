@@ -185,13 +185,6 @@ impl ObjectAttribute1 {
             obj_pixel_y
         }
     }
-
-    pub fn _into_bits(self) -> u16 {
-        match self {
-            Self::Affine(a) => a.into_bits(),
-            Self::Normal(n) => n.into_bits(),
-        }
-    }
 }
 
 #[bitfield(u16)]
