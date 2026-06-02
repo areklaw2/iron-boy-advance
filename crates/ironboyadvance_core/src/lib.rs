@@ -1,6 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
 
-use getset::Getters;
 use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
 use ironboyadvance_common::scheduler::Scheduler;
 use thiserror::Error;
@@ -39,7 +38,6 @@ pub enum GbaError {
     CartridgeError(#[from] CartridgeError),
 }
 
-#[derive(Getters)]
 pub struct GameBoyAdvance {
     arm7tdmi: Arm7tdmiCpu<SystemBus>,
     // may end up making a common cpu trait

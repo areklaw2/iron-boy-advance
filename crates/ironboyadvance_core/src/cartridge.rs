@@ -2,10 +2,7 @@ use header::Header;
 use ironboyadvance_common::memory::SystemMemoryAccess;
 use thiserror::Error;
 
-use crate::{
-    cartridge::header::HeaderError,
-    system_bus::{ROM_WS0_HI, ROM_WS0_LO, ROM_WS1_HI, ROM_WS1_LO, ROM_WS2_HI, ROM_WS2_LO, SRAM_HI, SRAM_LO},
-};
+use crate::system_bus::{ROM_WS0_HI, ROM_WS0_LO, ROM_WS1_HI, ROM_WS1_LO, ROM_WS2_HI, ROM_WS2_LO, SRAM_HI, SRAM_LO};
 
 pub mod header;
 
@@ -21,8 +18,6 @@ pub enum CartridgeError {
     SaveWriteFailure(#[from] std::io::Error),
     #[error("Data with incorrect length being loaded")]
     IncorrectLengthLoaded,
-    #[error("Cartridge head load failed: {0}")]
-    HeaderLoadFailure(#[from] HeaderError),
 }
 
 #[allow(unused)]
@@ -33,7 +28,7 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn load(buffer: Vec<u8>) -> Result<Cartridge, CartridgeError> {
-        let header = Header::load(&buffer[0..228])?;
+        let header = Header::load(&buffer[0..228]);
         println!("Game Tile: {}", header.game_title());
         println!("Game Code: {}", header.game_code());
 
