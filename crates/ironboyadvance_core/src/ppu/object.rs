@@ -85,7 +85,7 @@ impl ObjectShape {
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct ObjectAttribute0 {
     y: u8,
     #[bits(2)]
@@ -100,7 +100,7 @@ pub struct ObjectAttribute0 {
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct ObjectAttribute1Affine {
     #[bits(9)]
     x: u16,
@@ -111,7 +111,7 @@ pub struct ObjectAttribute1Affine {
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct ObjectAttribute1Normal {
     #[bits(9)]
     x: u16,
@@ -195,7 +195,7 @@ impl ObjectAttribute1 {
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct ObjectAttribute2 {
     #[bits(10)]
     tile_index: u16,

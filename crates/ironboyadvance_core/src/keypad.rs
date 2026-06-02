@@ -4,7 +4,7 @@ use ironboyadvance_common::memory::SystemMemoryAccess;
 use ironboyadvance_common::register_ops::RegisterOps;
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 struct KeyInput {
     a: bool,
     b: bool,
@@ -26,12 +26,12 @@ impl RegisterOps<u16> for KeyInput {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 struct KeyControl {
     #[bits(10)]
     buttons: u16,
@@ -47,7 +47,7 @@ impl RegisterOps<u16> for KeyControl {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 

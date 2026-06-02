@@ -129,7 +129,7 @@ impl ClockCycleLuts {
 }
 
 #[bitfield(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 struct WaitStateControl {
     #[bits(2)]
     sram_wait_control: u8,
@@ -156,12 +156,12 @@ impl RegisterOps<u32> for WaitStateControl {
     }
 
     fn write_register(&mut self, bits: u32) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
 #[bitfield(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 struct InternalMemoryControl {
     disable_32k_256k_wram: bool,
     #[bits(3)]
@@ -182,7 +182,7 @@ impl RegisterOps<u32> for InternalMemoryControl {
     }
 
     fn write_register(&mut self, bits: u32) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 

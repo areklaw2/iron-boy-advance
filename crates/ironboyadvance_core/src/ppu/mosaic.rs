@@ -5,7 +5,7 @@ use ironboyadvance_common::memory::SystemMemoryAccess;
 use ironboyadvance_common::register_ops::RegisterOps;
 
 #[bitfield(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct MosaicSize {
     #[bits(4)]
     bg_mosaic_h: u8, // (minus 1)
@@ -24,7 +24,7 @@ impl RegisterOps<u32> for MosaicSize {
     }
 
     fn write_register(&mut self, bits: u32) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 

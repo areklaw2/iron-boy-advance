@@ -6,7 +6,7 @@ use crate::ppu::{
 };
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct TextBgScreenEntry {
     #[bits(10)]
     tile_index: u16,
@@ -33,7 +33,7 @@ impl TextBgScreenEntry {
 }
 
 #[bitfield(u8)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct AffineBgScreenEntry {
     tile_index: u8,
 }

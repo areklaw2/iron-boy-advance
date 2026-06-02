@@ -148,7 +148,7 @@ impl TimingMode {
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct DmaControl {
     #[bits(5)]
     _not_used_0_4: u8,
@@ -172,7 +172,7 @@ impl RegisterOps<u16> for DmaControl {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 

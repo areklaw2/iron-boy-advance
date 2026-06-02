@@ -59,7 +59,7 @@ impl FrameSelection {
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct LcdControl {
     #[bits(3)]
     bg_mode: BgMode,
@@ -113,12 +113,12 @@ impl RegisterOps<u16> for LcdControl {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct LcdStatus {
     v_blank_flag: bool,
     h_blank_flag: bool,
@@ -138,6 +138,6 @@ impl RegisterOps<u16> for LcdStatus {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits & 0xFF38);
+        self.write_bits(bits & 0xFF38);
     }
 }

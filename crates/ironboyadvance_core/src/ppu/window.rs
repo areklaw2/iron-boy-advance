@@ -5,7 +5,7 @@ use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOp
 use crate::ppu::{ScanlineContext, VIEWPORT_WIDTH};
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct WindowDimension {
     end: u8,   // bits 0-7: rightmost/bottom-most + 1
     start: u8, // bits 8-15: leftmost/top-most
@@ -27,7 +27,7 @@ impl RegisterOps<u16> for WindowDimension {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
@@ -55,7 +55,7 @@ impl WindowControl {
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct WindowInside {
     window_0_bg0_enabled: bool,
     window_0_bg1_enabled: bool,
@@ -109,12 +109,12 @@ impl RegisterOps<u16> for WindowInside {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct WindowOutside {
     outside_bg0_enabled: bool,
     outside_bg1_enabled: bool,
@@ -168,7 +168,7 @@ impl RegisterOps<u16> for WindowOutside {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 

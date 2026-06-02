@@ -87,7 +87,7 @@ impl Instruction for PsrTransfer {
                         if cpu.cpsr().mode() == CpuMode::User {
                             let mask = mask & 0xFF000000;
                             let bits = (cpu.cpsr().into_bits() & !mask) | (operand & mask);
-                            cpu.set_cpsr(ProgramStatusRegister::from_bits(bits));
+                            cpu.set_cpsr(ProgramStatusRegister::from_bits_with_defaults(bits));
                         } else {
                             // Make sure operand has the 4th bit
                             if mask & 0xFF != 0 {
@@ -95,13 +95,13 @@ impl Instruction for PsrTransfer {
                             }
 
                             let bits = (cpu.cpsr().into_bits() & !mask) | (operand & mask);
-                            cpu.set_cpsr(ProgramStatusRegister::from_bits(bits));
+                            cpu.set_cpsr(ProgramStatusRegister::from_bits_with_defaults(bits));
                         }
                     }
                     true => {
                         if cpu.cpsr().mode() != CpuMode::User && cpu.cpsr().mode() != CpuMode::System {
                             let bits = (cpu.spsr().into_bits() & !mask) | (operand & mask);
-                            cpu.set_spsr(ProgramStatusRegister::from_bits(bits));
+                            cpu.set_spsr(ProgramStatusRegister::from_bits_with_defaults(bits));
                         }
                     }
                 }

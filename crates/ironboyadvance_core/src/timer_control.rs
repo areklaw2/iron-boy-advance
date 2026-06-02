@@ -15,7 +15,7 @@ const TIMER_OVERFLOW_INTERRUPTS: [InterruptEvent; 4] = [
 ];
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct TimerControl {
     #[bits(2)]
     prescaler_selection: u8,
@@ -39,7 +39,7 @@ impl RegisterOps<u16> for TimerControl {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 

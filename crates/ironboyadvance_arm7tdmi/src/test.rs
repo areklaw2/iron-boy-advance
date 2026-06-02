@@ -280,8 +280,8 @@ mod tests {
             cpu.set_banked_registers_abt(initial_state.r_abt);
             cpu.set_banked_registers_irq(initial_state.r_irq);
             cpu.set_banked_registers_und(initial_state.r_und);
-            cpu.set_cpsr(ProgramStatusRegister::from_bits(initial_state.cpsr));
-            cpu.set_spsrs(initial_state.spsr.map(ProgramStatusRegister::from_bits));
+            cpu.set_cpsr(ProgramStatusRegister::from_bits_with_defaults(initial_state.cpsr));
+            cpu.set_spsrs(initial_state.spsr.map(ProgramStatusRegister::from_bits_with_defaults));
             cpu.set_pipeline(initial_state.pipeline);
 
             cpu.cycle();
@@ -294,10 +294,12 @@ mod tests {
             assert_eq!(cpu.banked_registers_und(), &final_state.r_und);
             assert_eq!(
                 cpu.spsrs().map(|x| x.into_bits()),
-                final_state.spsr.map(|x| ProgramStatusRegister::from_bits(x).into_bits())
+                final_state
+                    .spsr
+                    .map(|x| ProgramStatusRegister::from_bits_with_defaults(x).into_bits())
             );
 
-            let expected = ProgramStatusRegister::from_bits(final_state.cpsr);
+            let expected = ProgramStatusRegister::from_bits_with_defaults(final_state.cpsr);
 
             // The booth multiplication sets the carry. data sheet says its set to a meaningless value. Will ignore result
             let is_mutliply = match cpu.last_instruction() {

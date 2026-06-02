@@ -116,7 +116,7 @@ impl DisplayAreaOverflow {
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct BgControl {
     #[bits(2)]
     priority: u8,
@@ -141,12 +141,12 @@ impl RegisterOps<u16> for BgControl {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct BgOffset {
     #[bits(9)]
     offset: u16,
@@ -160,12 +160,12 @@ impl RegisterOps<u16> for BgOffset {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
 #[bitfield(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct BgReferencePoint {
     fractional_portion: u8,
     #[bits(19)]
@@ -187,12 +187,12 @@ impl RegisterOps<u32> for BgReferencePoint {
     }
 
     fn write_register(&mut self, bits: u32) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct BgAffineParameter {
     fractional_portion: u8,
     #[bits(7)]
@@ -212,7 +212,7 @@ impl RegisterOps<u16> for BgAffineParameter {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 

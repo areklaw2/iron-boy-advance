@@ -91,8 +91,8 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             banked_registers_abt: [0; 2], //r13 to r14
             banked_registers_irq: [0; 2], //r13 to r14
             banked_registers_und: [0; 2], //r13 to r14
-            spsrs: [ProgramStatusRegister::from_bits(0x13); 5],
-            cpsr: ProgramStatusRegister::from_bits(0x13),
+            spsrs: [ProgramStatusRegister::from_bits_with_defaults(0x13); 5],
+            cpsr: ProgramStatusRegister::from_bits_with_defaults(0x13),
             pipeline: [0; 2],
             bus,
             next_memory_access: MemoryAccess::Instruction | MemoryAccess::NonSequential,

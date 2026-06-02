@@ -31,7 +31,7 @@ impl SpecialEffect {
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct SpecialEffectsControl {
     bg0_1st_target_pixel: bool,
     bg1_1st_target_pixel: bool,
@@ -57,12 +57,12 @@ impl RegisterOps<u16> for SpecialEffectsControl {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
 #[bitfield(u16)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct AlphaBlending {
     #[bits(5)]
     eva_coefficient: u8,
@@ -80,12 +80,12 @@ impl RegisterOps<u16> for AlphaBlending {
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 
 #[bitfield(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct Brightness {
     #[bits(5)]
     evy_coefficient: u8,
@@ -99,7 +99,7 @@ impl RegisterOps<u32> for Brightness {
     }
 
     fn write_register(&mut self, bits: u32) {
-        self.set_bits(bits);
+        self.write_bits(bits);
     }
 }
 

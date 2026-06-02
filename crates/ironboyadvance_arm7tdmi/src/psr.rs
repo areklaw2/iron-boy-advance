@@ -3,7 +3,7 @@ use bitfields::bitfield;
 use super::{CpuMode, CpuState};
 
 #[bitfield(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct ProgramStatusRegister {
     #[bits(5)]
     mode: CpuMode,
@@ -11,7 +11,7 @@ pub struct ProgramStatusRegister {
     state: CpuState,
     fiq_disable: bool,
     irq_disable: bool,
-    #[bits(20)]
+    #[bits(20, default = 0)]
     _reserved: u32,
     overflow: bool,
     carry: bool,
@@ -41,13 +41,13 @@ mod tests {
 
     #[test]
     fn from_bits_psr() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         assert_eq!(psr.into_bits(), 0xF00000FF)
     }
 
     #[test]
     fn set_psr_flags() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFF11);
+        let mut psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFF11);
         psr.set_flags(0xE);
         assert_eq!(psr.into_bits(), 0xE0000011);
         assert_eq!(psr.flags(), 0xE);
@@ -59,104 +59,104 @@ mod tests {
 
     #[test]
     fn get_psr_negative() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         assert!(psr.negative())
     }
 
     #[test]
     fn set_psr_negative() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let mut psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         psr.set_negative(false);
         assert!(!psr.negative())
     }
 
     #[test]
     fn get_psr_zero() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         assert!(psr.zero())
     }
 
     #[test]
     fn set_psr_zero() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let mut psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         psr.set_zero(false);
         assert!(!psr.zero())
     }
 
     #[test]
     fn get_psr_carry() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         assert!(psr.carry())
     }
 
     #[test]
     fn set_psr_carry() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let mut psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         psr.set_carry(false);
         assert!(!psr.carry())
     }
 
     #[test]
     fn get_psr_overflow() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         assert!(psr.overflow())
     }
 
     #[test]
     fn set_psr_overflow() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let mut psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         psr.set_overflow(false);
         assert!(!psr.overflow())
     }
 
     #[test]
     fn get_psr_irq_disable() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         assert!(psr.irq_disable())
     }
 
     #[test]
     fn set_psr_irq_disable() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let mut psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         psr.set_irq_disable(false);
         assert!(!psr.irq_disable())
     }
 
     #[test]
     fn get_psr_fiq_disable() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         assert!(psr.fiq_disable())
     }
 
     #[test]
     fn set_psr_fiq_disable() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let mut psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         psr.set_fiq_disable(false);
         assert!(!psr.fiq_disable())
     }
 
     #[test]
     fn get_psr_state() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         assert_eq!(psr.state(), CpuState::Thumb)
     }
 
     #[test]
     fn set_psr_state() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let mut psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         psr.set_state(CpuState::Arm);
         assert_eq!(psr.state(), CpuState::Arm)
     }
 
     #[test]
     fn get_psr_mode() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         assert_eq!(psr.mode(), CpuMode::System)
     }
 
     #[test]
     fn set_psr_mode() {
-        let mut psr = ProgramStatusRegister::from_bits(0xFFFFFFFF);
+        let mut psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFFFF);
         psr.set_mode(CpuMode::User);
         assert_eq!(psr.mode(), CpuMode::User);
 
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn get_psr_mode_is_invalid() {
-        let psr = ProgramStatusRegister::from_bits(0xFFFFFF15);
+        let psr = ProgramStatusRegister::from_bits_with_defaults(0xFFFFFF15);
         assert_eq!(psr.mode(), CpuMode::Invalid);
     }
 }
