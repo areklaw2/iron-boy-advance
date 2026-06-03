@@ -1,10 +1,13 @@
+use std::path::PathBuf;
+
 use header::Header;
 use ironboyadvance_common::memory::SystemMemoryAccess;
 use thiserror::Error;
 
 use crate::system_bus::{ROM_WS0_HI, ROM_WS0_LO, ROM_WS1_HI, ROM_WS1_LO, ROM_WS2_HI, ROM_WS2_LO, SRAM_HI, SRAM_LO};
 
-pub mod header;
+mod backup;
+mod header;
 
 const MAX_CARTRIDGE_BYTES: usize = 32 * 1024 * 1024;
 

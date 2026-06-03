@@ -2,9 +2,10 @@ use getset::Getters;
 use tracing::warn;
 
 #[derive(Getters)]
-#[getset(get = "pub")]
+#[allow(unused)]
 pub struct Header {
     game_title: String,
+    #[getset(get = "pub")]
     game_code: String,
 }
 
