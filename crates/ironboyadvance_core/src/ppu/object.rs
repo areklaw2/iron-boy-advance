@@ -27,21 +27,21 @@ pub enum AffineMode {
 #[bitflag(u8)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum ObjectMode {
+    #[base]
     Normal = 0,
     SemiTransparent = 1,
     ObjectWindow = 2,
-    #[base]
-    Prohibited = 0xFF,
+    Prohibited = 0x3,
 }
 
 #[bitflag(u8)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum ObjectShape {
+    #[base]
     Square = 0x0,
     Horizontal = 0x1,
     Vertical = 0x2,
-    #[base]
-    Prohibited = 0xFF,
+    Prohibited = 0x3,
 }
 
 #[bitfield(u16)]
