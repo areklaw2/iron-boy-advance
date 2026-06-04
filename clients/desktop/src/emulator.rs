@@ -1,5 +1,6 @@
 use std::{
     fs, io,
+    path::PathBuf,
     sync::{
         Arc,
         atomic::{AtomicU16, Ordering},
@@ -28,10 +29,10 @@ fn read_rom(path: &str) -> io::Result<Vec<u8>> {
     fs::read(path)
 }
 
-fn read_bios(path: Option<&str>) -> io::Result<Box<[u8]>> {
+fn read_bios(path: Option<&str>) -> io::Result<Vec<u8>> {
     match path {
-        Some(p) => Ok(fs::read(p)?.into_boxed_slice()),
-        None => Ok(Box::default()),
+        Some(p) => fs::read(p),
+        None => Ok(Vec::new()),
     }
 }
 
@@ -45,7 +46,7 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
 
     let emu_keypad = keypad.clone();
     thread::spawn(move || {
-        let mut gba = match GameBoyAdvance::new(rom_buffer, bios_buffer, show_logs) {
+        let mut gba = match GameBoyAdvance::new(PathBuf::from(&rom_path), rom_buffer, bios_buffer, show_logs) {
             Ok(gba) => gba,
             Err(e) => panic!("failed to initialize GBA: {e}"),
         };
@@ -80,7 +81,7 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
                                 continue 'commands;
                             }
                         };
-                        match GameBoyAdvance::new(rom, bios, show_logs) {
+                        match GameBoyAdvance::new(PathBuf::from(&rom_path), rom, bios, show_logs) {
                             Ok(new_gba) => {
                                 gba = new_gba;
                                 overshoot = 0;

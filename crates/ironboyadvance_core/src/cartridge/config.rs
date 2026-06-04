@@ -1,6 +1,6 @@
 use std::ops::BitOr;
 
-use getset::Getters;
+use getset::CopyGetters;
 
 use crate::cartridge::header::Header;
 
@@ -29,7 +29,7 @@ impl BitOr for CartridgeDevice {
 
 const BACKUP_TYPE_STRINGS: &[&str] = &["SRAM_V", "EEPROM_V", "FLASH1M_V", "FLASH512_V", "FLASH_V"];
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum BackupType {
     None,
     Sram,
@@ -38,8 +38,8 @@ pub enum BackupType {
     Flash128KB,
 }
 
-#[derive(Debug, Getters)]
-#[getset(get = "pub")]
+#[derive(Debug, CopyGetters)]
+#[getset(get_copy = "pub")]
 pub struct CartridgeConfig {
     backup_type: BackupType,
     device_pattern: u8,

@@ -4,62 +4,73 @@ use header::Header;
 use ironboyadvance_common::memory::SystemMemoryAccess;
 use thiserror::Error;
 
-use crate::system_bus::{ROM_WS0_HI, ROM_WS0_LO, ROM_WS1_HI, ROM_WS1_LO, ROM_WS2_HI, ROM_WS2_LO, SRAM_HI, SRAM_LO};
+use crate::cartridge::{
+    config::{BackupType, CartridgeDevice, determine_cartridge_config},
+    no_backup::NoBackup,
+    sram::Sram,
+};
 
-mod backup;
+mod backup_file;
+mod config;
 mod header;
-
-const MAX_CARTRIDGE_BYTES: usize = 32 * 1024 * 1024;
+mod no_backup;
+mod sram;
 
 #[derive(Error, Debug)]
 pub enum CartridgeError {
     #[error("Unsupported Cartridge type")]
     InvalidCatridgeType,
-    #[error("Error reading save")]
-    SaveReadFailed,
-    #[error("Save file failed with error: {0}")]
-    SaveWriteFailure(#[from] std::io::Error),
-    #[error("Data with incorrect length being loaded")]
-    IncorrectLengthLoaded,
+    #[error("Existing save file has wrong size for detected backup")]
+    SaveSizeMismatch,
+    #[error("Save file I/O failed: {0}")]
+    SaveIo(#[from] std::io::Error),
 }
 
-#[allow(unused)]
+pub trait CartridgeBackup: SystemMemoryAccess {
+    fn rom(&self) -> &[u8];
+
+    fn rom_read(&self, address: u32) -> u8 {
+        let offset = (address & 0x01FFFFFF) as usize;
+        let rom = self.rom();
+        match offset < rom.len() {
+            true => rom[offset],
+            false => (((address >> 1) & 0xFFFF) >> ((address & 1) * 8)) as u8,
+        }
+    }
+}
+
 pub struct Cartridge {
-    header: Header,
-    data: Vec<u8>,
+    backup: Box<dyn CartridgeBackup>,
 }
 
 impl Cartridge {
-    pub fn load(buffer: Vec<u8>) -> Result<Cartridge, CartridgeError> {
+    pub fn load(rom_path: PathBuf, buffer: Vec<u8>) -> Result<Cartridge, CartridgeError> {
         let header = Header::load(&buffer[0..228]);
-        println!("Game Tile: {}", header.game_title());
-        println!("Game Code: {}", header.game_code());
+        let config = determine_cartridge_config(&buffer, &header);
+        let save_file = rom_path.with_extension("sav");
 
-        let mut data = vec![0; MAX_CARTRIDGE_BYTES];
-        data[..buffer.len()].clone_from_slice(&buffer);
+        let backup: Box<dyn CartridgeBackup> = match config.backup_type() {
+            BackupType::None => Box::new(NoBackup::new(buffer)),
+            BackupType::Sram => Box::new(Sram::new(buffer, &save_file)?),
+            BackupType::Eeprom => todo!(),
+            BackupType::Flash64KB => todo!(),
+            BackupType::Flash128KB => todo!(),
+        };
 
-        Ok(Cartridge { header, data })
+        if CartridgeDevice::Rtc.is_set(config.device_pattern()) {
+            println!("RTC")
+        }
+
+        Ok(Cartridge { backup })
     }
 }
 
 impl SystemMemoryAccess for Cartridge {
     fn read_8(&self, address: u32) -> u8 {
-        match address & 0xFF000000 {
-            ROM_WS0_LO | ROM_WS0_HI => self.data[(address - ROM_WS0_LO) as usize],
-            ROM_WS1_LO | ROM_WS1_HI => self.data[(address - ROM_WS1_LO) as usize],
-            ROM_WS2_LO | ROM_WS2_HI => self.data[(address - ROM_WS2_LO) as usize],
-            SRAM_LO | SRAM_HI => self.data[(address & 0xFFFF) as usize],
-            _ => panic!("Read to address {:08X} invalid", address),
-        }
+        self.backup.read_8(address)
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
-        match address & 0xFF000000 {
-            ROM_WS0_LO | ROM_WS0_HI => self.data[(address - ROM_WS0_LO) as usize] = value,
-            ROM_WS1_LO | ROM_WS1_HI => self.data[(address - ROM_WS1_LO) as usize] = value,
-            ROM_WS2_LO | ROM_WS2_HI => self.data[(address - ROM_WS2_LO) as usize] = value,
-            SRAM_LO | SRAM_HI => self.data[(address & 0xFFFF) as usize] = value,
-            _ => panic!("Write to address {:08X} invalid", address),
-        }
+        self.backup.write_8(address, value)
     }
 }

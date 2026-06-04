@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
 use ironboyadvance_common::scheduler::Scheduler;
@@ -46,9 +46,14 @@ pub struct GameBoyAdvance {
 }
 
 impl GameBoyAdvance {
-    pub fn new(rom_buffer: Vec<u8>, bios_buffer: Box<[u8]>, show_logs: bool) -> Result<GameBoyAdvance, GbaError> {
+    pub fn new(
+        rom_path: PathBuf,
+        rom_buffer: Vec<u8>,
+        bios_buffer: Vec<u8>,
+        show_logs: bool,
+    ) -> Result<GameBoyAdvance, GbaError> {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
-        let cartridge = Cartridge::load(rom_buffer)?;
+        let cartridge = Cartridge::load(rom_path, rom_buffer)?;
         let bios = Bios::load(bios_buffer)?;
         let skip_bios = !bios.loaded();
         let gba = GameBoyAdvance {

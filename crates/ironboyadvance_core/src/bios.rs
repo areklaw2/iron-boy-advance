@@ -14,7 +14,7 @@ pub enum BiosError {
 
 #[derive(Debug, CopyGetters)]
 pub struct Bios {
-    data: Box<[u8]>,
+    data: Vec<u8>,
     #[getset(get_copy = "pub")]
     loaded: bool,
     last_fetched: Cell<u32>,
@@ -22,9 +22,9 @@ pub struct Bios {
 }
 
 impl Bios {
-    pub fn load(buffer: Box<[u8]>) -> Result<Bios, BiosError> {
+    pub fn load(buffer: Vec<u8>) -> Result<Bios, BiosError> {
         let (data, loaded) = match buffer.is_empty() {
-            true => (Box::new([0u8; 0x4000]) as Box<[u8]>, false),
+            true => (vec![0; 0x4000], false),
             false => {
                 if buffer.len() != 0x4000 {
                     return Err(BiosError::InvalidBiosLength(buffer.len()));
