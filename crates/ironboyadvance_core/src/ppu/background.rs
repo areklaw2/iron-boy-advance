@@ -1,31 +1,19 @@
-use bitfields::bitfield;
+use bitfields::{bitfield, bitflag};
 use ironboyadvance_common::{bits::SignExtend, memory::SystemMemoryAccess, register_ops::RegisterOps};
 
 use crate::ppu::{SB_ENTRIES, SB_SIDE, color::ColorMode};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ScreenSize {
-    Size0,
-    Size1,
-    Size2,
-    Size3,
+    #[base]
+    Size0 = 0x0,
+    Size1 = 0x1,
+    Size2 = 0x2,
+    Size3 = 0x3,
 }
 
 impl ScreenSize {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Size0,
-            0x1 => Self::Size1,
-            0x2 => Self::Size2,
-            0x3 => Self::Size3,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-
     pub fn text_map_pixel_size(self) -> (u16, u16) {
         match self {
             Self::Size0 => (256, 256),
@@ -95,24 +83,12 @@ impl ScreenBaseBlock {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum DisplayAreaOverflow {
-    Transparent,
-    Wraparound,
-}
-
-impl DisplayAreaOverflow {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Transparent,
-            0x1 => Self::Wraparound,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
+    #[base]
+    Transparent = 0x0,
+    Wraparound = 0x1,
 }
 
 #[bitfield(u16)]

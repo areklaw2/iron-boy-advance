@@ -1,22 +1,14 @@
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+use bitfields::bitflag;
+
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ColorMode {
-    Color16,  //4bpp
-    Color256, //8bpp
+    #[base]
+    Color16 = 0x0, //4bpp
+    Color256 = 0x1, //8bpp
 }
 
 impl ColorMode {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Color16,
-            0x1 => Self::Color256,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-
     pub fn bytes_per_tile(self) -> usize {
         match self {
             Self::Color16 => 32,

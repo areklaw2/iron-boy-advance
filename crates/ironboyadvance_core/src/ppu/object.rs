@@ -1,4 +1,4 @@
-use bitfields::bitfield;
+use bitfields::{bitfield, bitflag};
 use getset::CopyGetters;
 use ironboyadvance_common::bits::SignExtend;
 
@@ -14,74 +14,34 @@ const OBJECT_SIZES: [[(u16, u16); 4]; 3] = [
     [(8, 16), (8, 32), (16, 32), (32, 64)], // Vertical
 ];
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AffineMode {
-    NoAffine,
-    Affine,
-    Hidden,
-    AffineDouble,
+    #[base]
+    NoAffine = 0,
+    Affine = 1,
+    Hidden = 2,
+    AffineDouble = 3,
 }
 
-impl AffineMode {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::NoAffine,
-            0x1 => Self::Affine,
-            0x2 => Self::Hidden,
-            0x3 => Self::AffineDouble,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ObjectMode {
-    Normal,
-    SemiTransparent,
-    ObjectWindow,
-    Prohibited,
+    Normal = 0,
+    SemiTransparent = 1,
+    ObjectWindow = 2,
+    #[base]
+    Prohibited = 0xFF,
 }
 
-impl ObjectMode {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Normal,
-            0x1 => Self::SemiTransparent,
-            0x2 => Self::ObjectWindow,
-            _ => Self::Prohibited,
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ObjectShape {
-    Square,
-    Horizontal,
-    Vertical,
-    Prohibited,
-}
-
-impl ObjectShape {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Square,
-            0x1 => Self::Horizontal,
-            0x2 => Self::Vertical,
-            _ => Self::Prohibited,
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
+    Square = 0x0,
+    Horizontal = 0x1,
+    Vertical = 0x2,
+    #[base]
+    Prohibited = 0xFF,
 }
 
 #[bitfield(u16)]
