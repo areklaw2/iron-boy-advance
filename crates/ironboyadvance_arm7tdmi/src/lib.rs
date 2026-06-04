@@ -16,7 +16,8 @@ pub(crate) enum CpuAction {
     PipelineFlush,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum CpuMode {
     User = 0b10000,
     Fiq = 0b10001,
@@ -25,46 +26,16 @@ pub(crate) enum CpuMode {
     Abort = 0b10111,
     Undefined = 0b11011,
     System = 0b11111,
-    Invalid,
+    #[base]
+    Invalid = 0,
 }
 
-impl CpuMode {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0b10000 => Self::User,
-            0b10001 => Self::Fiq,
-            0b10010 => Self::Irq,
-            0b10011 => Self::Supervisor,
-            0b10111 => Self::Abort,
-            0b11011 => Self::Undefined,
-            0b11111 => Self::System,
-            _ => Self::Invalid,
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CpuState {
+    #[base]
     Arm = 0,
     Thumb = 1,
-}
-
-impl CpuState {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0 => Self::Arm,
-            1 => Self::Thumb,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -352,6 +323,7 @@ pub(crate) enum Exception {
     Fiq = 0x1C,
 }
 
+use bitfields::bitflag;
 use std::mem::size_of;
 use std::ops::RangeInclusive;
 

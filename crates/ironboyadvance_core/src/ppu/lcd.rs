@@ -1,55 +1,29 @@
-use bitfields::bitfield;
+use bitfields::{bitfield, bitflag};
 
 use ironboyadvance_common::register_ops::RegisterOps;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum BgMode {
-    Mode0,
-    Mode1,
-    Mode2,
-    Mode3,
-    Mode4,
-    Mode5,
-    Prohibited,
+    Mode0 = 0x0,
+    Mode1 = 0x1,
+    Mode2 = 0x2,
+    Mode3 = 0x3,
+    Mode4 = 0x4,
+    Mode5 = 0x5,
+    #[base]
+    Prohibited = 0xFF,
 }
 
-impl BgMode {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Mode0,
-            0x1 => Self::Mode1,
-            0x2 => Self::Mode2,
-            0x3 => Self::Mode3,
-            0x4 => Self::Mode4,
-            0x5 => Self::Mode5,
-            _ => Self::Prohibited,
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum FrameSelection {
-    Frame0,
-    Frame1,
+    #[base]
+    Frame0 = 0,
+    Frame1 = 1,
 }
 
 impl FrameSelection {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0 => Self::Frame0,
-            1 => Self::Frame1,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-
     pub fn base_address(self) -> usize {
         match self {
             Self::Frame0 => 0,

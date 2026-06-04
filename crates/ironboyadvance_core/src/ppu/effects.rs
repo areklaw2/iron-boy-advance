@@ -1,4 +1,4 @@
-use bitfields::bitfield;
+use bitfields::{bitfield, bitflag};
 use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps};
 
 use crate::ppu::{
@@ -6,28 +6,14 @@ use crate::ppu::{
     color::{bgr555_to_channels, channels_to_bgr555},
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SpecialEffect {
-    None,
-    AlphaBlending,
-    BrightnessIncrease,
-    BrightnessDecrease,
-}
-
-impl SpecialEffect {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0b00 => Self::None,
-            0b01 => Self::AlphaBlending,
-            0b10 => Self::BrightnessIncrease,
-            0b11 => Self::BrightnessDecrease,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
+    #[base]
+    None = 0b00,
+    AlphaBlending = 0b01,
+    BrightnessIncrease = 0b10,
+    BrightnessDecrease = 0b11,
 }
 
 #[bitfield(u16)]

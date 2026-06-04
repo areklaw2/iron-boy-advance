@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use bitfields::bitfield;
+use bitfields::{bitfield, bitflag};
 use ironboyadvance_common::memory::{MemoryAccess, SystemMemoryAccess};
 use ironboyadvance_common::register_ops::RegisterOps;
 use ironboyadvance_common::scheduler::Scheduler;
@@ -18,29 +18,17 @@ const DMA_OVERFLOW_INTERRUPTS: [InterruptEvent; 4] = [
     InterruptEvent::Dma3Overflow,
 ];
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum DestinationControl {
-    Increment,
-    Decrement,
-    Fixed,
-    Reload,
+    #[base]
+    Increment = 0x0,
+    Decrement = 0x1,
+    Fixed = 0x2,
+    Reload = 0x3,
 }
 
 impl DestinationControl {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Increment,
-            0x1 => Self::Decrement,
-            0x2 => Self::Fixed,
-            0x3 => Self::Reload,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-
     pub fn step(&self, bytes: i32) -> i32 {
         match self {
             DestinationControl::Increment | DestinationControl::Reload => bytes,
@@ -50,29 +38,17 @@ impl DestinationControl {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SourceControl {
-    Increment,
-    Decrement,
-    Fixed,
-    Prohibited,
+    #[base]
+    Increment = 0x0,
+    Decrement = 0x1,
+    Fixed = 0x2,
+    Prohibited = 0x3,
 }
 
 impl SourceControl {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Increment,
-            0x1 => Self::Decrement,
-            0x2 => Self::Fixed,
-            0x3 => Self::Prohibited,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-
     pub fn step(&self, bytes: i32) -> i32 {
         match self {
             SourceControl::Increment => bytes,
@@ -82,25 +58,15 @@ impl SourceControl {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ChunkSize {
-    Size16,
-    Size32,
+    #[base]
+    Size16 = 0x0,
+    Size32 = 0x1,
 }
 
 impl ChunkSize {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Size16,
-            0x1 => Self::Size32,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
-
     pub fn bit_per_chunk(&self) -> usize {
         match self {
             ChunkSize::Size16 => 16,
@@ -123,28 +89,14 @@ impl ChunkSize {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TimingMode {
-    Immediately,
-    VBlank,
-    HBlank,
-    Special,
-}
-
-impl TimingMode {
-    pub const fn from_bits(bits: u8) -> Self {
-        match bits {
-            0x0 => Self::Immediately,
-            0x1 => Self::VBlank,
-            0x2 => Self::HBlank,
-            0x3 => Self::Special,
-            _ => unreachable!(),
-        }
-    }
-
-    pub const fn into_bits(self) -> u8 {
-        self as u8
-    }
+    #[base]
+    Immediately = 0x0,
+    VBlank = 0x1,
+    HBlank = 0x2,
+    Special = 0x3,
 }
 
 #[bitfield(u16)]
