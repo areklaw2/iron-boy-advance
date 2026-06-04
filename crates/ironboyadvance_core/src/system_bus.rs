@@ -297,10 +297,8 @@ impl SystemBus {
                     self.io_registers.dma_controller_mut().request_dma(RequestType::Video);
                 }
             }
-            PpuEvent::VBlankHBlank => {
-                if self.io_registers.ppu().v_count() == 162 {
-                    self.io_registers.dma_controller_mut().stop_video_transfer();
-                }
+            PpuEvent::VBlankHBlank if self.io_registers.ppu().v_count() == 162 => {
+                self.io_registers.dma_controller_mut().stop_video_transfer();
             }
             _ => {}
         }
