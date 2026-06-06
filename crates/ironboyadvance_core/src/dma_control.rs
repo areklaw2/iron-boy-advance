@@ -278,9 +278,13 @@ impl DmaController {
     }
 
     fn write_control(&mut self, channel_id: usize, address: u32, value: u8) {
-        if self.channels[channel_id].write_control(address, value)
-            && self.channels[channel_id].control.timing_mode() == TimingMode::Immediately
-        {
+        let started = self.channels[channel_id].write_control(address, value);
+
+        if !self.channels[channel_id].control.enabled() {
+            self.runnable[channel_id] = false;
+        }
+
+        if started && self.channels[channel_id].control.timing_mode() == TimingMode::Immediately {
             self.scheduler
                 .borrow_mut()
                 .schedule((GbaEvent::Dma(DmaEvent::Activate { channel_id }), 2));
