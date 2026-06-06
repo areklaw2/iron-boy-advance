@@ -11,11 +11,10 @@ use tracing::debug;
 use crate::{
     bios::Bios,
     cartridge::Cartridge,
-    dma_control::{ChunkSize, RequestType},
-    events::{GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
+    dma_control::ChunkSize,
+    events::{DmaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
-    ppu::VIEWPORT_HEIGHT,
     system_control::HaltMode,
 };
 
@@ -274,33 +273,10 @@ impl SystemBus {
 
     pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent, timestamp: usize) {
         self.io_registers.ppu_mut().handle_event(ppu_event, timestamp);
-
-        match ppu_event {
-            PpuEvent::HDraw => {
-                let v_count = self.io_registers.ppu().v_count();
-                self.io_registers.dma_controller_mut().request_dma(RequestType::HBlank);
-                if (2..=159).contains(&v_count) {
-                    self.io_registers.dma_controller_mut().request_dma(RequestType::Video);
-                }
-            }
-            PpuEvent::HBlank if self.io_registers.ppu().v_count() as usize == VIEWPORT_HEIGHT => {
-                self.io_registers.dma_controller_mut().request_dma(RequestType::VBlank);
-            }
-            PpuEvent::VBlankHDraw => {
-                let v_count = self.io_registers.ppu().v_count();
-                if matches!(v_count, 160 | 161) {
-                    self.io_registers.dma_controller_mut().request_dma(RequestType::Video);
-                }
-            }
-            PpuEvent::VBlankHBlank if self.io_registers.ppu().v_count() == 162 => {
-                self.io_registers.dma_controller_mut().stop_video_transfer();
-            }
-            _ => {}
-        }
     }
 
-    pub fn handle_dma_event(&mut self, channel_id: usize) {
-        self.io_registers.dma_controller_mut().handle_event(channel_id);
+    pub fn handle_dma_event(&mut self, dma_event: DmaEvent) {
+        self.io_registers.dma_controller_mut().handle_event(dma_event);
     }
 
     pub fn handle_timer_event(&mut self, timer_event: TimerEvent) {
@@ -324,8 +300,10 @@ impl SystemBus {
 
             self.io_registers.dma_controller_mut().complete_transfer();
 
-            while let Some(id) = self.io_registers.dma_controller().pending_dma_request() {
-                self.io_registers.dma_controller_mut().handle_event(id);
+            while let Some(channel_id) = self.io_registers.dma_controller().pending_dma_request() {
+                self.io_registers
+                    .dma_controller_mut()
+                    .handle_event(DmaEvent::Activate { channel_id });
             }
         }
 

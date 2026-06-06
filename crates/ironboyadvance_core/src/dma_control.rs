@@ -5,7 +5,7 @@ use ironboyadvance_common::memory::{MemoryAccess, SystemMemoryAccess};
 use ironboyadvance_common::register_ops::RegisterOps;
 use ironboyadvance_common::scheduler::Scheduler;
 
-use crate::events::{GbaEvent, InterruptEvent};
+use crate::events::{DmaEvent, GbaEvent, InterruptEvent};
 use crate::system_bus::ROM_WS0_LO;
 
 const DMA3_MAX_TRANSFER_COUNT: u32 = 0x10000;
@@ -138,7 +138,7 @@ pub struct DmaTransfer {
 }
 
 #[allow(unused)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum RequestType {
     HBlank,
     VBlank,
@@ -281,11 +281,44 @@ impl DmaController {
         if self.channels[channel_id].write_control(address, value)
             && self.channels[channel_id].control.timing_mode() == TimingMode::Immediately
         {
-            self.scheduler.borrow_mut().schedule((GbaEvent::Dma(channel_id), 2));
+            self.scheduler
+                .borrow_mut()
+                .schedule((GbaEvent::Dma(DmaEvent::Activate { channel_id }), 2));
         }
     }
 
-    pub fn request_dma(&mut self, request_type: RequestType) {
+    pub fn pending_dma_request(&self) -> Option<usize> {
+        let mut scheduler = self.scheduler.borrow_mut();
+        match scheduler.peek() {
+            Some(GbaEvent::Dma(DmaEvent::Activate { .. })) => {
+                let (GbaEvent::Dma(DmaEvent::Activate { channel_id }), _) = scheduler.pop()? else {
+                    return None;
+                };
+                Some(channel_id)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn handle_event(&mut self, dma_event: DmaEvent) {
+        match dma_event {
+            DmaEvent::Activate { channel_id } => self.handle_dma_activate(channel_id),
+            DmaEvent::Request(request_type) => self.handle_dma_request(request_type),
+            DmaEvent::StopVideo => self.handle_stop_video_transfer(),
+        }
+    }
+
+    fn handle_dma_activate(&mut self, channel_id: usize) {
+        let previous_active = self.active_channel();
+        self.runnable[channel_id] = true;
+        if let Some(previous_id) = previous_active
+            && channel_id < previous_id
+        {
+            self.channels[previous_id].accessed_rom = false;
+        }
+    }
+
+    pub fn handle_dma_request(&mut self, request_type: RequestType) {
         let (candidates, expected_timing): (&[usize], TimingMode) = match request_type {
             RequestType::HBlank => (&[0, 1, 2, 3], TimingMode::HBlank),
             RequestType::VBlank => (&[0, 1, 2, 3], TimingMode::VBlank),
@@ -294,41 +327,20 @@ impl DmaController {
             RequestType::Video => (&[3], TimingMode::Special),
         };
 
-        for &id in candidates {
-            let control = self.channels[id].control;
+        for &channel_id in candidates {
+            let control = self.channels[channel_id].control;
             if control.enabled() && control.timing_mode() == expected_timing {
-                self.scheduler.borrow_mut().schedule((GbaEvent::Dma(id), 2));
+                self.scheduler
+                    .borrow_mut()
+                    .schedule((GbaEvent::Dma(DmaEvent::Activate { channel_id }), 2));
             }
         }
     }
 
-    pub fn stop_video_transfer(&mut self) {
+    pub fn handle_stop_video_transfer(&mut self) {
         let control = self.channels[3].control;
         if control.enabled() && control.timing_mode() == TimingMode::Special {
             self.channels[3].control.set_enabled(false);
-        }
-    }
-
-    pub fn pending_dma_request(&self) -> Option<usize> {
-        let mut scheduler = self.scheduler.borrow_mut();
-        match scheduler.peek() {
-            Some(GbaEvent::Dma(_)) => {
-                let (GbaEvent::Dma(id), _) = scheduler.pop()? else {
-                    return None;
-                };
-                Some(id)
-            }
-            _ => None,
-        }
-    }
-
-    pub fn handle_event(&mut self, id: usize) {
-        let previous_active = self.active_channel();
-        self.runnable[id] = true;
-        if let Some(previous_id) = previous_active
-            && id < previous_id
-        {
-            self.channels[previous_id].accessed_rom = false;
         }
     }
 

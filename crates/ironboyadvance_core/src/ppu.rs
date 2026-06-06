@@ -4,7 +4,8 @@ use getset::{CopyGetters, Getters};
 use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps, scheduler::Scheduler};
 
 use crate::{
-    events::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent},
+    dma_control::RequestType,
+    events::{DmaEvent, FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent},
     ppu::{
         background::Background, color::bgr555_to_rgb888, effects::Effects, lcd::*, mosaic::Mosaic, object::Object, window::*,
     },
@@ -86,7 +87,6 @@ pub struct Ppu {
     lcd_control: LcdControl,
     green_swap: bool,
     lcd_status: LcdStatus,
-    #[getset(get_copy = "pub")]
     v_count: u8,
     background: Background,
     object: Object,
@@ -236,6 +236,11 @@ impl Ppu {
             events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 
+        events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::HBlank)), 0));
+        if (2..=159).contains(&self.v_count) {
+            events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::Video)), 0));
+        }
+
         self.advance_affine_points();
         events.push((GbaEvent::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
         events
@@ -259,6 +264,10 @@ impl Ppu {
                 events.push((GbaEvent::Interrupt(InterruptEvent::LcdVBlank), 0));
             }
 
+            if self.v_count as usize == VIEWPORT_HEIGHT {
+                events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::VBlank)), 0));
+            }
+
             events.push((GbaEvent::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
         }
         events
@@ -272,6 +281,10 @@ impl Ppu {
             events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 
+        if matches!(self.v_count, 160 | 161) {
+            events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::Video)), 0));
+        }
+
         events.push((GbaEvent::Ppu(PpuEvent::VBlankHBlank), HBLANK_CYCLES));
         events
     }
@@ -283,6 +296,10 @@ impl Ppu {
         if (self.v_count as usize) < MAX_V_COUNT {
             if let Some(v_count_match) = self.set_v_count(self.v_count + 1) {
                 events.push((GbaEvent::Interrupt(v_count_match), 0));
+            }
+
+            if self.v_count == 162 {
+                events.push((GbaEvent::Dma(DmaEvent::StopVideo), 0));
             }
 
             events.push((GbaEvent::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));

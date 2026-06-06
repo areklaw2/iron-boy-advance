@@ -1,5 +1,7 @@
 use ironboyadvance_common::scheduler::SystemEvent;
 
+use crate::dma_control::RequestType;
+
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum InterruptEvent {
@@ -37,6 +39,13 @@ pub enum TimerEvent {
     ReloadWrite { timer_id: usize, address: u32, value: u8 },
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum DmaEvent {
+    Activate { channel_id: usize },
+    Request(RequestType),
+    StopVideo,
+}
+
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum GbaEvent {
@@ -45,13 +54,18 @@ pub enum GbaEvent {
     Ppu(PpuEvent),
     Apu(ApuEvent),
     Timer(TimerEvent),
-    Dma(usize),
+    Dma(DmaEvent),
 }
 
 impl SystemEvent for GbaEvent {
     fn priority(&self) -> u8 {
         match self {
-            GbaEvent::FrameComplete | GbaEvent::Interrupt(_) | GbaEvent::Ppu(_) | GbaEvent::Apu(_) | GbaEvent::Dma(_) => 0,
+            GbaEvent::FrameComplete | GbaEvent::Interrupt(_) | GbaEvent::Ppu(_) | GbaEvent::Apu(_) => 0,
+            GbaEvent::Dma(dma_event) => match dma_event {
+                DmaEvent::Activate { .. } => 0,
+                DmaEvent::Request(_) => 1,
+                DmaEvent::StopVideo => 2,
+            },
             GbaEvent::Timer(timer_event) => match timer_event {
                 TimerEvent::Overflow { .. } => 0,
                 TimerEvent::ReloadWrite { .. } => 1,

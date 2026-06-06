@@ -120,7 +120,7 @@ impl GameBoyAdvance {
                 GbaEvent::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
                 GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event, timestamp),
                 GbaEvent::Apu(_apu_event) => {}
-                GbaEvent::Dma(channel_id) => self.arm7tdmi.bus_mut().handle_dma_event(channel_id),
+                GbaEvent::Dma(dma_event) => self.arm7tdmi.bus_mut().handle_dma_event(dma_event),
             }
         }
     }
