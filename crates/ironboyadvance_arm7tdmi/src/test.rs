@@ -7,7 +7,7 @@ mod tests {
 
     use ironboyadvance_common::memory::{MemoryAccess, SystemMemoryAccess};
 
-    use crate::memory::MemoryInterface;
+    use crate::memory::{CpuContext, MemoryInterface};
     use crate::{
         AluOperationsOpcode,
         arm::ArmInstruction,
@@ -84,7 +84,7 @@ mod tests {
         base_address: u32,
         opcode: u32,
         transactions: VecDeque<Transaction>,
-        pc: u32,
+        cpu_context: CpuContext,
     }
 
     impl TestBus {
@@ -142,8 +142,8 @@ mod tests {
 
         fn idle_cycle(&mut self) {}
 
-        fn set_pc(&mut self, pc: u32) {
-            self.pc = pc;
+        fn cpu_context_mut(&mut self) -> &mut CpuContext {
+            &mut self.cpu_context
         }
     }
 
@@ -168,7 +168,7 @@ mod tests {
                 base_address,
                 opcode,
                 transactions,
-                pc: 0,
+                cpu_context: CpuContext::default(),
             }
         }
     }

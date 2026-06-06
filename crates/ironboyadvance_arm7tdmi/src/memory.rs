@@ -1,6 +1,23 @@
 use ironboyadvance_common::bits::SignExtend;
 
-use crate::cpu::Arm7tdmiCpu;
+use crate::{CpuState, cpu::Arm7tdmiCpu};
+
+#[derive(Debug, Copy, Clone)]
+pub struct CpuContext {
+    pub pc: u32,
+    pub cpu_state: CpuState,
+    pub pipeline: [u32; 2],
+}
+
+impl Default for CpuContext {
+    fn default() -> Self {
+        Self {
+            pc: 0,
+            cpu_state: CpuState::Arm,
+            pipeline: [0; 2],
+        }
+    }
+}
 
 pub trait MemoryInterface {
     fn load_8(&mut self, address: u32, access_pattern: u8) -> u32;
@@ -17,7 +34,7 @@ pub trait MemoryInterface {
 
     fn idle_cycle(&mut self);
 
-    fn set_pc(&mut self, pc: u32);
+    fn cpu_context_mut(&mut self) -> &mut CpuContext;
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {

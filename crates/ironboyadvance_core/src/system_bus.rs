@@ -1,7 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use getset::{Getters, MutGetters};
-use ironboyadvance_arm7tdmi::memory::MemoryInterface;
+use ironboyadvance_arm7tdmi::{
+    CpuState,
+    memory::{CpuContext, MemoryInterface},
+};
 use ironboyadvance_common::{
     memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess},
     scheduler::Scheduler,
@@ -42,49 +45,50 @@ pub struct SystemBus {
     io_registers: IoRegisters,
     cartridge: Cartridge,
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
-    pc: u32,
-    open_bus_value: u32,
+    cpu_context: CpuContext,
+    dma_open_bus_value: u32,
+    last_access: u8,
 }
 
 impl MemoryInterface for SystemBus {
     fn load_8(&mut self, address: u32, access: u8) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::Byte);
         let value = self.read_8(address) as u32;
-        self.open_bus_value = value;
+        self.latch_dma_open_bus(access, value);
         value
     }
 
     fn load_16(&mut self, address: u32, access: u8) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::HalfWord);
         let value = self.read_16(address) as u32;
-        self.open_bus_value = (value << 16) | value;
+        self.latch_dma_open_bus(access, (value << 16) | value);
         value
     }
 
     fn load_32(&mut self, address: u32, access: u8) -> u32 {
         self.cycle(address, access, MemoryAccessWidth::Word);
         let value = self.read_32(address);
-        self.open_bus_value = value;
+        self.latch_dma_open_bus(access, value);
         value
     }
 
     fn store_8(&mut self, address: u32, value: u8, access: u8) {
         self.cycle(address, access, MemoryAccessWidth::Byte);
         self.write_8(address, value);
-        self.open_bus_value = u32::from(value);
+        self.latch_dma_open_bus(access, u32::from(value));
     }
 
     fn store_16(&mut self, address: u32, value: u16, access: u8) {
         self.cycle(address, access, MemoryAccessWidth::HalfWord);
         self.write_16(address, value);
         let value = u32::from(value);
-        self.open_bus_value = (value << 16) | value;
+        self.latch_dma_open_bus(access, (value << 16) | value);
     }
 
     fn store_32(&mut self, address: u32, value: u32, access: u8) {
         self.cycle(address, access, MemoryAccessWidth::Word);
         self.write_32(address, value);
-        self.open_bus_value = value;
+        self.latch_dma_open_bus(access, value);
     }
 
     fn idle_cycle(&mut self) {
@@ -94,8 +98,8 @@ impl MemoryInterface for SystemBus {
         self.scheduler.borrow_mut().step(1);
     }
 
-    fn set_pc(&mut self, pc: u32) {
-        self.pc = pc;
+    fn cpu_context_mut(&mut self) -> &mut CpuContext {
+        &mut self.cpu_context
     }
 }
 
@@ -224,16 +228,48 @@ impl SystemBus {
             io_registers: IoRegisters::new(scheduler.clone()),
             cartridge,
             scheduler,
-            pc: 0,
-            open_bus_value: 0,
+            cpu_context: CpuContext::default(),
+            dma_open_bus_value: 0,
+            last_access: 0,
+        }
+    }
+
+    fn latch_dma_open_bus(&mut self, access: u8, value: u32) {
+        if MemoryAccess::Dma.is_set(access) {
+            self.dma_open_bus_value = value;
         }
     }
 
     fn open_bus_read(&self, address: u32, width: MemoryAccessWidth) -> u32 {
+        let value = match MemoryAccess::Dma.is_set(self.last_access) {
+            true => self.dma_open_bus_value,
+            false => match self.cpu_context.cpu_state {
+                CpuState::Arm => self.cpu_context.pipeline[1],
+                CpuState::Thumb => {
+                    let decoded = self.cpu_context.pipeline[0] & 0xFFFF;
+                    let fetched = self.cpu_context.pipeline[1] & 0xFFFF;
+                    let pc = self.cpu_context.pc;
+                    match pc & 0xFF00_0000 {
+                        // Approximation, cant get to $+6 for aligned and $+2 for unaligned
+                        // See GBATEK - GBA Unpredictable Things.
+                        BIOS_BASE | OAM_BASE => match pc & 2 == 0 {
+                            true => (fetched << 16) | decoded,
+                            false => (fetched << 16) | fetched,
+                        },
+                        WRAM_CHIP_BASE => match pc & 2 == 0 {
+                            true => (decoded << 16) | fetched,
+                            false => (fetched << 16) | decoded,
+                        },
+                        _ => (fetched << 16) | fetched,
+                    }
+                }
+            },
+        };
+
         match width {
-            MemoryAccessWidth::Byte => self.open_bus_value >> ((address & 3) * 8),
-            MemoryAccessWidth::HalfWord => self.open_bus_value >> ((address & 2) * 8),
-            MemoryAccessWidth::Word => self.open_bus_value,
+            MemoryAccessWidth::Byte => value >> ((address & 3) * 8),
+            MemoryAccessWidth::HalfWord => value >> ((address & 2) * 8),
+            MemoryAccessWidth::Word => value,
         }
     }
 
@@ -243,7 +279,8 @@ impl SystemBus {
             self.run_dma();
         }
 
-        self.bios.set_pc(self.pc);
+        self.last_access = access_pattern;
+        self.bios.set_pc(self.cpu_context.pc);
 
         let access = match MemoryAccess::Sequential.is_set(access_pattern) {
             true => MemoryAccess::Sequential,
