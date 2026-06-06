@@ -153,6 +153,7 @@ pub(crate) enum Condition {
     GT,
     LE,
     AL,
+    NV,
 }
 
 impl From<u32> for Condition {
@@ -173,6 +174,7 @@ impl From<u32> for Condition {
             0b1100 => Self::GT,
             0b1101 => Self::LE,
             0b1110 => Self::AL,
+            0b1111 => Self::NV,
             _ => unreachable!(),
         }
     }

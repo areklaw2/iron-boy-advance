@@ -199,6 +199,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             GT => !self.cpsr.zero() && (self.cpsr.negative() == self.cpsr.overflow()),
             LE => self.cpsr.zero() || (self.cpsr.negative() != self.cpsr.overflow()),
             AL => true,
+            NV => false,
         }
     }
 

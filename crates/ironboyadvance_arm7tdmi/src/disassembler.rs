@@ -100,6 +100,7 @@ impl fmt::Display for Condition {
             Self::GT => write!(f, "GT"),
             Self::LE => write!(f, "LE"),
             Self::AL => write!(f, ""),
+            Self::NV => write!(f, "NV"),
         }
     }
 }
