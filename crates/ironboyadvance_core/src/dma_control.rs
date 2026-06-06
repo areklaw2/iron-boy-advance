@@ -309,6 +309,10 @@ impl DmaController {
     }
 
     fn handle_dma_activate(&mut self, channel_id: usize) {
+        if !self.channels[channel_id].control.enabled() {
+            return;
+        }
+
         let previous_active = self.active_channel();
         self.runnable[channel_id] = true;
         if let Some(previous_id) = previous_active
