@@ -25,7 +25,7 @@ pub struct IoRegisters {
 impl IoRegisters {
     pub fn new(scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Self {
         IoRegisters {
-            ppu: Ppu::new(),
+            ppu: Ppu::new(scheduler.clone()),
             dma_controller: DmaController::new(scheduler.clone()),
             timer_controller: TimerController::new(scheduler),
             keypad: Keypad::new(),

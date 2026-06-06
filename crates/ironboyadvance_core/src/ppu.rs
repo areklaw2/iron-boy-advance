@@ -1,5 +1,7 @@
+use std::{cell::RefCell, rc::Rc};
+
 use getset::{CopyGetters, Getters};
-use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps};
+use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps, scheduler::Scheduler};
 
 use crate::{
     events::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent},
@@ -100,10 +102,15 @@ pub struct Ppu {
     obj_line: [Option<Pixel>; VIEWPORT_WIDTH],
     win_obj_line: [bool; VIEWPORT_WIDTH],
     win_control_line: [WindowControl; VIEWPORT_WIDTH],
+    scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
 }
 
 impl Ppu {
-    pub fn new() -> Self {
+    pub fn new(scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Self {
+        scheduler
+            .borrow_mut()
+            .schedule((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
+
         Self {
             lcd_control: LcdControl::from_bits(0),
             green_swap: false,
@@ -122,6 +129,7 @@ impl Ppu {
             obj_line: [None; VIEWPORT_WIDTH],
             win_obj_line: [false; VIEWPORT_WIDTH],
             win_control_line: [WindowControl::no_windowing_control(); VIEWPORT_WIDTH],
+            scheduler,
         }
     }
 }
@@ -205,12 +213,18 @@ impl Ppu {
         }
     }
 
-    pub fn handle_event(&mut self, event: PpuEvent) -> Vec<FutureGbaEvent> {
-        match event {
+    pub fn handle_event(&mut self, event: PpuEvent, timestamp: usize) {
+        let events = match event {
             PpuEvent::HDraw => self.handle_hdraw_complete(),
             PpuEvent::HBlank => self.handle_hblank_complete(),
             PpuEvent::VBlankHDraw => self.handle_vblank_hdraw_complete(),
             PpuEvent::VBlankHBlank => self.handle_vblank_hblank_complete(),
+        };
+
+        for (event_type, delta) in events {
+            self.scheduler
+                .borrow_mut()
+                .schedule_at_timestamp(event_type, timestamp + delta);
         }
     }
 

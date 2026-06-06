@@ -12,10 +12,10 @@ use crate::{
     bios::Bios,
     cartridge::Cartridge,
     dma_control::{ChunkSize, RequestType},
-    events::{FutureGbaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
+    events::{GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
-    ppu::{HDRAW_CYCLES, VIEWPORT_HEIGHT},
+    ppu::VIEWPORT_HEIGHT,
     system_control::HaltMode,
 };
 
@@ -219,10 +219,6 @@ impl SystemMemoryAccess for SystemBus {
 
 impl SystemBus {
     pub fn new(cartridge: Cartridge, bios: Bios, scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Self {
-        scheduler
-            .borrow_mut()
-            .schedule((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
-
         SystemBus {
             bios,
             memory: Memory::new(),
@@ -264,9 +260,8 @@ impl SystemBus {
         self.io_registers.interrupt_controller().interrupt_pending()
     }
 
-    pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) -> Vec<FutureGbaEvent> {
+    pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) {
         self.io_registers.interrupt_controller_mut().raise_interrupt(interrupt_event);
-        vec![]
     }
 
     pub fn halt_mode(&self) -> HaltMode {
@@ -277,8 +272,8 @@ impl SystemBus {
         self.io_registers.system_controller_mut().set_halt_mode(HaltMode::Running);
     }
 
-    pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent) -> Vec<FutureGbaEvent> {
-        let events = self.io_registers.ppu_mut().handle_event(ppu_event);
+    pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent, timestamp: usize) {
+        self.io_registers.ppu_mut().handle_event(ppu_event, timestamp);
 
         match ppu_event {
             PpuEvent::HDraw => {
@@ -302,18 +297,14 @@ impl SystemBus {
             }
             _ => {}
         }
-
-        events
     }
 
-    pub fn handle_dma_event(&mut self, channel_id: usize) -> Vec<FutureGbaEvent> {
+    pub fn handle_dma_event(&mut self, channel_id: usize) {
         self.io_registers.dma_controller_mut().handle_event(channel_id);
-        vec![]
     }
 
-    pub fn handle_timer_event(&mut self, timer_event: TimerEvent) -> Vec<FutureGbaEvent> {
+    pub fn handle_timer_event(&mut self, timer_event: TimerEvent) {
         self.io_registers.timer_controller_mut().handle_event(timer_event);
-        vec![]
     }
 
     pub fn run_dma(&mut self) {

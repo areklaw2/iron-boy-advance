@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::{
     bios::{Bios, BiosError},
     cartridge::{Cartridge, CartridgeError},
-    events::{FutureGbaEvent, GbaEvent, InterruptEvent},
+    events::{GbaEvent, InterruptEvent},
     system_bus::SystemBus,
     system_control::HaltMode,
 };
@@ -114,19 +114,13 @@ impl GameBoyAdvance {
                 return false;
             };
 
-            let future_events: Vec<FutureGbaEvent> = match event {
+            match event {
                 GbaEvent::FrameComplete => return true,
                 GbaEvent::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
                 GbaEvent::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
-                GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event),
-                GbaEvent::Apu(_apu_event) => vec![],
+                GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event, timestamp),
+                GbaEvent::Apu(_apu_event) => {}
                 GbaEvent::Dma(channel_id) => self.arm7tdmi.bus_mut().handle_dma_event(channel_id),
-            };
-
-            for (event_type, time) in future_events {
-                self.scheduler
-                    .borrow_mut()
-                    .schedule_at_timestamp(event_type, timestamp + time);
             }
         }
     }
