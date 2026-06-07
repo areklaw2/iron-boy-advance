@@ -230,6 +230,7 @@ impl Ppu {
 
     fn handle_hdraw_complete(&mut self) -> Vec<FutureGbaEvent> {
         let mut events = vec![];
+        self.render_scanline();
         self.lcd_status.set_h_blank_flag(true);
 
         if self.lcd_status.h_blank_irq_enabled() {
@@ -255,7 +256,6 @@ impl Ppu {
         self.lcd_status.set_h_blank_flag(false);
 
         if (self.v_count as usize) < VDRAW_SCANLINES {
-            self.render_scanline();
             events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         } else {
             self.lcd_status.set_v_blank_flag(true);
@@ -310,7 +310,6 @@ impl Ppu {
 
             self.lcd_status.set_v_blank_flag(false);
             self.background.reload_affine_points();
-            self.render_scanline();
             events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         }
         events

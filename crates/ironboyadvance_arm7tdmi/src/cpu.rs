@@ -349,9 +349,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             self.cpsr.set_fiq_disable(true);
         }
 
-        let return_pc = match self.cpsr.state() {
-            CpuState::Arm => self.pc() - 4,
-            CpuState::Thumb => self.pc() - 2,
+        let return_pc = match (&exception, self.cpsr.state()) {
+            (Exception::Irq | Exception::Fiq, CpuState::Thumb) => self.pc(),
+            (_, CpuState::Arm) => self.pc() - 4,
+            (_, CpuState::Thumb) => self.pc() - 2,
         };
         self.set_register(LR, return_pc);
         self.cpsr.set_state(CpuState::Arm);
