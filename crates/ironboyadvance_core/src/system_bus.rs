@@ -15,7 +15,7 @@ use crate::{
     bios::Bios,
     cartridge::Cartridge,
     dma_control::ChunkSize,
-    events::{DmaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
+    events::{ApuEvent, DmaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
     system_control::HaltMode,
@@ -310,6 +310,10 @@ impl SystemBus {
 
     pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent, timestamp: usize) {
         self.io_registers.ppu_mut().handle_event(ppu_event, timestamp);
+    }
+
+    pub fn handle_apu_event(&mut self, apu_event: ApuEvent) {
+        self.io_registers.apu_mut().handle_event(apu_event);
     }
 
     pub fn handle_dma_event(&mut self, dma_event: DmaEvent) {

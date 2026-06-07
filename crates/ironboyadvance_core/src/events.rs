@@ -30,7 +30,10 @@ pub enum PpuEvent {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum ApuEvent {}
+pub enum ApuEvent {
+    Sample,
+    FrameSequence,
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum TimerEvent {

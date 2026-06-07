@@ -1,22 +1,21 @@
 use std::{cell::RefCell, rc::Rc};
 
 use getset::{Getters, MutGetters, Setters};
-use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps, scheduler::Scheduler};
+use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
 use tracing::debug;
 
 use crate::{
-    dma_control::DmaController, events::GbaEvent, interrupt_control::InterruptController, keypad::Keypad, ppu::Ppu,
-    system_control::SystemController, timer_control::TimerController,
+    apu::Apu, dma_control::DmaController, events::GbaEvent, interrupt_control::InterruptController, keypad::Keypad,
+    ppu::Ppu, system_control::SystemController, timer_control::TimerController,
 };
 
 #[derive(Getters, MutGetters, Setters)]
 #[getset(get = "pub", get_mut = "pub")]
 pub struct IoRegisters {
     ppu: Ppu,
+    apu: Apu,
     dma_controller: DmaController,
     timer_controller: TimerController,
-    // TODO remove when doing sound this just gets the bios to pass
-    sound_bias: u16,
     keypad: Keypad,
     interrupt_controller: InterruptController,
     system_controller: SystemController,
@@ -26,12 +25,12 @@ impl IoRegisters {
     pub fn new(scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Self {
         IoRegisters {
             ppu: Ppu::new(scheduler.clone()),
+            apu: Apu::new(scheduler.clone()),
             dma_controller: DmaController::new(scheduler.clone()),
             timer_controller: TimerController::new(scheduler),
             keypad: Keypad::new(),
             interrupt_controller: InterruptController::new(),
             system_controller: SystemController::new(),
-            sound_bias: 0x0200,
         }
     }
 }
@@ -41,8 +40,8 @@ impl SystemMemoryAccess for IoRegisters {
         match address {
             // PPU
             0x04000000..=0x04000057 => self.ppu.read_8(address),
-            // TODO remove when doing sound this just gets the bios to pass
-            0x04000088..=0x04000089 => self.sound_bias.read_byte(address),
+            // APU
+            0x04000060..=0x040000A7 => self.apu.read_8(address),
             // DMA Control
             0x040000B0..=0x040000DF => self.dma_controller.read_8(address),
             // Timer Control
@@ -69,8 +68,8 @@ impl SystemMemoryAccess for IoRegisters {
         match address {
             // PPU
             0x04000000..=0x04000057 => self.ppu.write_8(address, value),
-            // TODO remove when doing sound this just gets the bios to pass
-            0x04000088..=0x04000089 => self.sound_bias.write_byte(address, value),
+            // APU
+            0x04000060..=0x040000A7 => self.apu.write_8(address, value),
             // DMA Control
             0x040000B0..=0x040000DF => self.dma_controller.write_8(address, value),
             // Timer Control

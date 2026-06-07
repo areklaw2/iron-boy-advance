@@ -12,6 +12,7 @@ use crate::{
     system_control::HaltMode,
 };
 
+mod apu;
 mod bios;
 mod cartridge;
 mod dma_control;
@@ -119,7 +120,7 @@ impl GameBoyAdvance {
                 GbaEvent::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
                 GbaEvent::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
                 GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event, timestamp),
-                GbaEvent::Apu(_apu_event) => {}
+                GbaEvent::Apu(apu_event) => self.arm7tdmi.bus_mut().handle_apu_event(apu_event),
                 GbaEvent::Dma(dma_event) => self.arm7tdmi.bus_mut().handle_dma_event(dma_event),
             }
         }
@@ -127,6 +128,10 @@ impl GameBoyAdvance {
 
     pub fn frame_buffer(&self) -> &[u32] {
         self.arm7tdmi.bus().io_registers().ppu().frame_buffer()
+    }
+
+    pub fn audio_buffer(&self) -> &[(f32, f32)] {
+        self.arm7tdmi.bus().io_registers().apu().audio_buffer()
     }
 
     pub fn handle_pressed_buttons(&mut self, input: u16) {
