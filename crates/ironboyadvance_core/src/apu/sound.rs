@@ -1,0 +1,168 @@
+use bitfields::{bitfield, bitflag};
+use ironboyadvance_common::register_ops::RegisterOps;
+
+#[bitfield(u16)]
+#[derive(PartialEq, Eq)]
+pub struct PsgSoundControl {
+    #[bits(3)]
+    right_volume: u8,
+    _not_used_3: bool,
+    #[bits(3)]
+    left_volume: u8,
+    _not_used_7: bool,
+    channel_1_right_enable: bool,
+    channel_2_right_enable: bool,
+    channel_3_right_enable: bool,
+    channel_4_right_enable: bool,
+    channel_1_left_enable: bool,
+    channel_2_left_enable: bool,
+    channel_3_left_enable: bool,
+    channel_4_left_enable: bool,
+}
+
+impl RegisterOps<u16> for PsgSoundControl {
+    fn register(&self) -> u16 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u16) {
+        self.write_bits(bits);
+    }
+}
+
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
+pub enum PsgVolumeRatio {
+    #[base]
+    Ratio25 = 0x0,
+    Ratio50 = 0x1,
+    Ratio100 = 0x2,
+    Prohibited = 0x3,
+}
+
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
+pub enum DmaVolumeRatio {
+    #[base]
+    Ratio50 = 0x0,
+    Ratio100 = 0x1,
+}
+
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
+pub enum TimerSelect {
+    #[base]
+    Timer0 = 0x0,
+    Timer1 = 0x1,
+}
+
+#[bitfield(u16)]
+#[derive(PartialEq, Eq)]
+pub struct DmaSoundControl {
+    #[bits(2)]
+    psg_volume_ratio: PsgVolumeRatio,
+    #[bits(1)]
+    dma_a_volume_ratio: DmaVolumeRatio,
+    #[bits(1)]
+    dma_b_volume_ratio: DmaVolumeRatio,
+    #[bits(4)]
+    _not_used_4_7: u8,
+    dma_a_right_enable: bool,
+    dma_a_left_enable: bool,
+    #[bits(1)]
+    dma_a_timer_select: TimerSelect,
+    dma_a_reset_fifo: bool,
+    dma_b_right_enable: bool,
+    dma_b_left_enable: bool,
+    #[bits(1)]
+    dma_b_timer_select: TimerSelect,
+    dma_b_reset_fifo: bool,
+}
+
+impl RegisterOps<u16> for DmaSoundControl {
+    fn register(&self) -> u16 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u16) {
+        self.write_bits(bits);
+    }
+
+    fn read_mask(&self) -> u16 {
+        // Bits 11 and 15 are the write-only DMA Sound A/B Reset FIFO bits and
+        // read back as 0. The "not used" bits 4-7 are left as round-trip storage.
+        0x77FF
+    }
+}
+
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct SoundStatus {
+    channel_0_on: bool,
+    channel_1_on: bool,
+    channel_2_on: bool,
+    channel_3_on: bool,
+    #[bits(3)]
+    _not_used_4_6: u8,
+    master_enable: bool,
+    #[bits(24)]
+    _not_used_8_31: u32,
+}
+
+impl RegisterOps<u32> for SoundStatus {
+    fn register(&self) -> u32 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u32) {
+        self.write_bits(bits);
+    }
+
+    fn write_mask(&self) -> u32 {
+        0xFFFF_FFF0
+    }
+}
+
+#[bitflag(u8)]
+#[derive(Debug, PartialEq, Eq)]
+pub enum AmplitudeResolution {
+    #[base]
+    Nine = 0x0, //9bit
+    Eight = 0x1, //8bit
+    Seven = 0x2, //7bit
+    Six = 0x3,   //6bit
+}
+
+impl AmplitudeResolution {
+    pub fn sampling_frequency(&self) -> usize {
+        match self {
+            AmplitudeResolution::Nine => 32768,
+            AmplitudeResolution::Eight => 65536,
+            AmplitudeResolution::Seven => 131072,
+            AmplitudeResolution::Six => 262144,
+        }
+    }
+}
+
+#[bitfield(u32)]
+pub struct SoundBias {
+    _not_used_0: bool,
+    #[bits(9)]
+    bias_level: u16,
+    #[bits(4)]
+    _not_used_10_13: u8,
+    #[bits(2)]
+    amplitude_resolution: AmplitudeResolution,
+    #[bits(16)]
+    _not_used_16_31: u32,
+}
+
+impl RegisterOps<u32> for SoundBias {
+    fn register(&self) -> u32 {
+        self.into_bits()
+    }
+
+    fn write_register(&mut self, bits: u32) {
+        self.write_bits(bits);
+    }
+}

@@ -273,7 +273,7 @@ impl SystemBus {
         }
     }
 
-    pub fn cycle(&mut self, address: u32, access_pattern: u8, width: MemoryAccessWidth) {
+    fn cycle(&mut self, address: u32, access_pattern: u8, width: MemoryAccessWidth) {
         if self.io_registers.dma_controller().is_active() && (access_pattern & (MemoryAccess::Dma | MemoryAccess::Lock)) == 0
         {
             self.run_dma();

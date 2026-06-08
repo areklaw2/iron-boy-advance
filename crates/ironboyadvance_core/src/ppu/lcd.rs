@@ -5,14 +5,15 @@ use ironboyadvance_common::register_ops::RegisterOps;
 #[bitflag(u8)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum BgMode {
+    #[base]
     Mode0 = 0x0,
     Mode1 = 0x1,
     Mode2 = 0x2,
     Mode3 = 0x3,
     Mode4 = 0x4,
     Mode5 = 0x5,
-    #[base]
-    Prohibited = 0xFF,
+    Mode6 = 0x6, //Prohibited
+    Mode7 = 0x7, //Prohibited
 }
 
 #[bitflag(u8)]
@@ -70,7 +71,7 @@ impl LcdControl {
             BgMode::Mode1 => 0b0111,
             BgMode::Mode2 => 0b1100,
             BgMode::Mode3 | BgMode::Mode4 | BgMode::Mode5 => 0b0100,
-            BgMode::Prohibited => 0,
+            BgMode::Mode6 | BgMode::Mode7 => 0,
         };
 
         (allowed_bg_mask >> bg) & 1 == 1
@@ -107,11 +108,15 @@ pub struct LcdStatus {
 }
 
 impl RegisterOps<u16> for LcdStatus {
+    fn write_mask(&self) -> u16 {
+        0xFF38
+    }
+
     fn register(&self) -> u16 {
         self.into_bits()
     }
 
     fn write_register(&mut self, bits: u16) {
-        self.write_bits(bits & 0xFF38);
+        self.write_bits(bits);
     }
 }
