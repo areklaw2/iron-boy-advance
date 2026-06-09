@@ -28,6 +28,7 @@ mod volume_envelope;
 #[derive(Getters)]
 pub struct Apu {
     ch1: PulseChannel,
+    ch2: PulseChannel,
     psg_sound_control: PsgSoundControl,
     dma_sound_control: DmaSoundControl,
     sound_status: SoundStatus,
@@ -42,6 +43,7 @@ impl SystemMemoryAccess for Apu {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             0x04000060..=0x04000067 => self.ch1.read_8(address),
+            0x04000068..=0x0400006F => self.ch2.read_8(address),
             0x04000080..=0x04000081 => self.psg_sound_control.read_byte(address),
             0x04000082..=0x04000083 => self.dma_sound_control.read_byte(address),
             0x04000084..=0x04000087 => self.sound_status.read_byte(address),
@@ -56,6 +58,7 @@ impl SystemMemoryAccess for Apu {
     fn write_8(&mut self, address: u32, value: u8) {
         match address {
             0x04000060..=0x04000067 => self.ch1.write_8(address, value),
+            0x04000068..=0x0400006F => self.ch2.write_8(address, value),
             0x04000080..=0x04000081 => self.psg_sound_control.write_byte(address, value),
             0x04000082..=0x04000083 => self.dma_sound_control.write_byte(address, value),
             0x04000084..=0x04000087 => self.sound_status.write_byte(address, value),
@@ -76,6 +79,7 @@ impl Apu {
 
         Self {
             ch1: PulseChannel::new(true),
+            ch2: PulseChannel::new(false),
             psg_sound_control: PsgSoundControl::from_bits(0),
             dma_sound_control: DmaSoundControl::from_bits(0),
             sound_status: SoundStatus::from_bits(0),
@@ -95,6 +99,7 @@ impl Apu {
 
     fn handle_sample(&mut self) {
         self.ch1.cycle(SAMPLE_CYCLES);
+        self.ch2.cycle(SAMPLE_CYCLES);
 
         let sample = match self.sound_status.master_enable() {
             true => self.mix(),
@@ -108,11 +113,11 @@ impl Apu {
     }
 
     fn mix(&self) -> (f32, f32) {
-        let channels = [self.ch1.dac_output(), 0.0, 0.0, 0.0];
+        let channels = [self.ch1.dac_output(), self.ch2.dac_output(), 0.0, 0.0];
         let control = &self.psg_sound_control;
 
-        let left_enable = [control.ch1_left_enable(), false, false, false];
-        let right_enable = [control.ch1_right_enable(), false, false, false];
+        let left_enable = [control.ch1_left_enable(), control.ch2_left_enable(), false, false];
+        let right_enable = [control.ch1_right_enable(), control.ch2_right_enable(), false, false];
 
         let mut left = 0.0;
         let mut right = 0.0;
@@ -140,10 +145,12 @@ impl Apu {
         let step = self.frame_sequencer_step;
         if step == 7 {
             self.ch1.cycle_envelope();
+            self.ch2.cycle_envelope();
         }
 
         if matches!(step, 0 | 2 | 4 | 6) {
             self.ch1.cycle_length();
+            self.ch2.cycle_length();
         }
 
         if matches!(step, 2 | 6) {
