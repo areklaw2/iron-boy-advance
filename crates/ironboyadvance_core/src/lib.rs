@@ -134,6 +134,10 @@ impl GameBoyAdvance {
         self.arm7tdmi.bus().io_registers().apu().audio_buffer()
     }
 
+    pub fn clear_audio_buffer(&mut self) {
+        self.arm7tdmi.bus_mut().io_registers_mut().apu_mut().clear_audio_buffer();
+    }
+
     pub fn handle_pressed_buttons(&mut self, input: u16) {
         let keypad = self.arm7tdmi.bus_mut().io_registers_mut().keypad_mut();
         keypad.set_key_input(input);

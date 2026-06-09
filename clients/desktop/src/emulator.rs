@@ -10,8 +10,9 @@ use std::{
 };
 
 use ironboyadvance_core::{CYCLES_PER_FRAME, GameBoyAdvance};
+use ringbuf::traits::Producer;
 
-use crate::{DesktopError, frame::FrameTimer, input::KEYPAD_IDLE};
+use crate::{DesktopError, audio, frame::FrameTimer, input::KEYPAD_IDLE};
 
 pub enum EmulatorCommand {
     Reset,
@@ -23,6 +24,7 @@ pub struct EmulatorHandle {
     pub keypad: Arc<AtomicU16>,
     pub frames: Receiver<Vec<u32>>,
     pub commands: Sender<EmulatorCommand>,
+    _audio_stream: Option<cpal::Stream>,
 }
 
 fn read_rom(path: &str) -> io::Result<Vec<u8>> {
@@ -43,6 +45,11 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
     let keypad = Arc::new(AtomicU16::new(KEYPAD_IDLE));
     let (frame_tx, frame_rx) = mpsc::channel::<Vec<u32>>();
     let (command_tx, command_rx) = mpsc::channel::<EmulatorCommand>();
+
+    let (audio_stream, mut audio_producer) = match audio::start() {
+        Some((stream, producer)) => (Some(stream), Some(producer)),
+        None => (None, None),
+    };
 
     let emu_keypad = keypad.clone();
     thread::spawn(move || {
@@ -99,6 +106,15 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
             if !paused {
                 gba.handle_pressed_buttons(emu_keypad.load(Ordering::Relaxed));
                 overshoot = gba.run(CYCLES_PER_FRAME, overshoot);
+
+                if let Some(producer) = audio_producer.as_mut() {
+                    for &(left, right) in gba.audio_buffer() {
+                        let _ = producer.try_push(left);
+                        let _ = producer.try_push(right);
+                    }
+                }
+                gba.clear_audio_buffer();
+
                 if frame_tx.send(gba.frame_buffer().to_vec()).is_err() {
                     break 'frame;
                 }
@@ -115,5 +131,6 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
         keypad,
         frames: frame_rx,
         commands: command_tx,
+        _audio_stream: audio_stream,
     })
 }

@@ -97,6 +97,10 @@ impl Apu {
         }
     }
 
+    pub fn clear_audio_buffer(&mut self) {
+        self.audio_buffer.clear();
+    }
+
     fn handle_sample(&mut self) {
         self.ch1.cycle(SAMPLE_CYCLES);
         self.ch2.cycle(SAMPLE_CYCLES);

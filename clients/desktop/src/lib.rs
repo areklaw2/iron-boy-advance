@@ -3,6 +3,7 @@ use thiserror::Error;
 use winit::event_loop::EventLoop;
 
 mod app;
+mod audio;
 mod controller;
 mod emulator;
 mod frame;
@@ -40,5 +41,6 @@ pub fn run(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Resu
 
     let event_loop = EventLoop::new()?;
     event_loop.run_app(&mut app)?;
-    Ok(())
+
+    std::process::exit(0);
 }
