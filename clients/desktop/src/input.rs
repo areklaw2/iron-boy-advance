@@ -4,10 +4,7 @@ use std::sync::{
 };
 
 use ironboyadvance_core::KeypadButton;
-use winit::{
-    event::ElementState,
-    keyboard::{KeyCode, ModifiersState},
-};
+use winit::keyboard::{KeyCode, ModifiersState};
 
 pub const KEYPAD_IDLE: u16 = 0x03FF;
 
@@ -48,23 +45,37 @@ pub fn keycode_to_button(code: KeyCode) -> Option<KeypadButton> {
 }
 
 pub struct KeypadTracker {
-    bits: u16,
+    keyboard: u16,
+    controller: u16,
 }
 
 impl KeypadTracker {
     pub fn new() -> Self {
-        Self { bits: KEYPAD_IDLE }
+        Self {
+            keyboard: KEYPAD_IDLE,
+            controller: KEYPAD_IDLE,
+        }
     }
 
-    pub fn handle_button(&mut self, code: KeyCode, state: ElementState, out: &Arc<AtomicU16>) {
-        let Some(button) = keycode_to_button(code) else {
-            return;
-        };
-        let mask = 1u16 << button as u16;
-        match state {
-            ElementState::Pressed => self.bits &= !mask,
-            ElementState::Released => self.bits |= mask,
-        }
-        out.store(self.bits, Ordering::Relaxed);
+    pub fn handle_keyboard_button(&mut self, button: KeypadButton, pressed: bool, out: &Arc<AtomicU16>) {
+        self.keyboard = apply(self.keyboard, button, pressed);
+        self.store(out);
+    }
+
+    pub fn handle_controller_button(&mut self, button: KeypadButton, pressed: bool, out: &Arc<AtomicU16>) {
+        self.controller = apply(self.controller, button, pressed);
+        self.store(out);
+    }
+
+    fn store(&self, out: &Arc<AtomicU16>) {
+        out.store(self.keyboard & self.controller, Ordering::Relaxed);
+    }
+}
+
+fn apply(bits: u16, button: KeypadButton, pressed: bool) -> u16 {
+    let mask = 1u16 << button as u16;
+    match pressed {
+        true => bits & !mask,
+        false => bits | mask,
     }
 }

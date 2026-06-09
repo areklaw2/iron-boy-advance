@@ -24,3 +24,11 @@ egui = "0.34.1"
 egui-wgpu = "0.34.1"
 egui-winit = "0.34.1"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.4"
+objc2-foundation = "0.3.2"
+objc2-game-controller = "0.3.2"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+gilrs = "0.11"

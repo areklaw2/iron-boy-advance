@@ -3,6 +3,7 @@ use thiserror::Error;
 use winit::event_loop::EventLoop;
 
 mod app;
+mod controller;
 mod emulator;
 mod frame;
 mod gui;

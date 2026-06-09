@@ -51,6 +51,7 @@ impl RegisterOps<u16> for KeyControl {
     }
 }
 
+//order matters!!
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum KeypadButton {
     A,

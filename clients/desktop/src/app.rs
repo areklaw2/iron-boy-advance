@@ -13,10 +13,11 @@ use winit::{
 
 use crate::{
     DesktopError,
+    controller::Controller,
     emulator::{EmulatorCommand, EmulatorHandle},
     frame::FrameTimer,
     gui::Gui,
-    input::{HotKey, KeypadTracker, keycode_to_hotkey},
+    input::{HotKey, KeypadTracker, keycode_to_button, keycode_to_hotkey},
     renderer::Renderer,
 };
 
@@ -29,6 +30,7 @@ pub struct Application {
     window: Option<Arc<Window>>,
     renderer: Option<Renderer>,
     gui: Option<Gui>,
+    controller: Option<Controller>,
 
     last_frame: Option<Vec<u32>>,
     fps_timer: FrameTimer,
@@ -44,6 +46,7 @@ impl Application {
             window: None,
             renderer: None,
             gui: None,
+            controller: None,
             last_frame: None,
             fps_timer: FrameTimer::new(),
         }
@@ -222,13 +225,13 @@ impl ApplicationHandler for Application {
             .with_title(&self.title)
             .with_inner_size(LogicalSize::new(VIEWPORT_WIDTH as u32 * 6, VIEWPORT_HEIGHT as u32 * 6));
         let window = Arc::new(event_loop.create_window(attrs).expect("failed to create window"));
-
         let renderer = pollster::block_on(Renderer::new(window.clone()));
         let gui = Gui::new(renderer.device(), renderer.surface_format(), &window);
 
         self.window = Some(window);
         self.renderer = Some(renderer);
         self.gui = Some(gui);
+        self.controller = Controller::new();
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
@@ -267,8 +270,12 @@ impl ApplicationHandler for Application {
                     return;
                 }
 
-                if !egui_consumed {
-                    self.keypad_tracker.handle_button(code, state, &self.emulator.keypad);
+                if !egui_consumed && let Some(button) = keycode_to_button(code) {
+                    self.keypad_tracker.handle_keyboard_button(
+                        button,
+                        state == ElementState::Pressed,
+                        &self.emulator.keypad,
+                    );
                 }
             }
             WindowEvent::RedrawRequested => {
@@ -279,6 +286,13 @@ impl ApplicationHandler for Application {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Some(controller) = self.controller.as_mut() {
+            for (button, pressed) in controller.poll() {
+                self.keypad_tracker
+                    .handle_controller_button(button, pressed, &self.emulator.keypad);
+            }
+        }
+
         if let Some(window) = &self.window {
             window.request_redraw();
         }
