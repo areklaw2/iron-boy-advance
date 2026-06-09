@@ -9,7 +9,7 @@ use std::{
     thread,
 };
 
-use ironboyadvance_core::{CYCLES_PER_FRAME, GameBoyAdvance};
+use ironboyadvance_core::{APU_SAMPLING_FREQUENCY, CYCLES_PER_FRAME, GameBoyAdvance};
 use ringbuf::traits::Producer;
 
 use crate::{DesktopError, audio, frame::FrameTimer, input::KEYPAD_IDLE};
@@ -46,9 +46,12 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
     let (frame_tx, frame_rx) = mpsc::channel::<Vec<u32>>();
     let (command_tx, command_rx) = mpsc::channel::<EmulatorCommand>();
 
-    let (audio_stream, mut audio_producer) = match audio::start() {
-        Some((stream, producer)) => (Some(stream), Some(producer)),
-        None => (None, None),
+    let (audio_stream, mut audio_producer, mut resampler) = match audio::start() {
+        Some(output) => {
+            let resampler = audio::Resampler::new(APU_SAMPLING_FREQUENCY as u32, output.output_sample_rate);
+            (Some(output.stream), Some(output.producer), Some(resampler))
+        }
+        None => (None, None, None),
     };
 
     let emu_keypad = keypad.clone();
@@ -107,10 +110,12 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
                 gba.handle_pressed_buttons(emu_keypad.load(Ordering::Relaxed));
                 overshoot = gba.run(CYCLES_PER_FRAME, overshoot);
 
-                if let Some(producer) = audio_producer.as_mut() {
-                    for &(left, right) in gba.audio_buffer() {
-                        let _ = producer.try_push(left);
-                        let _ = producer.try_push(right);
+                if let (Some(producer), Some(resampler)) = (audio_producer.as_mut(), resampler.as_mut()) {
+                    for &frame in gba.audio_buffer() {
+                        resampler.push_frame(frame, |left, right| {
+                            let _ = producer.try_push(left);
+                            let _ = producer.try_push(right);
+                        });
                     }
                 }
                 gba.clear_audio_buffer();

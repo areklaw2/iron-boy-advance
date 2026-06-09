@@ -13,8 +13,8 @@ use crate::{
     events::{ApuEvent, GbaEvent},
 };
 
-const SAMPLING_FREQUENCY: usize = 32768; // Hz
-const SAMPLE_CYCLES: usize = CPU_CLOCK_SPEED as usize / SAMPLING_FREQUENCY;
+pub const APU_SAMPLING_FREQUENCY: usize = 32768; // Hz
+const SAMPLE_CYCLES: usize = CPU_CLOCK_SPEED as usize / APU_SAMPLING_FREQUENCY;
 const FRAME_SEQUENCER_FREQUENCY: usize = 512; // Hz
 const FRAME_SEQUENCER_CYCLES: usize = CPU_CLOCK_SPEED as usize / FRAME_SEQUENCER_FREQUENCY;
 
