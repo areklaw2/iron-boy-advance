@@ -10,14 +10,14 @@ pub struct PsgSoundControl {
     #[bits(3)]
     left_volume: u8,
     _not_used_7: bool,
-    channel_1_right_enable: bool,
-    channel_2_right_enable: bool,
-    channel_3_right_enable: bool,
-    channel_4_right_enable: bool,
-    channel_1_left_enable: bool,
-    channel_2_left_enable: bool,
-    channel_3_left_enable: bool,
-    channel_4_left_enable: bool,
+    ch1_right_enable: bool,
+    ch2_right_enable: bool,
+    ch3_right_enable: bool,
+    ch4_right_enable: bool,
+    ch1_left_enable: bool,
+    ch2_left_enable: bool,
+    ch3_left_enable: bool,
+    ch4_left_enable: bool,
 }
 
 impl RegisterOps<u16> for PsgSoundControl {
@@ -89,8 +89,6 @@ impl RegisterOps<u16> for DmaSoundControl {
     }
 
     fn read_mask(&self) -> u16 {
-        // Bits 11 and 15 are the write-only DMA Sound A/B Reset FIFO bits and
-        // read back as 0. The "not used" bits 4-7 are left as round-trip storage.
         0x77FF
     }
 }
@@ -98,10 +96,10 @@ impl RegisterOps<u16> for DmaSoundControl {
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct SoundStatus {
-    channel_0_on: bool,
-    channel_1_on: bool,
-    channel_2_on: bool,
-    channel_3_on: bool,
+    ch0_on: bool,
+    ch1_on: bool,
+    ch2_on: bool,
+    ch3_on: bool,
     #[bits(3)]
     _not_used_4_6: u8,
     master_enable: bool,
