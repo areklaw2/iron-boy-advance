@@ -75,6 +75,8 @@ pub struct PulseChannel {
     period: Period,
     control: PulseControl,
     frequency: PulseFrequency,
+    #[getset(set = "pub")]
+    frame_sequencer_step: usize,
 }
 
 const WAVEFORMS: [[u8; 8]; 4] = [
@@ -140,6 +142,7 @@ impl PulseChannel {
             period: Period::new(),
             control: PulseControl::from_bits(0),
             frequency: PulseFrequency::from_bits(0),
+            frame_sequencer_step: 0,
         }
     }
 
@@ -250,14 +253,21 @@ impl PulseChannel {
     }
 
     fn write_frequency(&mut self, address: u32, value: u8) {
+        let was_length_enabled = self.frequency.length_enable();
         self.frequency.write_byte(address, value);
 
-        // Trigger (bit 15) lives in the high byte of the 16-bit register.
-        // TODO: the length-counter obscure behavior (extra clock on enable/trigger
-        // during the sequencer's "first half") needs the frame sequencer step.
+        let first_half = matches!(self.frame_sequencer_step, 1 | 3 | 5 | 7);
+        if first_half && !was_length_enabled && self.frequency.length_enable() {
+            self.cycle_length();
+        }
+
         if address & 3 == 1 && self.frequency.trigger() {
             self.trigger();
             self.frequency.set_trigger(false);
+
+            if first_half && self.frequency.length_enable() && self.length.maxxed() {
+                self.cycle_length();
+            }
         }
     }
 }

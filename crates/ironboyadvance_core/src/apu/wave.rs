@@ -118,6 +118,8 @@ pub struct WaveChannel {
     control: WaveControl,
     volume: WaveVolume,
     frequency: WaveFrequency,
+    #[getset(set = "pub")]
+    frame_sequencer_step: usize,
 }
 
 impl SystemMemoryAccess for WaveChannel {
@@ -153,6 +155,7 @@ impl WaveChannel {
             control: WaveControl::from_bits(0),
             volume: WaveVolume::from_bits(0),
             frequency: WaveFrequency::from_bits(0),
+            frame_sequencer_step: 0,
         }
     }
 
@@ -236,12 +239,21 @@ impl WaveChannel {
     }
 
     fn write_frequency(&mut self, address: u32, value: u8) {
+        let was_length_enabled = self.frequency.length_enable();
         self.frequency.write_byte(address, value);
 
-        // TODO: obscure length-counter clock on trigger/enable needs the frame-seq step.
+        let first_half = matches!(self.frame_sequencer_step, 1 | 3 | 5 | 7);
+        if first_half && !was_length_enabled && self.frequency.length_enable() {
+            self.cycle_length();
+        }
+
         if address & 3 == 1 && self.frequency.trigger() {
             self.trigger();
             self.frequency.set_trigger(false);
+
+            if first_half && self.frequency.length_enable() && self.length.maxxed() {
+                self.cycle_length();
+            }
         }
     }
 

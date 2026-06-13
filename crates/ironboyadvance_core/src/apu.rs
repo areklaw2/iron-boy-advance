@@ -200,6 +200,12 @@ impl Apu {
         }
 
         self.frame_sequencer_step = (step + 1) % 8;
+        let next_step = self.frame_sequencer_step;
+        self.ch1.set_frame_sequencer_step(next_step);
+        self.ch2.set_frame_sequencer_step(next_step);
+        self.ch3.set_frame_sequencer_step(next_step);
+        self.ch4.set_frame_sequencer_step(next_step);
+
         self.scheduler
             .borrow_mut()
             .schedule((GbaEvent::Apu(ApuEvent::FrameSequence), FRAME_SEQUENCER_CYCLES));

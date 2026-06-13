@@ -101,6 +101,8 @@ pub struct NoiseChannel {
     period: Period,
     control: NoiseControl,
     frequency: NoiseFrequency,
+    #[getset(set = "pub")]
+    frame_sequencer_step: usize,
 }
 
 impl SystemMemoryAccess for NoiseChannel {
@@ -136,6 +138,7 @@ impl NoiseChannel {
             period: Period::new(),
             control: NoiseControl::from_bits(0),
             frequency: NoiseFrequency::from_bits(0),
+            frame_sequencer_step: 0,
         }
     }
 
@@ -230,13 +233,21 @@ impl NoiseChannel {
     }
 
     fn write_frequency(&mut self, address: u32, value: u8) {
+        let was_length_enabled = self.frequency.length_enable();
         self.frequency.write_byte(address, value);
 
-        // Trigger (bit 15) lives in the high byte of the low 16-bit register.
-        // TODO: obscure length-counter clock on trigger/enable needs the frame-seq step.
+        let first_half = matches!(self.frame_sequencer_step, 1 | 3 | 5 | 7);
+        if first_half && !was_length_enabled && self.frequency.length_enable() {
+            self.cycle_length();
+        }
+
         if address & 3 == 1 && self.frequency.trigger() {
             self.trigger();
             self.frequency.set_trigger(false);
+
+            if first_half && self.frequency.length_enable() && self.length.maxxed() {
+                self.cycle_length();
+            }
         }
     }
 }
