@@ -66,7 +66,7 @@ pub struct NoiseFrequency {
     #[bits(3)]
     divider: u8,
     #[bits(1)]
-    counter_step: CounterWidth,
+    counter_width: CounterWidth,
     #[bits(4)]
     shift_clock: u8,
     #[bits(6)]
@@ -168,7 +168,7 @@ impl NoiseChannel {
 
         let steps = self.period.step(cycles, self.period_cycles());
         for _ in 0..steps {
-            self.lfsr = self.frequency.counter_step().step(self.lfsr);
+            self.lfsr = self.frequency.counter_width().step(self.lfsr);
         }
     }
 
@@ -238,5 +238,52 @@ impl NoiseChannel {
             self.trigger();
             self.frequency.set_trigger(false);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn triggered_noise() -> NoiseChannel {
+        let mut noise = NoiseChannel::new();
+        // SOUND4CNT_L high byte: initial_volume = 15 -> DAC enabled, full volume.
+        noise.write_8(0x04000079, 0xF0);
+        // SOUND4CNT_H low byte: divider 0, 15-bit, shift 0 -> shortest period (32 cyc).
+        noise.write_8(0x0400007C, 0x00);
+        // SOUND4CNT_H high byte: trigger (bit 15), length disabled.
+        noise.write_8(0x0400007D, 0x80);
+        noise
+    }
+
+    #[test]
+    fn trigger_enables_channel() {
+        assert!(triggered_noise().enabled());
+    }
+
+    #[test]
+    fn lfsr_produces_varying_output() {
+        let mut noise = triggered_noise();
+        let mut saw_low = false;
+        let mut saw_high = false;
+        for _ in 0..256 {
+            noise.cycle(512);
+            match noise.dac_output() {
+                out if out < 0.0 => saw_low = true,
+                out if out > 0.0 => saw_high = true,
+                _ => {}
+            }
+        }
+        assert!(
+            saw_low && saw_high,
+            "noise output should toggle: low={saw_low} high={saw_high}"
+        );
+    }
+
+    #[test]
+    fn silent_when_disabled() {
+        let noise = NoiseChannel::new();
+        assert!(!noise.enabled());
+        assert_eq!(noise.dac_output(), 0.0);
     }
 }

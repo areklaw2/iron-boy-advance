@@ -96,10 +96,10 @@ impl RegisterOps<u16> for DmaSoundControl {
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct SoundStatus {
-    ch0_on: bool,
     ch1_on: bool,
     ch2_on: bool,
     ch3_on: bool,
+    ch4_on: bool,
     #[bits(3)]
     _not_used_4_6: u8,
     master_enable: bool,

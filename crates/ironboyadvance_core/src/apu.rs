@@ -10,6 +10,7 @@ use crate::{
         noise::NoiseChannel,
         pulse::PulseChannel,
         sound::{DmaSoundControl, PsgSoundControl, PsgVolumeRatio, SoundBias, SoundStatus},
+        wave::WaveChannel,
     },
     events::{ApuEvent, GbaEvent},
 };
@@ -26,11 +27,13 @@ mod pulse;
 mod sound;
 mod sweep;
 mod volume_envelope;
+mod wave;
 
 #[derive(Getters)]
 pub struct Apu {
     ch1: PulseChannel,
     ch2: PulseChannel,
+    ch3: WaveChannel,
     ch4: NoiseChannel,
     psg_sound_control: PsgSoundControl,
     dma_sound_control: DmaSoundControl,
@@ -47,11 +50,13 @@ impl SystemMemoryAccess for Apu {
         match address {
             0x04000060..=0x04000067 => self.ch1.read_8(address),
             0x04000068..=0x0400006F => self.ch2.read_8(address),
+            0x04000070..=0x04000077 => self.ch3.read_8(address),
             0x04000078..=0x0400007F => self.ch4.read_8(address),
             0x04000080..=0x04000081 => self.psg_sound_control.read_byte(address),
             0x04000082..=0x04000083 => self.dma_sound_control.read_byte(address),
             0x04000084..=0x04000087 => self.read_sound_status(address),
             0x04000088..=0x0400008B => self.sound_bias.read_byte(address),
+            0x04000090..=0x0400009F => self.ch3.read_8(address),
             _ => {
                 debug!("Invalid byte read for Apu Register: {:#010X}", address);
                 0
@@ -67,11 +72,13 @@ impl SystemMemoryAccess for Apu {
         match address {
             0x04000060..=0x04000067 => self.ch1.write_8(address, value),
             0x04000068..=0x0400006F => self.ch2.write_8(address, value),
+            0x04000070..=0x04000077 => self.ch3.write_8(address, value),
             0x04000078..=0x0400007F => self.ch4.write_8(address, value),
             0x04000080..=0x04000081 => self.psg_sound_control.write_byte(address, value),
             0x04000082..=0x04000083 => self.dma_sound_control.write_byte(address, value),
             0x04000084..=0x04000087 => self.write_sound_status(address, value),
             0x04000088..=0x0400008B => self.sound_bias.write_byte(address, value),
+            0x04000090..=0x0400009F => self.ch3.write_8(address, value),
             _ => debug!("Invalid byte write for Apu Register: {:#010X}", address),
         }
     }
@@ -89,6 +96,7 @@ impl Apu {
         Self {
             ch1: PulseChannel::new(true),
             ch2: PulseChannel::new(false),
+            ch3: WaveChannel::new(),
             ch4: NoiseChannel::new(),
             psg_sound_control: PsgSoundControl::from_bits(0),
             dma_sound_control: DmaSoundControl::from_bits(0),
@@ -114,6 +122,7 @@ impl Apu {
     fn handle_sample(&mut self) {
         self.ch1.cycle(SAMPLE_CYCLES);
         self.ch2.cycle(SAMPLE_CYCLES);
+        self.ch3.cycle(SAMPLE_CYCLES);
         self.ch4.cycle(SAMPLE_CYCLES);
 
         let sample = match self.sound_status.master_enable() {
@@ -128,19 +137,24 @@ impl Apu {
     }
 
     fn mix(&self) -> (f32, f32) {
-        let channels = [self.ch1.dac_output(), self.ch2.dac_output(), 0.0, self.ch4.dac_output()];
+        let channels = [
+            self.ch1.dac_output(),
+            self.ch2.dac_output(),
+            self.ch3.dac_output(),
+            self.ch4.dac_output(),
+        ];
         let control = &self.psg_sound_control;
 
         let left_enable = [
             control.ch1_left_enable(),
             control.ch2_left_enable(),
-            false,
+            control.ch3_left_enable(),
             control.ch4_left_enable(),
         ];
         let right_enable = [
             control.ch1_right_enable(),
             control.ch2_right_enable(),
-            false,
+            control.ch3_right_enable(),
             control.ch4_right_enable(),
         ];
 
@@ -177,6 +191,7 @@ impl Apu {
         if matches!(step, 0 | 2 | 4 | 6) {
             self.ch1.cycle_length();
             self.ch2.cycle_length();
+            self.ch3.cycle_length();
             self.ch4.cycle_length();
         }
 
@@ -192,9 +207,10 @@ impl Apu {
 
     fn read_sound_status(&self, address: u32) -> u8 {
         let mut status = SoundStatus::from_bits(self.sound_status.register());
-        status.set_ch0_on(self.ch1.enabled());
-        status.set_ch1_on(self.ch2.enabled());
-        status.set_ch3_on(self.ch4.enabled());
+        status.set_ch1_on(self.ch1.enabled());
+        status.set_ch2_on(self.ch2.enabled());
+        status.set_ch3_on(self.ch3.enabled());
+        status.set_ch4_on(self.ch4.enabled());
         status.read_byte(address)
     }
 
@@ -204,6 +220,7 @@ impl Apu {
         if was_enabled && !self.sound_status.master_enable() {
             self.ch1.reset();
             self.ch2.reset();
+            self.ch3.reset();
             self.ch4.reset();
             self.psg_sound_control = PsgSoundControl::from_bits(0);
         }

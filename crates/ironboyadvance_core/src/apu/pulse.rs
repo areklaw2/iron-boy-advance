@@ -261,3 +261,52 @@ impl PulseChannel {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Channel 2 (no sweep), registers at 0x68-0x6F.
+    fn triggered_pulse() -> PulseChannel {
+        let mut pulse = PulseChannel::new(false);
+        // SOUND2CNT_L low byte: 50% duty (bits 6-7 = 0b10).
+        pulse.write_8(0x04000068, 0x80);
+        // SOUND2CNT_L high byte: initial_volume = 15 -> DAC enabled.
+        pulse.write_8(0x04000069, 0xF0);
+        // SOUND2CNT_H: frequency 2040 (period 128 cyc), then trigger (bit 15).
+        pulse.write_8(0x0400006C, 0xF8);
+        pulse.write_8(0x0400006D, 0x87);
+        pulse
+    }
+
+    #[test]
+    fn trigger_enables_channel() {
+        assert!(triggered_pulse().enabled());
+    }
+
+    #[test]
+    fn produces_a_square_wave() {
+        let mut pulse = triggered_pulse();
+        let mut saw_low = false;
+        let mut saw_high = false;
+        for _ in 0..256 {
+            pulse.cycle(512);
+            match pulse.dac_output() {
+                out if out < 0.0 => saw_low = true,
+                out if out > 0.0 => saw_high = true,
+                _ => {}
+            }
+        }
+        assert!(
+            saw_low && saw_high,
+            "duty wave should swing both ways: low={saw_low} high={saw_high}"
+        );
+    }
+
+    #[test]
+    fn silent_when_disabled() {
+        let pulse = PulseChannel::new(false);
+        assert!(!pulse.enabled());
+        assert_eq!(pulse.dac_output(), 0.0);
+    }
+}
