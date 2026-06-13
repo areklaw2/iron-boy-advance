@@ -33,6 +33,7 @@ pub enum PpuEvent {
 pub enum ApuEvent {
     Sample,
     FrameSequence,
+    FifoStep { timer_id: usize },
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]

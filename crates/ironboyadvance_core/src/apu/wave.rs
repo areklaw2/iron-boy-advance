@@ -10,8 +10,8 @@ use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOp
 #[derive(Debug, PartialEq, Eq)]
 pub enum WaveDimension {
     #[base]
-    OneBank = 0, // 32 samples
-    TwoBanks = 1, // 64 samples
+    OneBank = 0x0, // 32 samples
+    TwoBanks = 0x1, // 64 samples
 }
 
 impl WaveDimension {

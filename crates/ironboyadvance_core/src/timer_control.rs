@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use bitfields::bitfield;
 use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps, scheduler::Scheduler};
 
-use crate::events::{GbaEvent, InterruptEvent, TimerEvent};
+use crate::events::{ApuEvent, GbaEvent, InterruptEvent, TimerEvent};
 
 const PRESCALER_SELECTIONS: [usize; 4] = [1, 64, 256, 1024];
 
@@ -200,7 +200,10 @@ impl TimerController {
         self.timers[timer_id].reload();
 
         if timer_id <= 1 {
-            //TODO: Handle sample rate for DMA sound channel A and/or B
+            self.timers[timer_id]
+                .scheduler
+                .borrow_mut()
+                .schedule((GbaEvent::Apu(ApuEvent::FifoStep { timer_id }), 0));
         }
 
         if timer_id < 3 {

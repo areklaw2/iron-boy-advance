@@ -48,12 +48,13 @@ pub enum DmaVolumeRatio {
     Ratio100 = 0x1,
 }
 
-#[bitflag(u8)]
-#[derive(Debug, PartialEq, Eq)]
-pub enum TimerSelect {
-    #[base]
-    Timer0 = 0x0,
-    Timer1 = 0x1,
+impl DmaVolumeRatio {
+    pub fn scale(&self) -> f32 {
+        match self {
+            DmaVolumeRatio::Ratio50 => 0.5,
+            DmaVolumeRatio::Ratio100 => 1.0,
+        }
+    }
 }
 
 #[bitfield(u16)]
@@ -69,13 +70,12 @@ pub struct DmaSoundControl {
     _not_used_4_7: u8,
     dma_a_right_enable: bool,
     dma_a_left_enable: bool,
-    #[bits(1)]
-    dma_a_timer_select: TimerSelect,
+    // false = Timer 0, true = Timer 1.
+    dma_a_timer_select: bool,
     dma_a_reset_fifo: bool,
     dma_b_right_enable: bool,
     dma_b_left_enable: bool,
-    #[bits(1)]
-    dma_b_timer_select: TimerSelect,
+    dma_b_timer_select: bool,
     dma_b_reset_fifo: bool,
 }
 
@@ -90,6 +90,16 @@ impl RegisterOps<u16> for DmaSoundControl {
 
     fn read_mask(&self) -> u16 {
         0x77FF
+    }
+}
+
+impl DmaSoundControl {
+    pub fn dma_a_active(&self, timer_id: usize) -> bool {
+        self.dma_a_timer_select() as usize == timer_id && (self.dma_a_left_enable() || self.dma_a_right_enable())
+    }
+
+    pub fn dma_b_active(&self, timer_id: usize) -> bool {
+        self.dma_b_timer_select() as usize == timer_id && (self.dma_b_left_enable() || self.dma_b_right_enable())
     }
 }
 

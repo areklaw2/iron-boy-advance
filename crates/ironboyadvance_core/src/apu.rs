@@ -3,16 +3,17 @@ use std::{cell::RefCell, rc::Rc};
 use getset::Getters;
 use ironboyadvance_arm7tdmi::CPU_CLOCK_SPEED;
 use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOps, scheduler::Scheduler};
-use tracing::debug;
 
 use crate::{
     apu::{
+        fifo::FifoChannel,
         noise::NoiseChannel,
         pulse::PulseChannel,
         sound::{DmaSoundControl, PsgSoundControl, PsgVolumeRatio, SoundBias, SoundStatus},
         wave::WaveChannel,
     },
-    events::{ApuEvent, GbaEvent},
+    dma_control::RequestType,
+    events::{ApuEvent, DmaEvent, GbaEvent},
 };
 
 pub const APU_SAMPLING_FREQUENCY: usize = 32768; // Hz
@@ -20,6 +21,7 @@ const SAMPLE_CYCLES: usize = CPU_CLOCK_SPEED as usize / APU_SAMPLING_FREQUENCY;
 const FRAME_SEQUENCER_FREQUENCY: usize = 512; // Hz
 const FRAME_SEQUENCER_CYCLES: usize = CPU_CLOCK_SPEED as usize / FRAME_SEQUENCER_FREQUENCY;
 
+mod fifo;
 mod length;
 mod noise;
 mod period;
@@ -35,6 +37,8 @@ pub struct Apu {
     ch2: PulseChannel,
     ch3: WaveChannel,
     ch4: NoiseChannel,
+    fifo_a: FifoChannel,
+    fifo_b: FifoChannel,
     psg_sound_control: PsgSoundControl,
     dma_sound_control: DmaSoundControl,
     sound_status: SoundStatus,
@@ -57,10 +61,9 @@ impl SystemMemoryAccess for Apu {
             0x04000084..=0x04000087 => self.read_sound_status(address),
             0x04000088..=0x0400008B => self.sound_bias.read_byte(address),
             0x04000090..=0x0400009F => self.ch3.read_8(address),
-            _ => {
-                debug!("Invalid byte read for Apu Register: {:#010X}", address);
-                0
-            }
+            0x040000A0..=0x040000A3 => self.fifo_a.read_8(address),
+            0x040000A4..=0x040000A7 => self.fifo_b.read_8(address),
+            _ => panic!("Invalid byte read for Apu: {:#010X}", address),
         }
     }
 
@@ -75,11 +78,13 @@ impl SystemMemoryAccess for Apu {
             0x04000070..=0x04000077 => self.ch3.write_8(address, value),
             0x04000078..=0x0400007F => self.ch4.write_8(address, value),
             0x04000080..=0x04000081 => self.psg_sound_control.write_byte(address, value),
-            0x04000082..=0x04000083 => self.dma_sound_control.write_byte(address, value),
+            0x04000082..=0x04000083 => self.write_dma_sound_control(address, value),
             0x04000084..=0x04000087 => self.write_sound_status(address, value),
             0x04000088..=0x0400008B => self.sound_bias.write_byte(address, value),
             0x04000090..=0x0400009F => self.ch3.write_8(address, value),
-            _ => debug!("Invalid byte write for Apu Register: {:#010X}", address),
+            0x040000A0..=0x040000A3 => self.fifo_a.write_8(address, value),
+            0x040000A4..=0x040000A7 => self.fifo_b.write_8(address, value),
+            _ => panic!("Invalid byte write for Apu: {:#010X}", address),
         }
     }
 }
@@ -98,6 +103,8 @@ impl Apu {
             ch2: PulseChannel::new(false),
             ch3: WaveChannel::new(),
             ch4: NoiseChannel::new(),
+            fifo_a: FifoChannel::new(),
+            fifo_b: FifoChannel::new(),
             psg_sound_control: PsgSoundControl::from_bits(0),
             dma_sound_control: DmaSoundControl::from_bits(0),
             sound_status: SoundStatus::from_bits(0),
@@ -112,6 +119,7 @@ impl Apu {
         match event {
             ApuEvent::Sample => self.handle_sample(),
             ApuEvent::FrameSequence => self.handle_frame_sequence(),
+            ApuEvent::FifoStep { timer_id } => self.handle_fifo_step(timer_id),
         }
     }
 
@@ -172,12 +180,32 @@ impl Apu {
         left *= (control.left_volume() as f32 + 1.0) / 8.0;
         right *= (control.right_volume() as f32 + 1.0) / 8.0;
 
-        let ratio = match self.dma_sound_control.psg_volume_ratio() {
+        let psg_ratio = match self.dma_sound_control.psg_volume_ratio() {
             PsgVolumeRatio::Ratio25 => 0.25,
             PsgVolumeRatio::Ratio50 => 0.50,
             _ => 1.0,
         };
-        (left * ratio / 4.0, right * ratio / 4.0)
+        let mut left = left * psg_ratio / 4.0;
+        let mut right = right * psg_ratio / 4.0;
+
+        let dma = &self.dma_sound_control;
+        let dma_a = self.fifo_a.output() as f32 / 128.0 * dma.dma_a_volume_ratio().scale();
+        let dma_b = self.fifo_b.output() as f32 / 128.0 * dma.dma_b_volume_ratio().scale();
+
+        if dma.dma_a_left_enable() {
+            left += dma_a;
+        }
+        if dma.dma_a_right_enable() {
+            right += dma_a;
+        }
+        if dma.dma_b_left_enable() {
+            left += dma_b;
+        }
+        if dma.dma_b_right_enable() {
+            right += dma_b;
+        }
+
+        (left.clamp(-1.0, 1.0), right.clamp(-1.0, 1.0))
     }
 
     fn handle_frame_sequence(&mut self) {
@@ -199,6 +227,7 @@ impl Apu {
             self.ch1.cycle_sweep();
         }
 
+        // TODO: keep this if i decide to have gba and gbc share the audio implementation
         self.frame_sequencer_step = (step + 1) % 8;
         let next_step = self.frame_sequencer_step;
         self.ch1.set_frame_sequencer_step(next_step);
@@ -209,6 +238,19 @@ impl Apu {
         self.scheduler
             .borrow_mut()
             .schedule((GbaEvent::Apu(ApuEvent::FrameSequence), FRAME_SEQUENCER_CYCLES));
+    }
+
+    fn handle_fifo_step(&mut self, timer_id: usize) {
+        if self.dma_sound_control.dma_a_active(timer_id) && self.fifo_a.step() {
+            self.scheduler
+                .borrow_mut()
+                .schedule((GbaEvent::Dma(DmaEvent::Request(RequestType::FifoA)), 0));
+        }
+        if self.dma_sound_control.dma_b_active(timer_id) && self.fifo_b.step() {
+            self.scheduler
+                .borrow_mut()
+                .schedule((GbaEvent::Dma(DmaEvent::Request(RequestType::FifoB)), 0));
+        }
     }
 
     fn read_sound_status(&self, address: u32) -> u8 {
@@ -229,6 +271,19 @@ impl Apu {
             self.ch3.reset();
             self.ch4.reset();
             self.psg_sound_control = PsgSoundControl::from_bits(0);
+        }
+    }
+
+    fn write_dma_sound_control(&mut self, address: u32, value: u8) {
+        self.dma_sound_control.write_byte(address, value);
+
+        if self.dma_sound_control.dma_a_reset_fifo() {
+            self.fifo_a.reset();
+            self.dma_sound_control.set_dma_a_reset_fifo(false);
+        }
+        if self.dma_sound_control.dma_b_reset_fifo() {
+            self.fifo_b.reset();
+            self.dma_sound_control.set_dma_b_reset_fifo(false);
         }
     }
 }
