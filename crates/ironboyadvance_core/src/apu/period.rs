@@ -1,5 +1,3 @@
-const PERIOD_TICK_CYCLES: usize = 16;
-
 #[derive(Debug)]
 pub struct Period {
     accumulator: usize,
@@ -10,11 +8,13 @@ impl Period {
         Period { accumulator: 0 }
     }
 
-    pub fn step(&mut self, cycles: usize, frequency: usize) -> usize {
+    /// Accumulate `cycles` and return how many whole `period_cycles`-long ticks
+    /// elapsed, keeping the remainder for the next call. The caller owns the
+    /// channel-specific formula that produces `period_cycles`.
+    pub fn step(&mut self, cycles: usize, period_cycles: usize) -> usize {
         self.accumulator += cycles;
-        let step = PERIOD_TICK_CYCLES * (2048 - frequency);
-        let steps = self.accumulator / step;
-        self.accumulator %= step;
+        let steps = self.accumulator / period_cycles;
+        self.accumulator %= period_cycles;
         steps
     }
 

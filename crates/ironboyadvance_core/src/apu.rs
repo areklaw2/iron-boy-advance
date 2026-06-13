@@ -7,6 +7,7 @@ use tracing::debug;
 
 use crate::{
     apu::{
+        noise::NoiseChannel,
         pulse::PulseChannel,
         sound::{DmaSoundControl, PsgSoundControl, PsgVolumeRatio, SoundBias, SoundStatus},
     },
@@ -19,6 +20,7 @@ const FRAME_SEQUENCER_FREQUENCY: usize = 512; // Hz
 const FRAME_SEQUENCER_CYCLES: usize = CPU_CLOCK_SPEED as usize / FRAME_SEQUENCER_FREQUENCY;
 
 mod length;
+mod noise;
 mod period;
 mod pulse;
 mod sound;
@@ -29,6 +31,7 @@ mod volume_envelope;
 pub struct Apu {
     ch1: PulseChannel,
     ch2: PulseChannel,
+    ch4: NoiseChannel,
     psg_sound_control: PsgSoundControl,
     dma_sound_control: DmaSoundControl,
     sound_status: SoundStatus,
@@ -44,9 +47,10 @@ impl SystemMemoryAccess for Apu {
         match address {
             0x04000060..=0x04000067 => self.ch1.read_8(address),
             0x04000068..=0x0400006F => self.ch2.read_8(address),
+            0x04000078..=0x0400007F => self.ch4.read_8(address),
             0x04000080..=0x04000081 => self.psg_sound_control.read_byte(address),
             0x04000082..=0x04000083 => self.dma_sound_control.read_byte(address),
-            0x04000084..=0x04000087 => self.sound_status.read_byte(address),
+            0x04000084..=0x04000087 => self.read_sound_status(address),
             0x04000088..=0x0400008B => self.sound_bias.read_byte(address),
             _ => {
                 debug!("Invalid byte read for Apu Register: {:#010X}", address);
@@ -56,12 +60,17 @@ impl SystemMemoryAccess for Apu {
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
+        if !self.sound_status.master_enable() && (0x04000060..=0x04000081).contains(&address) {
+            return;
+        }
+
         match address {
             0x04000060..=0x04000067 => self.ch1.write_8(address, value),
             0x04000068..=0x0400006F => self.ch2.write_8(address, value),
+            0x04000078..=0x0400007F => self.ch4.write_8(address, value),
             0x04000080..=0x04000081 => self.psg_sound_control.write_byte(address, value),
             0x04000082..=0x04000083 => self.dma_sound_control.write_byte(address, value),
-            0x04000084..=0x04000087 => self.sound_status.write_byte(address, value),
+            0x04000084..=0x04000087 => self.write_sound_status(address, value),
             0x04000088..=0x0400008B => self.sound_bias.write_byte(address, value),
             _ => debug!("Invalid byte write for Apu Register: {:#010X}", address),
         }
@@ -80,6 +89,7 @@ impl Apu {
         Self {
             ch1: PulseChannel::new(true),
             ch2: PulseChannel::new(false),
+            ch4: NoiseChannel::new(),
             psg_sound_control: PsgSoundControl::from_bits(0),
             dma_sound_control: DmaSoundControl::from_bits(0),
             sound_status: SoundStatus::from_bits(0),
@@ -104,6 +114,7 @@ impl Apu {
     fn handle_sample(&mut self) {
         self.ch1.cycle(SAMPLE_CYCLES);
         self.ch2.cycle(SAMPLE_CYCLES);
+        self.ch4.cycle(SAMPLE_CYCLES);
 
         let sample = match self.sound_status.master_enable() {
             true => self.mix(),
@@ -117,11 +128,21 @@ impl Apu {
     }
 
     fn mix(&self) -> (f32, f32) {
-        let channels = [self.ch1.dac_output(), self.ch2.dac_output(), 0.0, 0.0];
+        let channels = [self.ch1.dac_output(), self.ch2.dac_output(), 0.0, self.ch4.dac_output()];
         let control = &self.psg_sound_control;
 
-        let left_enable = [control.ch1_left_enable(), control.ch2_left_enable(), false, false];
-        let right_enable = [control.ch1_right_enable(), control.ch2_right_enable(), false, false];
+        let left_enable = [
+            control.ch1_left_enable(),
+            control.ch2_left_enable(),
+            false,
+            control.ch4_left_enable(),
+        ];
+        let right_enable = [
+            control.ch1_right_enable(),
+            control.ch2_right_enable(),
+            false,
+            control.ch4_right_enable(),
+        ];
 
         let mut left = 0.0;
         let mut right = 0.0;
@@ -150,11 +171,13 @@ impl Apu {
         if step == 7 {
             self.ch1.cycle_envelope();
             self.ch2.cycle_envelope();
+            self.ch4.cycle_envelope();
         }
 
         if matches!(step, 0 | 2 | 4 | 6) {
             self.ch1.cycle_length();
             self.ch2.cycle_length();
+            self.ch4.cycle_length();
         }
 
         if matches!(step, 2 | 6) {
@@ -165,5 +188,24 @@ impl Apu {
         self.scheduler
             .borrow_mut()
             .schedule((GbaEvent::Apu(ApuEvent::FrameSequence), FRAME_SEQUENCER_CYCLES));
+    }
+
+    fn read_sound_status(&self, address: u32) -> u8 {
+        let mut status = SoundStatus::from_bits(self.sound_status.register());
+        status.set_ch0_on(self.ch1.enabled());
+        status.set_ch1_on(self.ch2.enabled());
+        status.set_ch3_on(self.ch4.enabled());
+        status.read_byte(address)
+    }
+
+    fn write_sound_status(&mut self, address: u32, value: u8) {
+        let was_enabled = self.sound_status.master_enable();
+        self.sound_status.write_byte(address, value);
+        if was_enabled && !self.sound_status.master_enable() {
+            self.ch1.reset();
+            self.ch2.reset();
+            self.ch4.reset();
+            self.psg_sound_control = PsgSoundControl::from_bits(0);
+        }
     }
 }

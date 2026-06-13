@@ -59,7 +59,7 @@ impl RegisterOps<u32> for PulseFrequency {
     }
 
     fn read_mask(&self) -> u32 {
-        0xFFFF7800
+        0xFFFF_7800
     }
 }
 
@@ -83,6 +83,9 @@ const WAVEFORMS: [[u8; 8]; 4] = [
     [0, 0, 0, 0, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 0, 0],
 ];
+
+// CPU cycles per duty step: 16 * (2048 - frequency).
+const PERIOD_TICK_CYCLES: usize = 16;
 
 impl SystemMemoryAccess for PulseChannel {
     fn read_8(&self, address: u32) -> u8 {
@@ -155,10 +158,13 @@ impl PulseChannel {
     }
 
     pub fn cycle(&mut self, cycles: usize) {
-        if self.enabled {
-            let steps = self.period.step(cycles, self.frequency.frequency() as usize);
-            self.wave_duty_position = ((self.wave_duty_position as usize + steps) % 8) as u8;
+        if !self.enabled {
+            return;
         }
+
+        let period_cycles = PERIOD_TICK_CYCLES * (2048 - self.frequency.frequency() as usize);
+        let steps = self.period.step(cycles, period_cycles);
+        self.wave_duty_position = ((self.wave_duty_position as usize + steps) % 8) as u8;
     }
 
     pub fn cycle_envelope(&mut self) {
