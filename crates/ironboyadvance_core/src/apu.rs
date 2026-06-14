@@ -7,6 +7,7 @@ use ironboyadvance_common::{memory::SystemMemoryAccess, register_ops::RegisterOp
 use crate::{
     apu::{
         fifo::FifoChannel,
+        high_pass_filter::HighPassFilter,
         noise::NoiseChannel,
         pulse::PulseChannel,
         sound::{DmaSoundControl, PsgSoundControl, PsgVolumeRatio, SoundBias, SoundStatus},
@@ -22,6 +23,7 @@ const FRAME_SEQUENCER_FREQUENCY: usize = 512; // Hz
 const FRAME_SEQUENCER_CYCLES: usize = CPU_CLOCK_SPEED as usize / FRAME_SEQUENCER_FREQUENCY;
 
 mod fifo;
+mod high_pass_filter;
 mod length;
 mod noise;
 mod period;
@@ -46,6 +48,7 @@ pub struct Apu {
     #[getset(get = "pub")]
     audio_buffer: Vec<(f32, f32)>,
     frame_sequencer_step: usize,
+    high_pass: HighPassFilter,
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
 }
 
@@ -111,6 +114,7 @@ impl Apu {
             sound_bias: SoundBias::from_bits(0x200),
             audio_buffer: Vec::new(),
             frame_sequencer_step: 0,
+            high_pass: HighPassFilter::new(),
             scheduler,
         }
     }
@@ -133,11 +137,12 @@ impl Apu {
         self.ch3.cycle(SAMPLE_CYCLES);
         self.ch4.cycle(SAMPLE_CYCLES);
 
-        let sample = match self.sound_status.master_enable() {
+        let (left, right) = match self.sound_status.master_enable() {
             true => self.mix(),
             false => (0.0, 0.0),
         };
-        self.audio_buffer.push(sample);
+        let (left, right) = self.high_pass.process(left, right);
+        self.audio_buffer.push((left, right));
 
         self.scheduler
             .borrow_mut()
