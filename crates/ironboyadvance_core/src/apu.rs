@@ -55,16 +55,27 @@ pub struct Apu {
 impl SystemMemoryAccess for Apu {
     fn read_8(&self, address: u32) -> u8 {
         match address {
+            // SOUND1CNT_L,SOUND1CNT_H,SOUND1CNT_X
             0x04000060..=0x04000067 => self.ch1.read_8(address),
+            // SOUND2CNT_L,SOUND2CNT_H
             0x04000068..=0x0400006F => self.ch2.read_8(address),
+            // SOUND3CNT_L,SOUND3CNT_H,SOUND3CNT_X
             0x04000070..=0x04000077 => self.ch3.read_8(address),
+            // SOUND4CNT_L,SOUND4CNT_H
             0x04000078..=0x0400007F => self.ch4.read_8(address),
+            // SOUNDCNT_L
             0x04000080..=0x04000081 => self.psg_sound_control.read_byte(address),
+            // SOUNDCNT_H
             0x04000082..=0x04000083 => self.dma_sound_control.read_byte(address),
+            // SOUNDCNT_X
             0x04000084..=0x04000087 => self.read_sound_status(address),
+            // SOUNDBIAS
             0x04000088..=0x0400008B => self.sound_bias.read_byte(address),
+            // WAVE RAM
             0x04000090..=0x0400009F => self.ch3.read_8(address),
+            // FIFO_A_L, FIFO_A_H
             0x040000A0..=0x040000A3 => self.fifo_a.read_8(address),
+            // FIFO_B_L, FIFO_B_H
             0x040000A4..=0x040000A7 => self.fifo_b.read_8(address),
             _ => panic!("Invalid byte read for Apu: {:#010X}", address),
         }
@@ -76,16 +87,27 @@ impl SystemMemoryAccess for Apu {
         }
 
         match address {
+            // SOUND1CNT_L,SOUND1CNT_H,SOUND1CNT_X
             0x04000060..=0x04000067 => self.ch1.write_8(address, value),
+            // SOUND2CNT_L,SOUND2CNT_H
             0x04000068..=0x0400006F => self.ch2.write_8(address, value),
+            // SOUND3CNT_L,SOUND3CNT_H,SOUND3CNT_X
             0x04000070..=0x04000077 => self.ch3.write_8(address, value),
+            // SOUND4CNT_L,SOUND4CNT_H
             0x04000078..=0x0400007F => self.ch4.write_8(address, value),
+            // SOUNDCNT_L
             0x04000080..=0x04000081 => self.psg_sound_control.write_byte(address, value),
+            // SOUNDCNT_H
             0x04000082..=0x04000083 => self.write_dma_sound_control(address, value),
+            // SOUNDCNT_X
             0x04000084..=0x04000087 => self.write_sound_status(address, value),
+            // SOUNDBIAS
             0x04000088..=0x0400008B => self.sound_bias.write_byte(address, value),
+            // WAVE RAM
             0x04000090..=0x0400009F => self.ch3.write_8(address, value),
+            // FIFO_A_L, FIFO_A_H
             0x040000A0..=0x040000A3 => self.fifo_a.write_8(address, value),
+            // FIFO_B_L, FIFO_B_H
             0x040000A4..=0x040000A7 => self.fifo_b.write_8(address, value),
             _ => panic!("Invalid byte write for Apu: {:#010X}", address),
         }

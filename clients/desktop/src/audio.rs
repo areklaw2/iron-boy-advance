@@ -52,13 +52,8 @@ pub fn start() -> Option<AudioOutput> {
     })
 }
 
-/// Linear-interpolating rate converter from the APU's fixed sample rate to the
-/// audio device's native rate. Driven one input frame at a time so it can run
-/// inline in the emulator loop without buffering a whole frame's worth ahead.
 pub struct Resampler {
-    /// Output-sample spacing measured in input samples (input_rate / output_rate).
     step: f64,
-    /// Position of the next output sample within the current input segment, in [0, 1).
     next_output_position: f64,
     previous_frame: (f32, f32),
 }
@@ -72,8 +67,6 @@ impl Resampler {
         }
     }
 
-    /// Feed one input frame and emit zero or more interpolated output frames,
-    /// each as a `(left, right)` pair, in order.
     pub fn push_frame(&mut self, frame: (f32, f32), mut emit: impl FnMut(f32, f32)) {
         let (previous_left, previous_right) = self.previous_frame;
         let (current_left, current_right) = frame;
