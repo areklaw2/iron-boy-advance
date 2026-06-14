@@ -80,6 +80,10 @@ impl LcdControl {
     pub fn any_window_enabled(&self) -> bool {
         self.window_0_display() || self.window_1_display() || self.obj_window_display()
     }
+
+    pub fn is_bitmap_mode(&self) -> bool {
+        matches!(self.bg_mode(), BgMode::Mode3 | BgMode::Mode4 | BgMode::Mode5)
+    }
 }
 
 impl RegisterOps<u16> for LcdControl {

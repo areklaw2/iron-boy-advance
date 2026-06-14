@@ -188,16 +188,60 @@ impl SystemMemoryAccess for Ppu {
             // BLDCNT, BLDALPHA, BLDY
             0x04000050..=0x04000057 => self.effects.write_8(address, value),
             // Palette RAM
-            0x05000000..=0x05FFFFFF => self.palette_ram[(address & 0x3FF) as usize] = value,
+            0x05000000..=0x05FFFFFF => {
+                let index = (address & 0x3FE) as usize;
+                self.palette_ram[index] = value;
+                self.palette_ram[index + 1] = value;
+            }
             // VRAM (with 128KB mirror)
             0x06000000..=0x06FFFFFF => {
                 let offset = (address & 0x1FFFF) as usize;
                 let index = if offset >= 0x18000 { offset - 0x8000 } else { offset };
-                self.vram[index] = value;
+                let obj_region = match self.lcd_control.is_bitmap_mode() {
+                    true => 0x14000,
+                    false => OBJ_VRAM_START,
+                };
+                // byte writes are ignored in the OBJ region
+                if index < obj_region {
+                    let aligned = index & !1;
+                    self.vram[aligned] = value;
+                    self.vram[aligned + 1] = value;
+                }
             }
             // OAM
-            0x07000000..=0x07FFFFFF => self.oam[(address & 0x3FF) as usize] = value,
+            0x07000000..=0x07FFFFFF => {}
             _ => panic!("Invalid byte write for Ppu Register: {:#010X}", address),
+        }
+    }
+
+    fn write_16(&mut self, address: u32, value: u16) {
+        let low = value as u8;
+        let high = (value >> 8) as u8;
+        match address {
+            // Palette RAM
+            0x05000000..=0x05FFFFFF => {
+                let index = (address & 0x3FE) as usize;
+                self.palette_ram[index] = low;
+                self.palette_ram[index + 1] = high;
+            }
+            // VRAM (with 128KB mirror)
+            0x06000000..=0x06FFFFFF => {
+                let offset = (address & 0x1FFFE) as usize;
+                let index = if offset >= 0x18000 { offset - 0x8000 } else { offset };
+                self.vram[index] = low;
+                self.vram[index + 1] = high;
+            }
+            // OAM
+            0x07000000..=0x07FFFFFF => {
+                let index = (address & 0x3FE) as usize;
+                self.oam[index] = low;
+                self.oam[index + 1] = high;
+            }
+            // PPU registers
+            _ => {
+                self.write_8(address, low);
+                self.write_8(address + 1, high);
+            }
         }
     }
 }

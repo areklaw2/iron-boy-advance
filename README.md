@@ -10,7 +10,7 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
     - [ ] Open Bus
   - [ ] Hardware
     - [x] LCD
-    - [ ] Sound
+    - [x] Sound
     - [x] Timers
     - [x] DMA Transfers
     - [ ] Communication Ports
@@ -55,6 +55,7 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
   - bios :white_check_mark:
   - ppu :white_check_mark:
   - nes :white_check_mark:
+  - memory :white_check_mark:
 - [arm-wrestler](https://github.com/destoer/armwrestler-gba-fixed) :white_check_mark:
 
 ## License

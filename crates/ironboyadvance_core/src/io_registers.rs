@@ -91,4 +91,14 @@ impl SystemMemoryAccess for IoRegisters {
             ),
         }
     }
+
+    fn write_16(&mut self, address: u32, value: u16) {
+        match address {
+            0x05000000..=0x07FFFFFF => self.ppu.write_16(address, value),
+            _ => {
+                self.write_8(address, value as u8);
+                self.write_8(address + 1, (value >> 8) as u8);
+            }
+        }
+    }
 }
