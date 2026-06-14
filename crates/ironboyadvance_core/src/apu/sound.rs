@@ -63,20 +63,20 @@ pub struct DmaSoundControl {
     #[bits(2)]
     psg_volume_ratio: PsgVolumeRatio,
     #[bits(1)]
-    dma_a_volume_ratio: DmaVolumeRatio,
+    a_volume_ratio: DmaVolumeRatio,
     #[bits(1)]
-    dma_b_volume_ratio: DmaVolumeRatio,
+    b_volume_ratio: DmaVolumeRatio,
     #[bits(4)]
     _not_used_4_7: u8,
-    dma_a_right_enable: bool,
-    dma_a_left_enable: bool,
+    a_right_enable: bool,
+    a_left_enable: bool,
     // false = Timer 0, true = Timer 1.
-    dma_a_timer_select: bool,
-    dma_a_reset_fifo: bool,
-    dma_b_right_enable: bool,
-    dma_b_left_enable: bool,
-    dma_b_timer_select: bool,
-    dma_b_reset_fifo: bool,
+    a_timer_select: bool,
+    a_reset_fifo: bool,
+    b_right_enable: bool,
+    b_left_enable: bool,
+    b_timer_select: bool,
+    b_reset_fifo: bool,
 }
 
 impl RegisterOps<u16> for DmaSoundControl {
@@ -95,11 +95,11 @@ impl RegisterOps<u16> for DmaSoundControl {
 
 impl DmaSoundControl {
     pub fn dma_a_active(&self, timer_id: usize) -> bool {
-        self.dma_a_timer_select() as usize == timer_id && (self.dma_a_left_enable() || self.dma_a_right_enable())
+        self.a_timer_select() as usize == timer_id && (self.a_left_enable() || self.a_right_enable())
     }
 
     pub fn dma_b_active(&self, timer_id: usize) -> bool {
-        self.dma_b_timer_select() as usize == timer_id && (self.dma_b_left_enable() || self.dma_b_right_enable())
+        self.b_timer_select() as usize == timer_id && (self.b_left_enable() || self.b_right_enable())
     }
 }
 

@@ -188,20 +188,20 @@ impl Apu {
         let mut left = left * psg_ratio / 4.0;
         let mut right = right * psg_ratio / 4.0;
 
-        let dma = &self.dma_sound_control;
-        let dma_a = self.fifo_a.output() as f32 / 128.0 * dma.dma_a_volume_ratio().scale();
-        let dma_b = self.fifo_b.output() as f32 / 128.0 * dma.dma_b_volume_ratio().scale();
+        let dma_control = &self.dma_sound_control;
+        let dma_a = self.fifo_a.output() as f32 / 128.0 * dma_control.a_volume_ratio().scale();
+        let dma_b = self.fifo_b.output() as f32 / 128.0 * dma_control.b_volume_ratio().scale();
 
-        if dma.dma_a_left_enable() {
+        if dma_control.a_left_enable() {
             left += dma_a;
         }
-        if dma.dma_a_right_enable() {
+        if dma_control.a_right_enable() {
             right += dma_a;
         }
-        if dma.dma_b_left_enable() {
+        if dma_control.b_left_enable() {
             left += dma_b;
         }
-        if dma.dma_b_right_enable() {
+        if dma_control.b_right_enable() {
             right += dma_b;
         }
 
@@ -277,13 +277,13 @@ impl Apu {
     fn write_dma_sound_control(&mut self, address: u32, value: u8) {
         self.dma_sound_control.write_byte(address, value);
 
-        if self.dma_sound_control.dma_a_reset_fifo() {
+        if self.dma_sound_control.a_reset_fifo() {
             self.fifo_a.reset();
-            self.dma_sound_control.set_dma_a_reset_fifo(false);
+            self.dma_sound_control.set_a_reset_fifo(false);
         }
-        if self.dma_sound_control.dma_b_reset_fifo() {
+        if self.dma_sound_control.b_reset_fifo() {
             self.fifo_b.reset();
-            self.dma_sound_control.set_dma_b_reset_fifo(false);
+            self.dma_sound_control.set_b_reset_fifo(false);
         }
     }
 }
