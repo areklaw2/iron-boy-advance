@@ -6,8 +6,7 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
 
 - [ ] Game Boy Advance Components
   - [x] CPU (ARM7TDMI)
-  - [ ] Memory
-    - [ ] Open Bus
+  - [x] Memory
   - [ ] Hardware
     - [x] LCD
     - [x] Sound
@@ -56,7 +55,37 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
   - ppu :white_check_mark:
   - nes :white_check_mark:
   - memory :white_check_mark:
+  - unsafe :white_check_mark:
 - [arm-wrestler](https://github.com/destoer/armwrestler-gba-fixed) :white_check_mark:
+
+## Acknowledgements and Sources
+
+### Docs
+
+- [GBATEK](https://problemkaputt.de/gbatek.htm) - The meat and potatoes, an amazing, essential peice of documention.
+- [TONC](https://gbadev.net/tonc/foreword.html) - Helped alot with the component implementations and I had a lot of fun running the demos.
+
+### Emulators
+
+- [NanoBoyAdvance](https://github.com/nba-emu/NanoBoyAdvance) - An awesome project, it really helped me get a lot of the concepts of gba emulation, especially when I was stuck.
+- [mgba](https://github.com/mgba-emu/mgba) - I've been a fan of this project since I knew what an emulator was; its so awesome.
+- [rustboyadvance-ng](https://github.com/michelhe/rustboyadvance-ng) - the first emulator written in rust I ever came across and it inspired me to start making an eumlator.
+
+### Test Suites
+
+- [SingleStepTests/ARM7TDMI](https://github.com/SingleStepTests/ARM7TDMI) - this project was so helpful it gave me a great feedback loop when I was working on the CPU.
+- [GBA Tests](https://github.com/jsmolka/gba-tests) - an essential test suite.
+- [armwrestler-gba-fixed](https://github.com/destoer/armwrestler-gba-fixed) - 🦾 I was so happy when I got this to pass.
+
+### Blogs
+
+- [Gregory Gaines' blog](https://www.gregorygaines.com/) - Super helpful posts on the decomposing the ARM7TDMI instruction set and scheduler based game loops.
+- [RadDad772's blog](https://raddad772.github.io/) - Great posts about the PPU that really help TONC click for me.
+- [jsgroth's blog](https://jsgroth.dev/blog/) - Cool posts that helped me improve the sound quality of my emulator.
+
+### Libraries
+
+- [bitfields-rs](https://github.com/gregorygaines/bitfields-rs) - a crate created by Gregory Gaines (a really awesome dude) that help me streamline my code.
 
 ## License
 
