@@ -111,8 +111,8 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
                 overshoot = gba.run(CYCLES_PER_FRAME, overshoot);
 
                 if let (Some(producer), Some(resampler)) = (audio_producer.as_mut(), resampler.as_mut()) {
-                    for &frame in gba.audio_buffer() {
-                        resampler.push_frame(frame, |left, right| {
+                    for &sample in gba.audio_buffer() {
+                        resampler.push_sample(sample, |left, right| {
                             let _ = producer.try_push(left);
                             let _ = producer.try_push(right);
                         });

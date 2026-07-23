@@ -55,7 +55,7 @@ pub fn start() -> Option<AudioOutput> {
 pub struct Resampler {
     step: f64,
     next_output_position: f64,
-    previous_frame: (f32, f32),
+    previous_sample: (f32, f32),
 }
 
 impl Resampler {
@@ -63,13 +63,13 @@ impl Resampler {
         Resampler {
             step: input_rate as f64 / output_rate as f64,
             next_output_position: 0.0,
-            previous_frame: (0.0, 0.0),
+            previous_sample: (0.0, 0.0),
         }
     }
 
-    pub fn push_frame(&mut self, frame: (f32, f32), mut emit: impl FnMut(f32, f32)) {
-        let (previous_left, previous_right) = self.previous_frame;
-        let (current_left, current_right) = frame;
+    pub fn push_sample(&mut self, sample: (f32, f32), mut emit: impl FnMut(f32, f32)) {
+        let (previous_left, previous_right) = self.previous_sample;
+        let (current_left, current_right) = sample;
 
         while self.next_output_position < 1.0 {
             let fraction = self.next_output_position as f32;
@@ -79,7 +79,7 @@ impl Resampler {
             self.next_output_position += self.step;
         }
         self.next_output_position -= 1.0;
-        self.previous_frame = frame;
+        self.previous_sample = sample;
     }
 }
 
@@ -95,7 +95,7 @@ mod tests {
 
         let mut emitted = 0;
         for _ in 0..input_rate {
-            resampler.push_frame((0.5, -0.5), |_, _| emitted += 1);
+            resampler.push_sample((0.5, -0.5), |_, _| emitted += 1);
         }
 
         // One second of input frames should produce ~one second of output frames.
@@ -107,11 +107,11 @@ mod tests {
     fn constant_input_yields_constant_output() {
         let mut resampler = Resampler::new(32768, 48000);
         // Prime previous_frame so interpolation has no edge to ramp from.
-        resampler.push_frame((1.0, -1.0), |_, _| {});
+        resampler.push_sample((1.0, -1.0), |_, _| {});
 
         let mut all_constant = true;
         for _ in 0..1000 {
-            resampler.push_frame((1.0, -1.0), |left, right| {
+            resampler.push_sample((1.0, -1.0), |left, right| {
                 if (left - 1.0).abs() > f32::EPSILON || (right + 1.0).abs() > f32::EPSILON {
                     all_constant = false;
                 }
