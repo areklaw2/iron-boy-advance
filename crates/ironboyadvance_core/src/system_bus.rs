@@ -15,7 +15,7 @@ use crate::{
     bios::Bios,
     cartridge::Cartridge,
     dma_control::ChunkSize,
-    events::{ApuEvent, DmaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
+    events::{ApuEvent, CartridgeEvent, DmaEvent, GbaEvent, InterruptEvent, PpuEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
     system_control::HaltMode,
@@ -316,12 +316,16 @@ impl SystemBus {
         self.io_registers.apu_mut().handle_event(apu_event);
     }
 
+    pub fn handle_timer_event(&mut self, timer_event: TimerEvent) {
+        self.io_registers.timer_controller_mut().handle_event(timer_event);
+    }
+
     pub fn handle_dma_event(&mut self, dma_event: DmaEvent) {
         self.io_registers.dma_controller_mut().handle_event(dma_event);
     }
 
-    pub fn handle_timer_event(&mut self, timer_event: TimerEvent) {
-        self.io_registers.timer_controller_mut().handle_event(timer_event);
+    pub fn handle_cartridge_event(&mut self, cartridge_event: CartridgeEvent) {
+        self.cartridge.handle_event(cartridge_event);
     }
 
     pub fn run_dma(&mut self) {

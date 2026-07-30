@@ -55,7 +55,7 @@ impl GameBoyAdvance {
         show_logs: bool,
     ) -> Result<GameBoyAdvance, GbaError> {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
-        let cartridge = Cartridge::load(rom_path, rom_buffer)?;
+        let cartridge = Cartridge::load(rom_path, rom_buffer, scheduler.clone())?;
         let bios = Bios::load(bios_buffer)?;
         let skip_bios = !bios.loaded();
         let gba = GameBoyAdvance {
@@ -123,6 +123,7 @@ impl GameBoyAdvance {
                 GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event, timestamp),
                 GbaEvent::Apu(apu_event) => self.arm7tdmi.bus_mut().handle_apu_event(apu_event),
                 GbaEvent::Dma(dma_event) => self.arm7tdmi.bus_mut().handle_dma_event(dma_event),
+                GbaEvent::Cartridge(cartridge_event) => self.arm7tdmi.bus_mut().handle_cartridge_event(cartridge_event),
             }
         }
     }

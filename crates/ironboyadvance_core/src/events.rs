@@ -50,6 +50,11 @@ pub enum DmaEvent {
     StopVideo,
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum CartridgeEvent {
+    EepromReady,
+}
+
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum GbaEvent {
@@ -59,12 +64,17 @@ pub enum GbaEvent {
     Apu(ApuEvent),
     Timer(TimerEvent),
     Dma(DmaEvent),
+    Cartridge(CartridgeEvent),
 }
 
 impl SystemEvent for GbaEvent {
     fn priority(&self) -> u8 {
         match self {
-            GbaEvent::FrameComplete | GbaEvent::Interrupt(_) | GbaEvent::Ppu(_) | GbaEvent::Apu(_) => 0,
+            GbaEvent::FrameComplete
+            | GbaEvent::Interrupt(_)
+            | GbaEvent::Ppu(_)
+            | GbaEvent::Apu(_)
+            | GbaEvent::Cartridge(_) => 0,
             GbaEvent::Dma(dma_event) => match dma_event {
                 DmaEvent::Activate { .. } => 0,
                 DmaEvent::Request(_) => 1,
