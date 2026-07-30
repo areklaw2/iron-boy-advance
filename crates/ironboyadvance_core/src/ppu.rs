@@ -103,6 +103,7 @@ pub struct Ppu {
     win_obj_line: [bool; VIEWPORT_WIDTH],
     win_control_line: [WindowControl; VIEWPORT_WIDTH],
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
+    events: Vec<FutureGbaEvent>,
 }
 
 impl Ppu {
@@ -130,6 +131,7 @@ impl Ppu {
             win_obj_line: [false; VIEWPORT_WIDTH],
             win_control_line: [WindowControl::no_windowing_control(); VIEWPORT_WIDTH],
             scheduler,
+            events: Vec::new(),
         }
     }
 }
@@ -258,105 +260,97 @@ impl Ppu {
     }
 
     pub fn handle_event(&mut self, event: PpuEvent, timestamp: usize) {
-        let events = match event {
+        match event {
             PpuEvent::HDraw => self.handle_hdraw_complete(),
             PpuEvent::HBlank => self.handle_hblank_complete(),
             PpuEvent::VBlankHDraw => self.handle_vblank_hdraw_complete(),
             PpuEvent::VBlankHBlank => self.handle_vblank_hblank_complete(),
         };
 
-        for (event_type, delta) in events {
+        for (event_type, delta) in self.events.drain(..) {
             self.scheduler
                 .borrow_mut()
                 .schedule_at_timestamp(event_type, timestamp + delta);
         }
     }
 
-    fn handle_hdraw_complete(&mut self) -> Vec<FutureGbaEvent> {
-        let mut events = vec![];
+    fn handle_hdraw_complete(&mut self) {
         self.render_scanline();
         self.lcd_status.set_h_blank_flag(true);
 
         if self.lcd_status.h_blank_irq_enabled() {
-            events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
+            self.events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 
-        events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::HBlank)), 0));
+        self.events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::HBlank)), 0));
         if (2..=159).contains(&self.v_count) {
-            events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::Video)), 0));
+            self.events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::Video)), 0));
         }
 
         self.advance_affine_points();
-        events.push((GbaEvent::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
-        events
+        self.events.push((GbaEvent::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
     }
 
-    fn handle_hblank_complete(&mut self) -> Vec<FutureGbaEvent> {
-        let mut events = vec![];
+    fn handle_hblank_complete(&mut self) {
         if let Some(v_count_match) = self.set_v_count(self.v_count + 1) {
-            events.push((GbaEvent::Interrupt(v_count_match), 0));
+            self.events.push((GbaEvent::Interrupt(v_count_match), 0));
         }
 
         self.lcd_status.set_h_blank_flag(false);
 
         if (self.v_count as usize) < VDRAW_SCANLINES {
-            events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
+            self.events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         } else {
             self.lcd_status.set_v_blank_flag(true);
 
             if self.lcd_status.v_blank_irq_enabled() {
-                events.push((GbaEvent::Interrupt(InterruptEvent::LcdVBlank), 0));
+                self.events.push((GbaEvent::Interrupt(InterruptEvent::LcdVBlank), 0));
             }
 
             if self.v_count as usize == VIEWPORT_HEIGHT {
-                events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::VBlank)), 0));
+                self.events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::VBlank)), 0));
             }
 
-            events.push((GbaEvent::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
+            self.events.push((GbaEvent::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
         }
-        events
     }
 
-    fn handle_vblank_hdraw_complete(&mut self) -> Vec<FutureGbaEvent> {
-        let mut events = vec![];
+    fn handle_vblank_hdraw_complete(&mut self) {
         self.lcd_status.set_h_blank_flag(true);
 
         if self.lcd_status.h_blank_irq_enabled() {
-            events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
+            self.events.push((GbaEvent::Interrupt(InterruptEvent::LcdHBlank), 0));
         }
 
         if matches!(self.v_count, 160 | 161) {
-            events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::Video)), 0));
+            self.events.push((GbaEvent::Dma(DmaEvent::Request(RequestType::Video)), 0));
         }
 
-        events.push((GbaEvent::Ppu(PpuEvent::VBlankHBlank), HBLANK_CYCLES));
-        events
+        self.events.push((GbaEvent::Ppu(PpuEvent::VBlankHBlank), HBLANK_CYCLES));
     }
 
-    fn handle_vblank_hblank_complete(&mut self) -> Vec<FutureGbaEvent> {
-        let mut events = vec![];
+    fn handle_vblank_hblank_complete(&mut self) {
         self.lcd_status.set_h_blank_flag(false);
 
         if (self.v_count as usize) < MAX_V_COUNT {
             if let Some(v_count_match) = self.set_v_count(self.v_count + 1) {
-                events.push((GbaEvent::Interrupt(v_count_match), 0));
+                self.events.push((GbaEvent::Interrupt(v_count_match), 0));
             }
 
             if self.v_count == 162 {
-                events.push((GbaEvent::Dma(DmaEvent::StopVideo), 0));
+                self.events.push((GbaEvent::Dma(DmaEvent::StopVideo), 0));
             }
 
-            events.push((GbaEvent::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
+            self.events.push((GbaEvent::Ppu(PpuEvent::VBlankHDraw), HDRAW_CYCLES));
         } else {
             if let Some(v_count_match) = self.set_v_count(0) {
-                events.push((GbaEvent::Interrupt(v_count_match), 0));
+                self.events.push((GbaEvent::Interrupt(v_count_match), 0));
             }
 
             self.lcd_status.set_v_blank_flag(false);
             self.background.reload_affine_points();
-            events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
+            self.events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         }
-        events
     }
 
     fn render_scanline(&mut self) {
