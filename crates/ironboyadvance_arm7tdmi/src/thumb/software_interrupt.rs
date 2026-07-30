@@ -1,8 +1,9 @@
 use crate::{
-    BitOps, CpuAction, Exception,
+    CpuAction, Exception,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };
+use ironboyadvance_common::bits::BitOps;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SoftwareInterrupt {

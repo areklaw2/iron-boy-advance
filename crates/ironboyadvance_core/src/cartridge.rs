@@ -65,8 +65,6 @@ impl Cartridge {
         let config = determine_cartridge_config(&buffer, &header);
         let save_file = rom_path.with_extension("sav");
 
-        println!("{:?}", config.backup_type());
-
         let backup: Box<dyn CartridgeBackup> = match config.backup_type() {
             BackupType::None => Box::new(NoBackup::new(buffer)),
             BackupType::Sram => Box::new(Sram::new(buffer, &save_file)?),

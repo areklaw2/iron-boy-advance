@@ -1,11 +1,11 @@
 use getset::CopyGetters;
 
 use crate::{
-    BitOps, Condition, CpuAction,
+    Condition, CpuAction,
     cpu::{Arm7tdmiCpu, Instruction, LR},
     memory::MemoryInterface,
 };
-use ironboyadvance_common::bits::SignExtend;
+use ironboyadvance_common::bits::{BitOps, SignExtend};
 
 #[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct BranchAndBranchWithLink {

@@ -1,5 +1,7 @@
+use ironboyadvance_common::bits::BitOps;
+
 use crate::{
-    BitOps, Condition, CpuAction,
+    Condition, CpuAction,
     arm::{
         block_data_transfer::BlockDataTransfer, branch_and_branch_link::BranchAndBranchWithLink,
         branch_and_exchange::BranchAndExchange, data_processing::DataProcessing,

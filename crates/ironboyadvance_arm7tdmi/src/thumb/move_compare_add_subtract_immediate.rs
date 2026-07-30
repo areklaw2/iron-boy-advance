@@ -1,7 +1,7 @@
-use ironboyadvance_common::memory::MemoryAccess;
+use ironboyadvance_common::{bits::BitOps, memory::MemoryAccess};
 
 use crate::{
-    BitOps, CpuAction, LoRegister, MovCmpAddSubImmediateOpcode,
+    CpuAction, LoRegister, MovCmpAddSubImmediateOpcode,
     alu::{add, cmp, mov, sub},
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,

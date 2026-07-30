@@ -1,7 +1,8 @@
 use getset::CopyGetters;
+use ironboyadvance_common::bits::BitOps;
 
 use crate::{
-    BitOps, Condition, CpuAction, Exception,
+    Condition, CpuAction, Exception,
     cpu::{Arm7tdmiCpu, Instruction},
     memory::MemoryInterface,
 };

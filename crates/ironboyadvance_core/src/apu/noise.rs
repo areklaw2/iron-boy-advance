@@ -3,6 +3,7 @@ use crate::apu::period::Period;
 use crate::apu::volume_envelope::{EnvelopeDirection, VolumeEnvelope};
 use bitfields::{bitfield, bitflag};
 use getset::{CopyGetters, Setters};
+use ironboyadvance_common::bits::BitOps;
 use ironboyadvance_common::memory::SystemMemoryAccess;
 use ironboyadvance_common::register_ops::RegisterOps;
 
@@ -53,10 +54,11 @@ impl CounterWidth {
     }
 
     fn step(&self, lfsr: u16) -> u16 {
-        let feedback = !((lfsr ^ (lfsr >> 1)) & 1) & 1;
-        let tap = self.width() - 1; // 14 or 6
-        let shifted = lfsr >> 1;
-        (shifted & !(1 << tap)) | (feedback << tap)
+        let feedback_bit = !(lfsr.bit(0) ^ lfsr.bit(1));
+        let tap = (self.width() - 1) as usize; // 14 or 6
+        let mut shifted = lfsr >> 1;
+        shifted.set_bit(tap, feedback_bit);
+        shifted
     }
 }
 

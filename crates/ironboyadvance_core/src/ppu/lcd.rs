@@ -1,5 +1,6 @@
 use bitfields::{bitfield, bitflag};
 
+use ironboyadvance_common::bits::BitOps;
 use ironboyadvance_common::register_ops::RegisterOps;
 
 #[bitflag(u8)]
@@ -66,7 +67,7 @@ impl LcdControl {
     }
 
     pub fn bg_mode_supported(&self, bg: usize) -> bool {
-        let allowed_bg_mask = match self.bg_mode() {
+        let allowed_bg_mask: u8 = match self.bg_mode() {
             BgMode::Mode0 => 0b1111,
             BgMode::Mode1 => 0b0111,
             BgMode::Mode2 => 0b1100,
@@ -74,7 +75,7 @@ impl LcdControl {
             BgMode::Mode6 | BgMode::Mode7 => 0,
         };
 
-        (allowed_bg_mask >> bg) & 1 == 1
+        allowed_bg_mask.bit(bg)
     }
 
     pub fn any_window_enabled(&self) -> bool {

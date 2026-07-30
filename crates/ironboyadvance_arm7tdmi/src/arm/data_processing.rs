@@ -1,9 +1,8 @@
 use getset::CopyGetters;
-
-use ironboyadvance_common::memory::MemoryAccess;
+use ironboyadvance_common::{bits::BitOps, memory::MemoryAccess};
 
 use crate::{
-    BitOps, Condition, CpuAction, DataProcessingOpcode, Register,
+    Condition, CpuAction, DataProcessingOpcode, Register,
     alu::*,
     barrel_shifter::*,
     cpu::{Arm7tdmiCpu, Instruction, PC},

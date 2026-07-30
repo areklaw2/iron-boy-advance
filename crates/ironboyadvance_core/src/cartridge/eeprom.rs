@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::{cell::Cell, rc::Rc};
 
+use ironboyadvance_common::bits::BitOps;
 use ironboyadvance_common::memory::SystemMemoryAccess;
 use ironboyadvance_common::scheduler::Scheduler;
 
@@ -135,8 +136,7 @@ impl SystemMemoryAccess for Eeprom {
                     0
                 } else {
                     let bit = position - DUMMY_BITS;
-                    //TODO: use bitops here
-                    ((data >> (63 - bit)) & 1) as u16
+                    data.bit((63 - bit) as usize) as u16
                 };
 
                 let next_position = position + 1;
