@@ -10,3 +10,11 @@ getset = "0.1.7"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 tracing-appender = "0.2.5"
+
+[profile.dev]
+opt-level = 1
+
+[profile.profiling]
+inherits = "dev"
+opt-level = 0
+debug = true
