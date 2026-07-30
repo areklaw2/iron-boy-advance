@@ -9,7 +9,7 @@ use std::{
     thread,
 };
 
-use ironboyadvance_core::{APU_SAMPLING_FREQUENCY, CYCLES_PER_FRAME, GameBoyAdvance};
+use ironboyadvance_gba::{APU_SAMPLING_FREQUENCY, CYCLES_PER_FRAME, GameBoyAdvance};
 use ringbuf::traits::Producer;
 
 use crate::{DesktopError, audio, frame::FrameTimer, input::KEYPAD_IDLE};

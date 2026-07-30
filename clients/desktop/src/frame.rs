@@ -1,5 +1,5 @@
 use getset::CopyGetters;
-use ironboyadvance_core::FPS;
+use ironboyadvance_gba::FPS;
 
 const FRAME_DURATION_NANOS: f32 = 1_000_000_000.0 / FPS;
 const FRAME_DURATION: std::time::Duration = std::time::Duration::from_nanos(FRAME_DURATION_NANOS as u64);

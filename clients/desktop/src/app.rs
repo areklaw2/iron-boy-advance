@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui_wgpu::ScreenDescriptor;
-use ironboyadvance_core::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+use ironboyadvance_gba::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,

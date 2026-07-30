@@ -8,7 +8,7 @@ name = "IronBoyAdvance"
 path = "src/main.rs"
 
 [dependencies]
-ironboyadvance_core = { path = "../../crates/ironboyadvance_core" }
+ironboyadvance_gba = { path = "../../crates/ironboyadvance_gba" }
 clap = { version = "4.5.23", features = ["derive"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -18,11 +18,11 @@ getset = { workspace = true }
 
 winit = "0.30"
 wgpu = "29.0.1"
-pollster = "0.4.0"
+pollster = "1.0.1"
 bytemuck = { version = "1.16", features = ["derive"] }
-egui = "0.34.1"
-egui-wgpu = "0.34.1"
-egui-winit = "0.34.1"
+egui = "0.35.0"
+egui-wgpu = "0.35.0"
+egui-winit = "0.35.0"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 cpal = "0.18.1"
 ringbuf = "0.5.0"

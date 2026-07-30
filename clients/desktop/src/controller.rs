@@ -1,4 +1,4 @@
-use ironboyadvance_core::KeypadButton;
+use ironboyadvance_gba::KeypadButton;
 
 #[cfg(not(target_os = "macos"))]
 mod gilrs_backend;

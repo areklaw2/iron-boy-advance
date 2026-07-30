@@ -1,5 +1,5 @@
 use gilrs::{Button, EventType, Gilrs};
-use ironboyadvance_core::KeypadButton;
+use ironboyadvance_gba::KeypadButton;
 
 use super::ControllerBackend;
 

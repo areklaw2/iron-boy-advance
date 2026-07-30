@@ -3,7 +3,7 @@ use std::sync::{
     atomic::{AtomicU16, Ordering},
 };
 
-use ironboyadvance_core::KeypadButton;
+use ironboyadvance_gba::KeypadButton;
 use winit::keyboard::{KeyCode, ModifiersState};
 
 pub const KEYPAD_IDLE: u16 = 0x03FF;

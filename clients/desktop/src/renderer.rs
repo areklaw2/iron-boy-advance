@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bytemuck::{Pod, Zeroable};
-use ironboyadvance_core::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+use ironboyadvance_gba::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
