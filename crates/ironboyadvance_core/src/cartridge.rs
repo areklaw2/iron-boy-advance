@@ -5,13 +5,18 @@ use ironboyadvance_common::memory::SystemMemoryAccess;
 use thiserror::Error;
 
 use crate::cartridge::{
-    config::{BackupType, CartridgeDevice, determine_cartridge_config},
+    config::{
+        BackupType::{self},
+        CartridgeDevice, determine_cartridge_config,
+    },
+    eeprom::Eeprom,
     no_backup::NoBackup,
     sram::Sram,
 };
 
 mod backup_file;
 mod config;
+mod eeprom;
 mod header;
 mod no_backup;
 mod sram;
@@ -49,10 +54,12 @@ impl Cartridge {
         let config = determine_cartridge_config(&buffer, &header);
         let save_file = rom_path.with_extension("sav");
 
+        println!("{:?}", config.backup_type());
+
         let backup: Box<dyn CartridgeBackup> = match config.backup_type() {
             BackupType::None => Box::new(NoBackup::new(buffer)),
             BackupType::Sram => Box::new(Sram::new(buffer, &save_file)?),
-            BackupType::Eeprom => todo!(),
+            BackupType::Eeprom => Box::new(Eeprom::new(buffer, &save_file)?),
             BackupType::Flash64KB => todo!(),
             BackupType::Flash128KB => todo!(),
         };
