@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, Copy, Clone)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum ShiftType {
@@ -26,6 +28,17 @@ impl From<u16> for ShiftType {
             0b01 => Self::LSR,
             0b10 => Self::ASR,
             _ => unreachable!(),
+        }
+    }
+}
+
+impl fmt::Display for ShiftType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::LSL => write!(f, "LSL"),
+            Self::LSR => write!(f, "LSR"),
+            Self::ASR => write!(f, "ASR"),
+            Self::ROR => write!(f, "ROR"),
         }
     }
 }
