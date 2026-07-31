@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use bytemuck::{Pod, Zeroable};
-use ironboyadvance_gba::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -19,6 +18,8 @@ pub struct Renderer {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     surface_format: wgpu::TextureFormat,
+    viewport_width: usize,
+    viewport_height: usize,
 
     frame_texture: wgpu::Texture,
     _frame_view: wgpu::TextureView,
@@ -29,7 +30,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub async fn new(window: Arc<Window>) -> Self {
+    pub async fn new(window: Arc<Window>, viewport_width: usize, viewport_height: usize) -> Self {
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -89,8 +90,8 @@ impl Renderer {
         let frame_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("gba-frame-texture"),
             size: wgpu::Extent3d {
-                width: VIEWPORT_WIDTH as u32,
-                height: VIEWPORT_HEIGHT as u32,
+                width: viewport_width as u32,
+                height: viewport_height as u32,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -115,7 +116,7 @@ impl Renderer {
 
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("gba-frame-uniforms"),
-            contents: bytemuck::bytes_of(&compute_uniforms(size.width, size.height)),
+            contents: bytemuck::bytes_of(&compute_uniforms(size.width, size.height, viewport_width, viewport_height)),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -218,6 +219,8 @@ impl Renderer {
             queue,
             config,
             surface_format,
+            viewport_width,
+            viewport_height,
             frame_texture,
             _frame_view: frame_view,
             _sampler: sampler,
@@ -239,13 +242,18 @@ impl Renderer {
         self.config.width = size.width.min(max_dim);
         self.config.height = size.height.min(max_dim);
         self.surface.configure(&self.device, &self.config);
-        let uniforms = compute_uniforms(self.config.width, self.config.height);
+        let uniforms = compute_uniforms(
+            self.config.width,
+            self.config.height,
+            self.viewport_width,
+            self.viewport_height,
+        );
         self.queue
             .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
 
     pub fn upload_frame(&self, frame: &[u32]) {
-        debug_assert_eq!(frame.len(), VIEWPORT_WIDTH * VIEWPORT_HEIGHT);
+        debug_assert_eq!(frame.len(), self.viewport_width * self.viewport_height);
         self.queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.frame_texture,
@@ -256,12 +264,12 @@ impl Renderer {
             bytemuck::cast_slice(frame),
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some((VIEWPORT_WIDTH * 4) as u32),
-                rows_per_image: Some(VIEWPORT_HEIGHT as u32),
+                bytes_per_row: Some((self.viewport_width * 4) as u32),
+                rows_per_image: Some(self.viewport_height as u32),
             },
             wgpu::Extent3d {
-                width: VIEWPORT_WIDTH as u32,
-                height: VIEWPORT_HEIGHT as u32,
+                width: self.viewport_width as u32,
+                height: self.viewport_height as u32,
                 depth_or_array_layers: 1,
             },
         );
@@ -294,12 +302,12 @@ impl Renderer {
     }
 }
 
-fn compute_uniforms(window_w: u32, window_h: u32) -> Uniforms {
+fn compute_uniforms(window_w: u32, window_h: u32, viewport_width: usize, viewport_height: usize) -> Uniforms {
     let w = window_w.max(1) as f32;
     let h = window_h.max(1) as f32;
-    let s = (w / VIEWPORT_WIDTH as f32).min(h / VIEWPORT_HEIGHT as f32);
-    let rendered_w = VIEWPORT_WIDTH as f32 * s;
-    let rendered_h = VIEWPORT_HEIGHT as f32 * s;
+    let s = (w / viewport_width as f32).min(h / viewport_height as f32);
+    let rendered_w = viewport_width as f32 * s;
+    let rendered_h = viewport_height as f32 * s;
     Uniforms {
         scale: [rendered_w / w, rendered_h / h],
         offset: [0.0, 0.0],

@@ -8,9 +8,7 @@ name = "IronBoyAdvance"
 path = "src/main.rs"
 
 [dependencies]
-ironboyadvance_gba = { path = "../../crates/ironboyadvance_gba" }
-ironboyadvance_gbc = { path = "../../crates/ironboyadvance_gbc" }
-ironboyadvance_common = { path = "../../crates/ironboyadvance_common" }
+ironboyadvance = { path = "../../crates/ironboyadvance" }
 clap = { version = "4.5.23", features = ["derive"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

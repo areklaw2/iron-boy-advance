@@ -1,4 +1,4 @@
-use ironboyadvance_gba::KeypadButton;
+use ironboyadvance::KeypadButton;
 use objc2_game_controller::{GCController, GCExtendedGamepad};
 
 use super::ControllerBackend;

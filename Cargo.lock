@@ -712,9 +712,7 @@ dependencies = [
  "getset",
  "gilrs",
  "image",
- "ironboyadvance_common",
- "ironboyadvance_gba",
- "ironboyadvance_gbc",
+ "ironboyadvance",
  "objc2 0.6.4",
  "objc2-foundation 0.3.2",
  "objc2-game-controller",
@@ -1441,6 +1439,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e05c02b5e89bff3b946cedeca278abc628fe811e604f027c45a8aa3cf793d0eb"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "ironboyadvance"
+version = "0.1.0"
+dependencies = [
+ "ironboyadvance_common",
+ "ironboyadvance_gba",
+ "ironboyadvance_gbc",
+ "thiserror 2.0.19",
 ]
 
 [[package]]

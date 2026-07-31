@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use egui_wgpu::ScreenDescriptor;
-use ironboyadvance_gba::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
@@ -38,6 +37,7 @@ pub struct Application {
 
 impl Application {
     pub fn new(title: String, emulator: EmulatorHandle) -> Self {
+        let fps_timer = FrameTimer::new(emulator.fps);
         Self {
             title,
             emulator,
@@ -48,7 +48,7 @@ impl Application {
             gui: None,
             controller: None,
             last_frame: None,
-            fps_timer: FrameTimer::new(),
+            fps_timer,
         }
     }
 
@@ -141,14 +141,17 @@ impl Application {
             return Ok(());
         };
 
+        let viewport_width = self.emulator.viewport_width as f32;
+        let viewport_height = self.emulator.viewport_height as f32;
+
         let win_w = renderer.config().width as f32;
         let win_h = renderer.config().height as f32;
-        let scale = (win_w / VIEWPORT_WIDTH as f32).min(win_h / VIEWPORT_HEIGHT as f32);
-        let out_w = (VIEWPORT_WIDTH as f32 * scale).round().max(1.0) as u32;
-        let out_h = (VIEWPORT_HEIGHT as f32 * scale).round().max(1.0) as u32;
+        let scale = (win_w / viewport_width).min(win_h / viewport_height);
+        let out_w = (viewport_width * scale).round().max(1.0) as u32;
+        let out_h = (viewport_height * scale).round().max(1.0) as u32;
 
-        let src_w = VIEWPORT_WIDTH as u32;
-        let src_h = VIEWPORT_HEIGHT as u32;
+        let src_w = viewport_width as u32;
+        let src_h = viewport_height as u32;
 
         let mut rgba_buffer = Vec::with_capacity((out_w as usize) * (out_h as usize) * 4);
         for y in 0..out_h {
@@ -207,7 +210,7 @@ impl Application {
             HotKey::Reset => {
                 self.send_emulator_command(EmulatorCommand::Reset);
                 self.last_frame = None;
-                self.fps_timer = FrameTimer::new();
+                self.fps_timer = FrameTimer::new(self.emulator.fps);
             }
         }
 
@@ -223,9 +226,16 @@ impl ApplicationHandler for Application {
 
         let attrs = Window::default_attributes()
             .with_title(&self.title)
-            .with_inner_size(LogicalSize::new(VIEWPORT_WIDTH as u32 * 6, VIEWPORT_HEIGHT as u32 * 6));
+            .with_inner_size(LogicalSize::new(
+                self.emulator.viewport_width as u32 * 6,
+                self.emulator.viewport_height as u32 * 6,
+            ));
         let window = Arc::new(event_loop.create_window(attrs).expect("failed to create window"));
-        let renderer = pollster::block_on(Renderer::new(window.clone()));
+        let renderer = pollster::block_on(Renderer::new(
+            window.clone(),
+            self.emulator.viewport_width,
+            self.emulator.viewport_height,
+        ));
         let gui = Gui::new(renderer.device(), renderer.surface_format(), &window);
 
         self.window = Some(window);

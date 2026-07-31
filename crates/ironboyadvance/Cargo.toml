@@ -1,0 +1,10 @@
+[package]
+name = "ironboyadvance"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ironboyadvance_common = { path = "../ironboyadvance_common" }
+ironboyadvance_gba = { path = "../ironboyadvance_gba" }
+ironboyadvance_gbc = { path = "../ironboyadvance_gbc" }
+thiserror = { workspace = true }

@@ -1,5 +1,7 @@
-use ironboyadvance_common::bits::BitOps;
-use ironboyadvance_common::{bits::SignExtend, memory::MemoryAccess};
+use ironboyadvance_common::{
+    bits::{BitOps, SignExtend},
+    memory::MemoryAccess,
+};
 
 use crate::{
     CpuAction,

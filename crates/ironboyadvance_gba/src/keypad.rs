@@ -51,7 +51,8 @@ impl RegisterOps<u16> for KeyControl {
     }
 }
 
-//order matters!!
+// Order matters: discriminant is used as a bit position by consumers that pack button
+// presses into the KEYINPUT register format below (A=bit0, B=bit1, ... R=bit8, L=bit9).
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum KeypadButton {
     A,

@@ -24,6 +24,8 @@ pub enum DesktopError {
     EventLoopError(#[from] winit::error::EventLoopError),
     #[error("Screenshot failed: {0}")]
     ScreenshotError(#[from] image::ImageError),
+    #[error("Failed to boot emulator: {0}")]
+    BootError(#[from] ironboyadvance::BootError),
 }
 
 pub fn run(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Result<(), DesktopError> {

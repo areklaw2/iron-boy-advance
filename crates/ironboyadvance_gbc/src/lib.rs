@@ -3,6 +3,13 @@ use std::path::PathBuf;
 use ironboyadvance_common::emulator::Emulator;
 use thiserror::Error;
 
+pub const VIEWPORT_WIDTH: usize = 160;
+pub const VIEWPORT_HEIGHT: usize = 144;
+pub const CPU_CLOCK_SPEED: usize = 4_194_304;
+pub const CYCLES_PER_FRAME: usize = 70_224;
+pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
+pub const SAMPLE_RATE: u32 = 32768;
+
 #[derive(Error, Debug)]
 pub enum GbcError {}
 
