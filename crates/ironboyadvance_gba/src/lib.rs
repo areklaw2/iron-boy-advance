@@ -1,7 +1,7 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
-use ironboyadvance_common::scheduler::Scheduler;
+use ironboyadvance_common::{emulator::Emulator, scheduler::Scheduler};
 use thiserror::Error;
 
 use crate::{
@@ -42,8 +42,6 @@ pub enum GbaError {
 
 pub struct GameBoyAdvance {
     arm7tdmi: Arm7tdmiCpu<SystemBus>,
-    // may end up making a common cpu trait
-    // sharp_sm83: SharpSm83Cpu<SystemBus>,
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
 }
 
@@ -87,7 +85,27 @@ impl GameBoyAdvance {
         }
     }
 
-    pub fn run(&mut self, cycles: usize, overshoot: usize) -> usize {
+    fn handle_events(&mut self) -> bool {
+        loop {
+            let Some((event, timestamp)) = self.scheduler.borrow_mut().pop() else {
+                return false;
+            };
+
+            match event {
+                GbaEvent::FrameComplete => return true,
+                GbaEvent::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
+                GbaEvent::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
+                GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event, timestamp),
+                GbaEvent::Apu(apu_event) => self.arm7tdmi.bus_mut().handle_apu_event(apu_event),
+                GbaEvent::Dma(dma_event) => self.arm7tdmi.bus_mut().handle_dma_event(dma_event),
+                GbaEvent::Cartridge(cartridge_event) => self.arm7tdmi.bus_mut().handle_cartridge_event(cartridge_event),
+            }
+        }
+    }
+}
+
+impl Emulator for GameBoyAdvance {
+    fn run(&mut self, cycles: usize, overshoot: usize) -> usize {
         let start_time = self.scheduler.borrow().timestamp();
         let end_time = start_time + cycles - overshoot;
 
@@ -110,37 +128,19 @@ impl GameBoyAdvance {
         elapsed.saturating_sub(target)
     }
 
-    fn handle_events(&mut self) -> bool {
-        loop {
-            let Some((event, timestamp)) = self.scheduler.borrow_mut().pop() else {
-                return false;
-            };
-
-            match event {
-                GbaEvent::FrameComplete => return true,
-                GbaEvent::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
-                GbaEvent::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
-                GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event, timestamp),
-                GbaEvent::Apu(apu_event) => self.arm7tdmi.bus_mut().handle_apu_event(apu_event),
-                GbaEvent::Dma(dma_event) => self.arm7tdmi.bus_mut().handle_dma_event(dma_event),
-                GbaEvent::Cartridge(cartridge_event) => self.arm7tdmi.bus_mut().handle_cartridge_event(cartridge_event),
-            }
-        }
-    }
-
-    pub fn frame_buffer(&self) -> &[u32] {
+    fn frame_buffer(&self) -> &[u32] {
         self.arm7tdmi.bus().io_registers().ppu().frame_buffer()
     }
 
-    pub fn audio_buffer(&self) -> &[(f32, f32)] {
+    fn audio_buffer(&self) -> &[(f32, f32)] {
         self.arm7tdmi.bus().io_registers().apu().audio_buffer()
     }
 
-    pub fn clear_audio_buffer(&mut self) {
+    fn clear_audio_buffer(&mut self) {
         self.arm7tdmi.bus_mut().io_registers_mut().apu_mut().clear_audio_buffer();
     }
 
-    pub fn handle_pressed_buttons(&mut self, input: u16) {
+    fn handle_pressed_buttons(&mut self, input: u16) {
         let keypad = self.arm7tdmi.bus_mut().io_registers_mut().keypad_mut();
         keypad.set_key_input(input);
         if keypad.keypad_interrupt_raised() {

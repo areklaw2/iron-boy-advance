@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ironboyadvance_sharp_sm83 = { path = "../ironboyadvance_sharp_sm83"}
+ironboyadvance_common = { path = "../ironboyadvance_common" }
+thiserror = { workspace = true }
+bitfields = { workspace = true }
+getset = { workspace = true }
+tracing = { workspace = true }

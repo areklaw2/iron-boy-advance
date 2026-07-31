@@ -712,7 +712,9 @@ dependencies = [
  "getset",
  "gilrs",
  "image",
+ "ironboyadvance_common",
  "ironboyadvance_gba",
+ "ironboyadvance_gbc",
  "objc2 0.6.4",
  "objc2-foundation 0.3.2",
  "objc2-game-controller",
@@ -1471,7 +1473,6 @@ dependencies = [
  "getset",
  "ironboyadvance_arm7tdmi",
  "ironboyadvance_common",
- "ironboyadvance_sharp_sm83",
  "thiserror 2.0.19",
  "tracing",
 ]
@@ -1479,10 +1480,28 @@ dependencies = [
 [[package]]
 name = "ironboyadvance_gbc"
 version = "0.1.0"
+dependencies = [
+ "bitfields",
+ "getset",
+ "ironboyadvance_common",
+ "ironboyadvance_sharp_sm83",
+ "thiserror 2.0.19",
+ "tracing",
+]
 
 [[package]]
 name = "ironboyadvance_sharp_sm83"
 version = "0.1.0"
+dependencies = [
+ "bitfields",
+ "getset",
+ "ironboyadvance_common",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "is_terminal_polyfill"
