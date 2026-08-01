@@ -74,6 +74,9 @@ impl GameBoyColor {
     }
 
     pub fn cycle(&mut self) {
+        let halted = self.sm83.halted();
+        self.sm83.bus_mut().set_cpu_halted(halted);
+
         match self.sm83.halted() {
             true => match self.sm83.bus().interrupts_pending() {
                 true => {

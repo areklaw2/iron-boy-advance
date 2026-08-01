@@ -6,8 +6,15 @@ use ironboyadvance_sm83::GbMode;
 use tracing::debug;
 
 use crate::{
-    apu::Apu, dma_control::DmaController, events::GbcEvent, interrupt_control::InterruptController, joypad::Joypad,
-    ppu::Ppu, serial_transfer::SerialTransfer, speed_control::SpeedController, timer::Timer,
+    apu::Apu,
+    dma_control::DmaController,
+    events::GbcEvent,
+    interrupt_control::InterruptController,
+    joypad::Joypad,
+    ppu::{Ppu, registers::PpuMode},
+    serial_transfer::SerialTransfer,
+    speed_control::SpeedController,
+    timer::Timer,
 };
 
 #[derive(Getters, MutGetters)]
@@ -50,7 +57,7 @@ impl SystemMemoryAccess for IoRegisters {
             // Timer
             0xFF04..=0xFF07 => self.timer.read_8(address),
             // Dma
-            0xFF46 => self.dma_controller.read_8(address),
+            0xFF46 | 0xFF51..=0xFF55 => self.dma_controller.read_8(address),
             // Interrupt Control
             0xFF0F | 0xFFFF => self.interrupt_controller.read_8(address),
             // Apu
@@ -77,7 +84,11 @@ impl SystemMemoryAccess for IoRegisters {
             // Timer
             0xFF04..=0xFF07 => self.timer.write_8(address, value),
             // Dma
-            0xFF46 => self.dma_controller.write_8(address, value),
+            0xFF46 | 0xFF51..=0xFF54 => self.dma_controller.write_8(address, value),
+            0xFF55 => {
+                let in_h_blank = self.ppu.mode() == PpuMode::HBlank;
+                self.dma_controller.write_vram_dma_control(value, in_h_blank);
+            }
             // Interrupt Control
             0xFF0F | 0xFFFF => self.interrupt_controller.write_8(address, value),
             // Apu

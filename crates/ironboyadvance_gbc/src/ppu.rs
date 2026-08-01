@@ -265,10 +265,6 @@ impl Ppu {
         self.frame_buffer.fill(0xFFFFFF);
     }
 
-    pub fn ly(&self) -> u8 {
-        self.ly
-    }
-
     fn set_ly(&mut self, value: u8) {
         self.ly = value % NUMBER_OF_LINES;
         self.compare_line();

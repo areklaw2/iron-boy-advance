@@ -25,6 +25,8 @@ pub struct SystemBus {
     memory: Memory,
     io_registers: IoRegisters,
     scheduler: Rc<RefCell<Scheduler<GbcEvent>>>,
+    #[getset(skip)]
+    cpu_halted: bool,
 }
 
 impl SystemBus {
@@ -38,10 +40,15 @@ impl SystemBus {
             memory: Memory::new(),
             io_registers: IoRegisters::new(mode, skip_boot, scheduler.clone()),
             scheduler,
+            cpu_halted: false,
         }
     }
 
     fn m_cycle(&mut self) {
+        if self.io_registers.dma_controller().vram_dma_active() {
+            self.run_vram_dma();
+        }
+
         let t_cycles = match self.speed() {
             GbSpeed::Normal => NORMAL_SPEED_T_CYCLES,
             GbSpeed::Double => DOUBLE_SPEED_T_CYCLES,
@@ -91,17 +98,34 @@ impl SystemBus {
     }
 
     fn run_oam_dma(&mut self, timestamp: usize) {
-        let Some(transfer) = self.io_registers.dma_controller().next_transfer() else {
+        let Some(transfer) = self.io_registers.dma_controller().next_oam_transfer() else {
             return;
         };
 
         let value = self.read_8(transfer.source);
         self.write_8(transfer.destination, value);
-        self.io_registers.dma_controller_mut().complete_transfer(timestamp);
+        self.io_registers.dma_controller_mut().complete_oam_transfer(timestamp);
+    }
+
+    fn run_vram_dma(&mut self) {
+        while let Some(transfer) = self.io_registers.dma_controller().next_vram_transfer() {
+            let value = self.read_8(transfer.source);
+            self.write_8(transfer.destination, value);
+            self.io_registers.dma_controller_mut().complete_vram_transfer();
+        }
     }
 
     pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent, timestamp: usize) {
         self.io_registers.ppu_mut().handle_event(ppu_event, timestamp);
+
+        if ppu_event == PpuEvent::DrawingPixels {
+            let cpu_halted = self.cpu_halted;
+            self.io_registers.dma_controller_mut().start_h_blank_block(cpu_halted);
+        }
+    }
+
+    pub fn set_cpu_halted(&mut self, cpu_halted: bool) {
+        self.cpu_halted = cpu_halted;
     }
 
     pub fn speed(&self) -> GbSpeed {
