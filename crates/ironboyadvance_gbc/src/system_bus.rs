@@ -9,6 +9,7 @@ use ironboyadvance_sm83::{
 use tracing::debug;
 
 use crate::{
+    boot_rom::BootRom,
     cartridge::Cartridge,
     events::{GbcEvent, InterruptEvent, SerialEvent},
     io_registers::IoRegisters,
@@ -21,6 +22,7 @@ const DOUBLE_SPEED_M_CYCLES: usize = 2;
 #[derive(Getters, MutGetters)]
 #[getset(get = "pub", get_mut = "pub")]
 pub struct SystemBus {
+    boot_rom: BootRom,
     cartridge: Cartridge,
     memory: Memory,
     io_registers: IoRegisters,
@@ -28,8 +30,9 @@ pub struct SystemBus {
 }
 
 impl SystemBus {
-    pub fn new(cartridge: Cartridge, scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
+    pub fn new(cartridge: Cartridge, boot_rom: BootRom, scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
         SystemBus {
+            boot_rom,
             cartridge,
             memory: Memory::new(),
             io_registers: IoRegisters::new(scheduler.clone()),
@@ -68,6 +71,8 @@ impl SystemMemoryAccess for SystemBus {
 
     fn read_8(&self, address: u16) -> u8 {
         match address {
+            _ if self.boot_rom.contains(address) => self.boot_rom.read_8(address),
+            0xFF50 => self.boot_rom.read_8(address),
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.read_8(address),
             0xC000..=0xFDFF | 0xFF70 | 0xFF80..=0xFFFE => self.memory.read_8(address),
             0xFF00..=0xFF7F | 0xFFFF => self.io_registers.read_8(address),
@@ -80,6 +85,7 @@ impl SystemMemoryAccess for SystemBus {
 
     fn write_8(&mut self, address: u16, value: u8) {
         match address {
+            0xFF50 => self.boot_rom.write_8(address, value),
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.write_8(address, value),
             0xC000..=0xFDFF | 0xFF70 | 0xFF80..=0xFFFE => self.memory.write_8(address, value),
             0xFF00..=0xFF7F | 0xFFFF => self.io_registers.write_8(address, value),

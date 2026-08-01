@@ -45,6 +45,6 @@ pub fn boot(
 ) -> Result<Box<dyn Emulator>, BootError> {
     match kind {
         System::Gba => Ok(Box::new(GameBoyAdvance::new(PathBuf::from(rom_path), rom, bios, show_logs)?)),
-        System::Gb | System::Gbc => Ok(Box::new(GameBoyColor::new(PathBuf::from(rom_path), rom, show_logs)?)),
+        System::Gb | System::Gbc => Ok(Box::new(GameBoyColor::new(PathBuf::from(rom_path), rom, bios, show_logs)?)),
     }
 }

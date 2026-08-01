@@ -5,11 +5,13 @@ use ironboyadvance_sm83::{GbMode, cpu::Sm83};
 use thiserror::Error;
 
 use crate::{
+    boot_rom::{BootRom, BootRomError},
     cartridge::{Cartridge, CartridgeError},
     events::GbcEvent,
     system_bus::SystemBus,
 };
 
+mod boot_rom;
 mod cartridge;
 mod events;
 mod interrupt_control;
@@ -28,6 +30,8 @@ pub const SAMPLE_RATE: u32 = 32768;
 
 #[derive(Error, Debug)]
 pub enum GbcError {
+    #[error("Failed to load boot rom: {0}")]
+    BootRomError(#[from] BootRomError),
     #[error("Failed to load cartridge: {0}")]
     CartridgeError(#[from] CartridgeError),
 }
@@ -38,14 +42,25 @@ pub struct GameBoyColor {
 }
 
 impl GameBoyColor {
-    pub fn new(rom_path: PathBuf, rom_buffer: Vec<u8>, show_logs: bool) -> Result<GameBoyColor, GbcError> {
-        let skip_boot = true;
+    pub fn new(
+        rom_path: PathBuf,
+        rom_buffer: Vec<u8>,
+        boot_rom_buffer: Vec<u8>,
+        show_logs: bool,
+    ) -> Result<GameBoyColor, GbcError> {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         let cartridge = Cartridge::load(rom_path, rom_buffer)?;
+        let boot_rom = BootRom::load(boot_rom_buffer)?;
+        let skip_boot = !boot_rom.loaded();
         let mode = cartridge.mode();
 
         let gbc = GameBoyColor {
-            sm83: Sm83::new(SystemBus::new(cartridge, scheduler.clone()), show_logs, skip_boot, mode),
+            sm83: Sm83::new(
+                SystemBus::new(cartridge, boot_rom, scheduler.clone()),
+                show_logs,
+                skip_boot,
+                mode,
+            ),
             scheduler,
         };
         Ok(gbc)
