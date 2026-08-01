@@ -17,8 +17,7 @@ pub enum GbMode {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-#[allow(unused)]
-pub(crate) enum GbSpeed {
+pub enum GbSpeed {
     Normal,
     Double,
 }

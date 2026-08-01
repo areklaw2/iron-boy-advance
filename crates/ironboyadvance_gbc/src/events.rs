@@ -26,6 +26,11 @@ pub enum TimerEvent {}
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum DmaEvent {}
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum SerialEvent {
+    TransferBit,
+}
+
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum GbcEvent {
@@ -35,6 +40,7 @@ pub enum GbcEvent {
     Apu(ApuEvent),
     Timer(TimerEvent),
     Dma(DmaEvent),
+    Serial(SerialEvent),
 }
 
 impl SystemEvent for GbcEvent {
@@ -45,6 +51,7 @@ impl SystemEvent for GbcEvent {
             | GbcEvent::Ppu(_)
             | GbcEvent::Apu(_)
             | GbcEvent::Dma(_)
+            | GbcEvent::Serial(_)
             | GbcEvent::Timer(_) => 0,
         }
     }

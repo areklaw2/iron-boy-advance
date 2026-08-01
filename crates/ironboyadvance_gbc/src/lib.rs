@@ -10,6 +10,8 @@ mod events;
 mod interrupt_control;
 mod io_registers;
 mod memory;
+mod serial_transfer;
+mod speed_control;
 mod system_bus;
 
 pub const VIEWPORT_WIDTH: usize = 160;
@@ -33,7 +35,7 @@ impl GameBoyColor {
         let mode = GbMode::Color;
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         let gbc = GameBoyColor {
-            sm83: Sm83::new(SystemBus::new(), show_logs, skip_boot, mode),
+            sm83: Sm83::new(SystemBus::new(scheduler.clone()), show_logs, skip_boot, mode),
             scheduler,
         };
         Ok(gbc)
@@ -59,13 +61,14 @@ impl GameBoyColor {
 
     fn handle_events(&mut self) -> bool {
         loop {
-            let Some((event, _timestamp)) = self.scheduler.borrow_mut().pop() else {
+            let Some((event, timestamp)) = self.scheduler.borrow_mut().pop() else {
                 return false;
             };
 
             match event {
                 GbcEvent::FrameComplete => return true,
                 GbcEvent::Interrupt(interrupt_event) => self.sm83.bus_mut().raise_interrupt(interrupt_event),
+                GbcEvent::Serial(serial_event) => self.sm83.bus_mut().handle_serial_event(serial_event, timestamp),
                 GbcEvent::Ppu(_) => todo!(),
                 GbcEvent::Apu(_) => todo!(),
                 GbcEvent::Timer(_) => todo!(),
