@@ -31,7 +31,9 @@ pub enum TimerEvent {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum DmaEvent {}
+pub enum DmaEvent {
+    OamTransfer,
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum SerialEvent {

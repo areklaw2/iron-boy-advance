@@ -14,6 +14,7 @@ use crate::{
 mod apu;
 mod boot_rom;
 mod cartridge;
+mod dma_control;
 mod events;
 mod interrupt_control;
 mod io_registers;
@@ -31,6 +32,8 @@ pub const CPU_CLOCK_SPEED: usize = 4_194_304;
 pub const CYCLES_PER_FRAME: usize = 70_224;
 pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 pub const SAMPLE_RATE: u32 = 32768;
+pub(crate) const NORMAL_SPEED_T_CYCLES: usize = 4;
+pub(crate) const DOUBLE_SPEED_T_CYCLES: usize = 2;
 
 #[derive(Error, Debug)]
 pub enum GbcError {

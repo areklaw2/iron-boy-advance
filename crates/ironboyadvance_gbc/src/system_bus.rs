@@ -9,15 +9,13 @@ use ironboyadvance_sm83::{
 use tracing::debug;
 
 use crate::{
+    DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES,
     boot_rom::BootRom,
     cartridge::Cartridge,
-    events::{GbcEvent, InterruptEvent, PpuEvent, SerialEvent, TimerEvent},
+    events::{DmaEvent, GbcEvent, InterruptEvent, PpuEvent, SerialEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
 };
-
-const NORMAL_SPEED_T_CYCLES: usize = 4;
-const DOUBLE_SPEED_T_CYCLES: usize = 2;
 
 #[derive(Getters, MutGetters)]
 #[getset(get = "pub", get_mut = "pub")]
@@ -65,7 +63,7 @@ impl SystemBus {
                 GbcEvent::Ppu(ppu_event) => self.handle_ppu_event(ppu_event, timestamp),
                 GbcEvent::Timer(timer_event) => self.handle_timer_event(timer_event),
                 GbcEvent::Apu(_) => todo!(),
-                GbcEvent::Dma(_) => todo!(),
+                GbcEvent::Dma(dma_event) => self.handle_dma_event(dma_event, timestamp),
             }
         }
     }
@@ -84,6 +82,22 @@ impl SystemBus {
 
     pub fn handle_timer_event(&mut self, timer_event: TimerEvent) {
         self.io_registers.timer_mut().handle_event(timer_event);
+    }
+
+    pub fn handle_dma_event(&mut self, dma_event: DmaEvent, timestamp: usize) {
+        match dma_event {
+            DmaEvent::OamTransfer => self.run_oam_dma(timestamp),
+        }
+    }
+
+    fn run_oam_dma(&mut self, timestamp: usize) {
+        let Some(transfer) = self.io_registers.dma_controller().next_transfer() else {
+            return;
+        };
+
+        let value = self.read_8(transfer.source);
+        self.write_8(transfer.destination, value);
+        self.io_registers.dma_controller_mut().complete_transfer(timestamp);
     }
 
     pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent, timestamp: usize) {
@@ -154,6 +168,7 @@ impl MemoryInterface for SystemBus {
         let speed = self.speed();
         self.io_registers.serial_transfer_mut().set_speed(speed);
         self.io_registers.timer_mut().set_speed(speed);
+        self.io_registers.dma_controller_mut().set_speed(speed);
     }
 
     fn interrupt_context(&self) -> &InterruptContext {

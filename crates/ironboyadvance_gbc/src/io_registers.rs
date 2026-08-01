@@ -6,8 +6,8 @@ use ironboyadvance_sm83::GbMode;
 use tracing::debug;
 
 use crate::{
-    apu::Apu, events::GbcEvent, interrupt_control::InterruptController, joypad::Joypad, ppu::Ppu,
-    serial_transfer::SerialTransfer, speed_control::SpeedController, timer::Timer,
+    apu::Apu, dma_control::DmaController, events::GbcEvent, interrupt_control::InterruptController, joypad::Joypad,
+    ppu::Ppu, serial_transfer::SerialTransfer, speed_control::SpeedController, timer::Timer,
 };
 
 #[derive(Getters, MutGetters)]
@@ -20,6 +20,7 @@ pub struct IoRegisters {
     serial_transfer: SerialTransfer,
     speed_controller: SpeedController,
     timer: Timer,
+    dma_controller: DmaController,
 }
 
 impl IoRegisters {
@@ -31,7 +32,8 @@ impl IoRegisters {
             interrupt_controller: InterruptController::new(),
             serial_transfer: SerialTransfer::new(scheduler.clone()),
             speed_controller: SpeedController::new(),
-            timer: Timer::new(scheduler),
+            timer: Timer::new(scheduler.clone()),
+            dma_controller: DmaController::new(scheduler),
         }
     }
 }
@@ -47,6 +49,8 @@ impl SystemMemoryAccess for IoRegisters {
             0xFF01..=0xFF02 => self.serial_transfer.read_8(address),
             // Timer
             0xFF04..=0xFF07 => self.timer.read_8(address),
+            // Dma
+            0xFF46 => self.dma_controller.read_8(address),
             // Interrupt Control
             0xFF0F | 0xFFFF => self.interrupt_controller.read_8(address),
             // Apu
@@ -72,6 +76,8 @@ impl SystemMemoryAccess for IoRegisters {
             0xFF01..=0xFF02 => self.serial_transfer.write_8(address, value),
             // Timer
             0xFF04..=0xFF07 => self.timer.write_8(address, value),
+            // Dma
+            0xFF46 => self.dma_controller.write_8(address, value),
             // Interrupt Control
             0xFF0F | 0xFFFF => self.interrupt_controller.write_8(address, value),
             // Apu
