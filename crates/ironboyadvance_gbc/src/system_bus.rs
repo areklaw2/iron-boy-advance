@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use getset::{Getters, MutGetters};
 use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
 use ironboyadvance_sm83::{
-    GbSpeed,
+    GbMode, GbSpeed,
     memory::{InterruptContext, MemoryInterface},
 };
 use tracing::debug;
@@ -32,8 +32,7 @@ pub struct SystemBus {
 }
 
 impl SystemBus {
-    pub fn new(cartridge: Cartridge, boot_rom: BootRom, scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
-        let mode = cartridge.mode();
+    pub fn new(cartridge: Cartridge, boot_rom: BootRom, mode: GbMode, scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
         let skip_boot = !boot_rom.loaded();
 
         SystemBus {

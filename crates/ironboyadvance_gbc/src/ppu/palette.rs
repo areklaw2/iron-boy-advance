@@ -18,6 +18,10 @@ impl Palette {
         pallete
     }
 
+    pub fn shade(&self, color: u8) -> u8 {
+        self.data[color as usize]
+    }
+
     pub fn pixel_color(&self, color: u8) -> u32 {
         match self.data[color as usize] {
             0 => 0xFFFFFF,
@@ -60,7 +64,7 @@ impl CgbPalette {
         CgbPalette {
             increment: false,
             address: 0,
-            data: [[[0u8; 3]; 4]; 8],
+            data: [[[31, 31, 31], [21, 21, 21], [10, 10, 10], [0, 0, 0]]; 8],
         }
     }
 

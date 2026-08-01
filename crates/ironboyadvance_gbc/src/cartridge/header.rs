@@ -144,9 +144,9 @@ impl Header {
     }
 
     pub fn mode(&self) -> GbMode {
-        match self.cgb_flag {
-            0xC0 => GbMode::Color,
-            _ => GbMode::Monochrome,
+        match self.cgb_flag & 0x80 != 0 {
+            true => GbMode::Color,
+            false => GbMode::ColorAsMonochrome,
         }
     }
 

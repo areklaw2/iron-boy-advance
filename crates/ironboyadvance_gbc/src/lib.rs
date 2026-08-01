@@ -1,6 +1,9 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
-use ironboyadvance_common::{emulator::Emulator, scheduler::Scheduler};
+use ironboyadvance_common::{
+    emulator::{Emulator, System},
+    scheduler::Scheduler,
+};
 use ironboyadvance_sm83::{GbMode, cpu::Sm83, memory::MemoryInterface};
 use thiserror::Error;
 
@@ -50,6 +53,7 @@ pub struct GameBoyColor {
 
 impl GameBoyColor {
     pub fn new(
+        kind: System,
         rom_path: PathBuf,
         rom_buffer: Vec<u8>,
         boot_rom_buffer: Vec<u8>,
@@ -59,11 +63,15 @@ impl GameBoyColor {
         let cartridge = Cartridge::load(rom_path, rom_buffer)?;
         let boot_rom = BootRom::load(boot_rom_buffer)?;
         let skip_boot = !boot_rom.loaded();
-        let mode = cartridge.mode();
+
+        let mode = match kind {
+            System::Gb => GbMode::ColorAsMonochrome,
+            _ => cartridge.mode(),
+        };
 
         let gbc = GameBoyColor {
             sm83: Sm83::new(
-                SystemBus::new(cartridge, boot_rom, scheduler.clone()),
+                SystemBus::new(cartridge, boot_rom, mode, scheduler.clone()),
                 show_logs,
                 skip_boot,
                 mode,
