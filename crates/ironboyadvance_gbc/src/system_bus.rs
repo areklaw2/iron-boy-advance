@@ -9,8 +9,10 @@ use ironboyadvance_sm83::{
 use tracing::debug;
 
 use crate::{
+    cartridge::Cartridge,
     events::{GbcEvent, InterruptEvent, SerialEvent},
     io_registers::IoRegisters,
+    memory::Memory,
 };
 
 const NORMAL_SPEED_M_CYCLES: usize = 4;
@@ -19,13 +21,17 @@ const DOUBLE_SPEED_M_CYCLES: usize = 2;
 #[derive(Getters, MutGetters)]
 #[getset(get = "pub", get_mut = "pub")]
 pub struct SystemBus {
+    cartridge: Cartridge,
+    memory: Memory,
     io_registers: IoRegisters,
     scheduler: Rc<RefCell<Scheduler<GbcEvent>>>,
 }
 
 impl SystemBus {
-    pub fn new(scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
+    pub fn new(cartridge: Cartridge, scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
         SystemBus {
+            cartridge,
+            memory: Memory::new(),
             io_registers: IoRegisters::new(scheduler.clone()),
             scheduler,
         }
@@ -62,6 +68,8 @@ impl SystemMemoryAccess for SystemBus {
 
     fn read_8(&self, address: u16) -> u8 {
         match address {
+            0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.read_8(address),
+            0xC000..=0xFDFF | 0xFF70 | 0xFF80..=0xFFFE => self.memory.read_8(address),
             0xFF00..=0xFF7F | 0xFFFF => self.io_registers.read_8(address),
             _ => {
                 debug!("Read byte not implemented for address: {:#06X}", address);
@@ -72,6 +80,8 @@ impl SystemMemoryAccess for SystemBus {
 
     fn write_8(&mut self, address: u16, value: u8) {
         match address {
+            0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.write_8(address, value),
+            0xC000..=0xFDFF | 0xFF70 | 0xFF80..=0xFFFE => self.memory.write_8(address, value),
             0xFF00..=0xFF7F | 0xFFFF => self.io_registers.write_8(address, value),
             _ => debug!("Write byte not implemented for address: {:#06X}", address),
         }

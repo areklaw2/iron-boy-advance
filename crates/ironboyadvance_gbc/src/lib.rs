@@ -4,8 +4,13 @@ use ironboyadvance_common::{emulator::Emulator, scheduler::Scheduler};
 use ironboyadvance_sm83::{GbMode, cpu::Sm83};
 use thiserror::Error;
 
-use crate::{events::GbcEvent, system_bus::SystemBus};
+use crate::{
+    cartridge::{Cartridge, CartridgeError},
+    events::GbcEvent,
+    system_bus::SystemBus,
+};
 
+mod cartridge;
 mod events;
 mod interrupt_control;
 mod io_registers;
@@ -22,7 +27,10 @@ pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 pub const SAMPLE_RATE: u32 = 32768;
 
 #[derive(Error, Debug)]
-pub enum GbcError {}
+pub enum GbcError {
+    #[error("Failed to load cartridge: {0}")]
+    CartridgeError(#[from] CartridgeError),
+}
 
 pub struct GameBoyColor {
     sm83: Sm83<SystemBus>,
@@ -32,10 +40,12 @@ pub struct GameBoyColor {
 impl GameBoyColor {
     pub fn new(rom_path: PathBuf, rom_buffer: Vec<u8>, show_logs: bool) -> Result<GameBoyColor, GbcError> {
         let skip_boot = true;
-        let mode = GbMode::Color;
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
+        let cartridge = Cartridge::load(rom_path, rom_buffer)?;
+        let mode = cartridge.mode();
+
         let gbc = GameBoyColor {
-            sm83: Sm83::new(SystemBus::new(scheduler.clone()), show_logs, skip_boot, mode),
+            sm83: Sm83::new(SystemBus::new(cartridge, scheduler.clone()), show_logs, skip_boot, mode),
             scheduler,
         };
         Ok(gbc)
