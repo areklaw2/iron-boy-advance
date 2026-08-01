@@ -21,7 +21,9 @@ pub enum ApuEvent {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum TimerEvent {}
+pub enum TimerEvent {
+    Overflow,
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum DmaEvent {}

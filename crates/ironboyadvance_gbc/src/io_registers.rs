@@ -6,7 +6,7 @@ use tracing::debug;
 
 use crate::{
     apu::Apu, events::GbcEvent, interrupt_control::InterruptController, joypad::Joypad, ppu::Ppu,
-    serial_transfer::SerialTransfer, speed_control::SpeedController,
+    serial_transfer::SerialTransfer, speed_control::SpeedController, timer::Timer,
 };
 
 #[derive(Getters, MutGetters)]
@@ -18,6 +18,7 @@ pub struct IoRegisters {
     interrupt_controller: InterruptController,
     serial_transfer: SerialTransfer,
     speed_controller: SpeedController,
+    timer: Timer,
 }
 
 impl IoRegisters {
@@ -27,8 +28,9 @@ impl IoRegisters {
             apu: Apu::new(scheduler.clone()),
             joypad: Joypad::new(),
             interrupt_controller: InterruptController::new(),
-            serial_transfer: SerialTransfer::new(scheduler),
+            serial_transfer: SerialTransfer::new(scheduler.clone()),
             speed_controller: SpeedController::new(),
+            timer: Timer::new(scheduler),
         }
     }
 }
@@ -42,6 +44,8 @@ impl SystemMemoryAccess for IoRegisters {
             0xFF00 => self.joypad.read_8(address),
             // Serial Transfer
             0xFF01..=0xFF02 => self.serial_transfer.read_8(address),
+            // Timer
+            0xFF04..=0xFF07 => self.timer.read_8(address),
             // Interrupt Control
             0xFF0F | 0xFFFF => self.interrupt_controller.read_8(address),
             // Apu
@@ -63,6 +67,8 @@ impl SystemMemoryAccess for IoRegisters {
             0xFF00 => self.joypad.write_8(address, value),
             // Serial Transfer
             0xFF01..=0xFF02 => self.serial_transfer.write_8(address, value),
+            // Timer
+            0xFF04..=0xFF07 => self.timer.write_8(address, value),
             // Interrupt Control
             0xFF0F | 0xFFFF => self.interrupt_controller.write_8(address, value),
             // Apu

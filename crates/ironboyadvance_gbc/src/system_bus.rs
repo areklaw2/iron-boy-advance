@@ -11,13 +11,13 @@ use tracing::debug;
 use crate::{
     boot_rom::BootRom,
     cartridge::Cartridge,
-    events::{GbcEvent, InterruptEvent, SerialEvent},
+    events::{GbcEvent, InterruptEvent, SerialEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
 };
 
-const NORMAL_SPEED_M_CYCLES: usize = 4;
-const DOUBLE_SPEED_M_CYCLES: usize = 2;
+const NORMAL_SPEED_T_CYCLES: usize = 4;
+const DOUBLE_SPEED_T_CYCLES: usize = 2;
 
 #[derive(Getters, MutGetters)]
 #[getset(get = "pub", get_mut = "pub")]
@@ -42,8 +42,8 @@ impl SystemBus {
 
     fn m_cycle(&self) {
         let ticks = match self.speed() {
-            GbSpeed::Normal => NORMAL_SPEED_M_CYCLES,
-            GbSpeed::Double => DOUBLE_SPEED_M_CYCLES,
+            GbSpeed::Normal => NORMAL_SPEED_T_CYCLES,
+            GbSpeed::Double => DOUBLE_SPEED_T_CYCLES,
         };
 
         self.scheduler.borrow_mut().step(ticks);
@@ -59,6 +59,10 @@ impl SystemBus {
 
     pub fn handle_serial_event(&mut self, serial_event: SerialEvent, timestamp: usize) {
         self.io_registers.serial_transfer_mut().handle_event(serial_event, timestamp);
+    }
+
+    pub fn handle_timer_event(&mut self, timer_event: TimerEvent) {
+        self.io_registers.timer_mut().handle_event(timer_event);
     }
 
     pub fn speed(&self) -> GbSpeed {
@@ -124,6 +128,7 @@ impl MemoryInterface for SystemBus {
         self.io_registers.speed_controller_mut().change_speed();
         let speed = self.speed();
         self.io_registers.serial_transfer_mut().set_speed(speed);
+        self.io_registers.timer_mut().set_speed(speed);
     }
 
     fn interrupt_context(&self) -> &InterruptContext {

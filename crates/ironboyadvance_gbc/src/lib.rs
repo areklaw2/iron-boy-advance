@@ -100,7 +100,7 @@ impl GameBoyColor {
                 GbcEvent::Serial(serial_event) => self.sm83.bus_mut().handle_serial_event(serial_event, timestamp),
                 GbcEvent::Ppu(_) => todo!(),
                 GbcEvent::Apu(_) => todo!(),
-                GbcEvent::Timer(_) => todo!(),
+                GbcEvent::Timer(timer_event) => self.sm83.bus_mut().handle_timer_event(timer_event),
                 GbcEvent::Dma(_) => todo!(),
             }
         }
