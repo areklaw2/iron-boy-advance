@@ -1,9 +1,11 @@
 use std::fmt;
 
+mod alu;
 pub mod cpu;
 mod instruction;
 pub mod memory;
 mod registers;
+mod test;
 
 pub const CPU_CLOCK_SPEED: u32 = 4194304;
 
@@ -183,6 +185,167 @@ impl fmt::Display for Condition {
             Condition::Z => write!(f, "Z"),
             Condition::NC => write!(f, "NC"),
             Condition::C => write!(f, "C"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
+pub(crate) enum AluOpcode {
+    ADD,
+    ADC,
+    SUB,
+    SBC,
+    AND,
+    XOR,
+    OR,
+    CP,
+}
+
+impl From<u8> for AluOpcode {
+    fn from(value: u8) -> Self {
+        match value {
+            0b000 => Self::ADD,
+            0b001 => Self::ADC,
+            0b010 => Self::SUB,
+            0b011 => Self::SBC,
+            0b100 => Self::AND,
+            0b101 => Self::XOR,
+            0b110 => Self::OR,
+            0b111 => Self::CP,
+            _ => panic!("Invalid value was passed"),
+        }
+    }
+}
+
+impl fmt::Display for AluOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::ADD => write!(f, "ADD"),
+            Self::ADC => write!(f, "ADC"),
+            Self::SUB => write!(f, "SUB"),
+            Self::SBC => write!(f, "SBC"),
+            Self::AND => write!(f, "AND"),
+            Self::XOR => write!(f, "XOR"),
+            Self::OR => write!(f, "OR"),
+            Self::CP => write!(f, "CP"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
+pub(crate) enum AccumulatorOpcode {
+    RLCA,
+    RRCA,
+    RLA,
+    RRA,
+    DAA,
+    CPL,
+    SCF,
+    CCF,
+}
+
+impl From<u8> for AccumulatorOpcode {
+    fn from(value: u8) -> Self {
+        match value {
+            0b000 => Self::RLCA,
+            0b001 => Self::RRCA,
+            0b010 => Self::RLA,
+            0b011 => Self::RRA,
+            0b100 => Self::DAA,
+            0b101 => Self::CPL,
+            0b110 => Self::SCF,
+            0b111 => Self::CCF,
+            _ => panic!("Invalid value was passed"),
+        }
+    }
+}
+
+impl fmt::Display for AccumulatorOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::RLCA => write!(f, "RLCA"),
+            Self::RRCA => write!(f, "RRCA"),
+            Self::RLA => write!(f, "RLA"),
+            Self::RRA => write!(f, "RRA"),
+            Self::DAA => write!(f, "DAA"),
+            Self::CPL => write!(f, "CPL"),
+            Self::SCF => write!(f, "SCF"),
+            Self::CCF => write!(f, "CCF"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
+pub(crate) enum RotateShiftOpcode {
+    RLC,
+    RRC,
+    RL,
+    RR,
+    SLA,
+    SRA,
+    SWAP,
+    SRL,
+}
+
+impl From<u8> for RotateShiftOpcode {
+    fn from(value: u8) -> Self {
+        match value {
+            0b000 => Self::RLC,
+            0b001 => Self::RRC,
+            0b010 => Self::RL,
+            0b011 => Self::RR,
+            0b100 => Self::SLA,
+            0b101 => Self::SRA,
+            0b110 => Self::SWAP,
+            0b111 => Self::SRL,
+            _ => panic!("Invalid value was passed"),
+        }
+    }
+}
+
+impl fmt::Display for RotateShiftOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::RLC => write!(f, "RLC"),
+            Self::RRC => write!(f, "RRC"),
+            Self::RL => write!(f, "RL"),
+            Self::RR => write!(f, "RR"),
+            Self::SLA => write!(f, "SLA"),
+            Self::SRA => write!(f, "SRA"),
+            Self::SWAP => write!(f, "SWAP"),
+            Self::SRL => write!(f, "SRL"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
+pub(crate) enum BitOpcode {
+    BIT,
+    RES,
+    SET,
+}
+
+impl From<u8> for BitOpcode {
+    fn from(value: u8) -> Self {
+        match value {
+            0b01 => Self::BIT,
+            0b10 => Self::RES,
+            0b11 => Self::SET,
+            _ => panic!("Invalid value was passed"),
+        }
+    }
+}
+
+impl fmt::Display for BitOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::BIT => write!(f, "BIT"),
+            Self::RES => write!(f, "RES"),
+            Self::SET => write!(f, "SET"),
         }
     }
 }
