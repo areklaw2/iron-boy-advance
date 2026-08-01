@@ -10,7 +10,7 @@ use crate::{
 
 #[derive(Getters, MutGetters, Setters)]
 #[getset(get = "pub(crate)", set = "pub(crate)")]
-pub struct SharpSm83<I: MemoryInterface> {
+pub struct Sm83<I: MemoryInterface> {
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     registers: Registers,
     #[getset(get = "pub", get_mut = "pub", set = "pub")]
@@ -23,7 +23,7 @@ pub struct SharpSm83<I: MemoryInterface> {
     lut: [SharpSm83InstructionFactory; 256],
 }
 
-impl<I: MemoryInterface> MemoryInterface for SharpSm83<I> {
+impl<I: MemoryInterface> MemoryInterface for Sm83<I> {
     fn load_8(&self, address: u16) -> u8 {
         self.bus.load_8(address)
     }
@@ -49,7 +49,7 @@ impl<I: MemoryInterface> MemoryInterface for SharpSm83<I> {
     }
 }
 
-impl<I: MemoryInterface> SharpSm83<I> {
+impl<I: MemoryInterface> Sm83<I> {
     pub fn new(bus: I, show_logs: bool, skip_boot: bool, mode: GbMode) -> Self {
         Self {
             registers: Registers::new(skip_boot, mode),
@@ -203,7 +203,9 @@ impl<I: MemoryInterface> SharpSm83<I> {
 
     pub(crate) fn push_stack(&mut self, value: u16) {
         self.bus.idle_cycle();
-        self.registers.set_sp(self.registers.sp().wrapping_sub(2));
-        self.bus.store_16(self.registers.sp(), value);
+        self.registers.set_sp(self.registers.sp().wrapping_sub(1));
+        self.bus.store_8(self.registers.sp(), (value >> 8) as u8);
+        self.registers.set_sp(self.registers.sp().wrapping_sub(1));
+        self.bus.store_8(self.registers.sp(), value as u8);
     }
 }

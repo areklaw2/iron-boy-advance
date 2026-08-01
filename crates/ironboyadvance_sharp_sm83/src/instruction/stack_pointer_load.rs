@@ -1,5 +1,5 @@
 use crate::alu;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -31,7 +31,7 @@ impl StackPointerLoad {
 }
 
 impl Instruction for StackPointerLoad {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self.opcode {
             StackPointerLoadOpcode::DirectFromStackPointer => {
                 let address = cpu.fetch_word();
@@ -52,7 +52,7 @@ impl Instruction for StackPointerLoad {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         match self.opcode {
             StackPointerLoadOpcode::DirectFromStackPointer => format!("LD {:#04X},SP", cpu.fetch_word()),
             StackPointerLoadOpcode::HlFromAdjustedStackPointer => format!("LD HL,SP+{:#04X}", cpu.fetch_byte()),

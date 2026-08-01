@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::Register16;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -19,12 +19,12 @@ impl LoadRegister16 {
 }
 
 impl Instruction for LoadRegister16 {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         let value = cpu.fetch_word();
         cpu.set_register_16(self.r16, value);
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         let value = cpu.fetch_word();
         format!("LD {},{:#04X}", self.r16, value)
     }

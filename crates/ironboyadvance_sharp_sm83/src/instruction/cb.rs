@@ -1,6 +1,6 @@
 use ironboyadvance_common::bits::BitOps;
 
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::instruction::cb::bit_op::BitOp;
 use crate::instruction::cb::rotate_shift_r8::RotateShiftR8;
@@ -18,14 +18,14 @@ pub(crate) enum CbInstruction {
 }
 
 impl Instruction for CbInstruction {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self {
             Self::RotateShiftR8(i) => i.execute(cpu),
             Self::BitOp(i) => i.execute(cpu),
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         match self {
             Self::RotateShiftR8(i) => i.disassemble(cpu),
             Self::BitOp(i) => i.disassemble(cpu),

@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::Condition;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -24,7 +24,7 @@ impl Call {
 }
 
 impl Instruction for Call {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         let address = cpu.fetch_word();
         let taken = match self.condition {
             Some(condition) => cpu.is_condition_met(condition),
@@ -38,7 +38,7 @@ impl Instruction for Call {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         let value = cpu.fetch_word();
         match self.condition {
             Some(condition) => format!("CALL {},{:#04X}", condition, value),

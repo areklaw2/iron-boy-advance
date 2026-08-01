@@ -1,6 +1,6 @@
 use ironboyadvance_common::bits::BitOps;
 
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -18,13 +18,13 @@ impl Restart {
 }
 
 impl Instruction for Restart {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         let pc = cpu.pc();
         cpu.push_stack(pc);
         cpu.set_pc(self.target);
     }
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         format!("RST {:02X}H", self.target)
     }
 }

@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::Condition;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -32,7 +32,7 @@ impl Jump {
 }
 
 impl Instruction for Jump {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self.target {
             JumpTarget::Hl => {
                 let hl = cpu.registers().hl();
@@ -53,7 +53,7 @@ impl Instruction for Jump {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         match self.target {
             JumpTarget::Hl => "JP HL".to_string(),
             JumpTarget::Immediate(condition) => {

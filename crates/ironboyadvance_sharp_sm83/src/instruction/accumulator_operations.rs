@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::AccumulatorOpcode;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -19,7 +19,7 @@ impl AccumulatorOperations {
 }
 
 impl Instruction for AccumulatorOperations {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self.opcode {
             AccumulatorOpcode::RLCA => {
                 let a = cpu.registers().a();
@@ -103,12 +103,12 @@ impl Instruction for AccumulatorOperations {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         self.opcode.to_string()
     }
 }
 
-fn set_rotate_flags<I: MemoryInterface>(cpu: &mut SharpSm83<I>, carry: bool) {
+fn set_rotate_flags<I: MemoryInterface>(cpu: &mut Sm83<I>, carry: bool) {
     cpu.registers_mut().f_mut().set_zero(false);
     cpu.registers_mut().f_mut().set_subtraction(false);
     cpu.registers_mut().f_mut().set_half_carry(false);

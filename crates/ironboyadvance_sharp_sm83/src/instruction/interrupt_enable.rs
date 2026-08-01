@@ -1,6 +1,6 @@
 use ironboyadvance_common::bits::BitOps;
 
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -18,14 +18,14 @@ impl InterruptEnable {
 }
 
 impl Instruction for InterruptEnable {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self.enables_interrupts {
             true => cpu.set_enable_interrupt_delay(2),
             false => cpu.set_disable_interrupt_delay(2),
         };
     }
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         match self.enables_interrupts {
             true => "EI".to_string(),
             false => "DI".to_string(),

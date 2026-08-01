@@ -2,7 +2,7 @@ use ironboyadvance_common::bits::BitOps;
 
 use crate::Register16;
 use crate::alu;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -40,7 +40,7 @@ impl Alu16 {
 }
 
 impl Instruction for Alu16 {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self.opcode {
             Alu16Opcode::Increment(r16) => {
                 let value = cpu.register_16(r16).wrapping_add(1);
@@ -75,7 +75,7 @@ impl Instruction for Alu16 {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         match self.opcode {
             Alu16Opcode::Increment(r16) => format!("INC {}", r16),
             Alu16Opcode::Decrement(r16) => format!("DEC {}", r16),

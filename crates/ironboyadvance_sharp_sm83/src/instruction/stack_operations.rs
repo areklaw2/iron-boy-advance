@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::Register16Stack;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -21,7 +21,7 @@ impl StackOperations {
 }
 
 impl Instruction for StackOperations {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self.is_push {
             true => {
                 let value = cpu.register_16_stack(self.r16_stack);
@@ -34,7 +34,7 @@ impl Instruction for StackOperations {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         match self.is_push {
             true => format!("PUSH {}", self.r16_stack),
             false => format!("POP {}", self.r16_stack),

@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::Condition;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -34,13 +34,13 @@ impl Ret {
 }
 
 impl Instruction for Ret {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self.condition {
             Some(condition) => {
+                cpu.bus_mut().idle_cycle();
                 if cpu.is_condition_met(condition) {
                     return_to_caller(cpu);
                 }
-                cpu.bus_mut().idle_cycle();
             }
             None => {
                 return_to_caller(cpu);
@@ -51,7 +51,7 @@ impl Instruction for Ret {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         match (self.condition, self.enables_interrupts) {
             (Some(condition), _) => format!("RET {}", condition),
             (None, true) => "RETI".to_string(),
@@ -60,7 +60,7 @@ impl Instruction for Ret {
     }
 }
 
-fn return_to_caller<I: MemoryInterface>(cpu: &mut SharpSm83<I>) {
+fn return_to_caller<I: MemoryInterface>(cpu: &mut Sm83<I>) {
     let address = cpu.pop_stack();
     cpu.set_pc(address);
     cpu.bus_mut().idle_cycle();

@@ -1,6 +1,6 @@
 use ironboyadvance_common::bits::BitOps;
 
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 use crate::{BitOpcode, Register8};
@@ -23,7 +23,7 @@ impl BitOp {
 }
 
 impl Instruction for BitOp {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         let value = cpu.register_8(self.r8);
         match self.opcode {
             BitOpcode::BIT => {
@@ -38,7 +38,7 @@ impl Instruction for BitOp {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         format!("{} {},{}", self.opcode, self.bit_index, self.r8)
     }
 }

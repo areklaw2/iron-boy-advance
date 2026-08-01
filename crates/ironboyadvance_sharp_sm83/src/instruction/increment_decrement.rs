@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::Register8;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -21,7 +21,7 @@ impl IncrementDecrement {
 }
 
 impl Instruction for IncrementDecrement {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         let value = cpu.register_8(self.r8);
         let result = match self.is_decrement {
             true => value.wrapping_sub(1),
@@ -37,7 +37,7 @@ impl Instruction for IncrementDecrement {
         });
     }
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         match self.is_decrement {
             true => format!("DEC {}", self.r8),
             false => format!("INC {}", self.r8),

@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::Register8;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -30,7 +30,7 @@ impl LoadRegister {
 }
 
 impl Instruction for LoadRegister {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         let value = match self.source {
             LoadRegisterSource::Register(r8) => cpu.register_8(r8),
             LoadRegisterSource::Immediate => cpu.fetch_byte(),
@@ -38,7 +38,7 @@ impl Instruction for LoadRegister {
         cpu.set_register_8(self.destination, value);
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         match self.source {
             LoadRegisterSource::Register(r8) => format!("LD {},{}", self.destination, r8),
             LoadRegisterSource::Immediate => format!("LD {},{:#04X}", self.destination, cpu.fetch_byte()),

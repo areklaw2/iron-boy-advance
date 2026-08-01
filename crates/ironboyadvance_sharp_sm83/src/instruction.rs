@@ -1,4 +1,4 @@
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::accumulator_operations::AccumulatorOperations;
 use crate::instruction::alu_8::Alu8;
 use crate::instruction::alu_16::Alu16;
@@ -44,8 +44,8 @@ mod stop;
 mod undefined;
 
 pub(crate) trait Instruction {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>);
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String;
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>);
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String;
 }
 
 pub(crate) type SharpSm83InstructionFactory = fn(u8) -> SharpSm83Instruction;
@@ -75,7 +75,7 @@ pub(crate) enum SharpSm83Instruction {
 }
 
 impl Instruction for SharpSm83Instruction {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self {
             Self::Nop(i) => i.execute(cpu),
             Self::Undefined(i) => i.execute(cpu),
@@ -100,7 +100,7 @@ impl Instruction for SharpSm83Instruction {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         match self {
             Self::Nop(i) => i.disassemble(cpu),
             Self::Undefined(i) => i.disassemble(cpu),

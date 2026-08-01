@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::R16Memory;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -39,7 +39,7 @@ impl LoadAccumulator {
 }
 
 impl Instruction for LoadAccumulator {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         let address = match self.addressing {
             AccumulatorAddressing::Indirect(r16_memory) => cpu.register_16_memory(r16_memory),
             AccumulatorAddressing::Direct => cpu.fetch_word(),
@@ -59,7 +59,7 @@ impl Instruction for LoadAccumulator {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         let location = match self.addressing {
             AccumulatorAddressing::Indirect(r16_memory) => format!("[{}]", r16_memory),
             AccumulatorAddressing::Direct => format!("[{:#04X}]", cpu.fetch_word()),

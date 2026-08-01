@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::alu;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 use crate::{AluOpcode, Register8};
@@ -31,7 +31,7 @@ impl Alu8 {
 }
 
 impl Instruction for Alu8 {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         let operand = match self.operand {
             AluOperand::Register(r8) => cpu.register_8(r8),
             AluOperand::Immediate => cpu.fetch_byte(),
@@ -49,7 +49,7 @@ impl Instruction for Alu8 {
         }
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         match self.operand {
             AluOperand::Register(r8) => format!("{} A,{}", self.opcode, r8),
             AluOperand::Immediate => format!("{} A,{:#04X}", self.opcode, cpu.fetch_byte()),

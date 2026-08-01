@@ -1,7 +1,7 @@
 use ironboyadvance_common::bits::BitOps;
 
 use crate::Condition;
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -22,24 +22,22 @@ impl RelativeJump {
 }
 
 impl Instruction for RelativeJump {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
+        let offset = cpu.fetch_byte() as i8;
+
         let taken = match self.condition {
             Some(condition) => cpu.is_condition_met(condition),
             None => true,
         };
 
-        match taken {
-            true => {
-                let offset = cpu.fetch_byte() as i8;
-                let pc = ((cpu.pc() as i32) + (offset as i32)) as u16;
-                cpu.set_pc(pc);
-            }
-            false => cpu.set_pc(cpu.pc() + 1),
+        if taken {
+            let pc = ((cpu.pc() as i32) + (offset as i32)) as u16;
+            cpu.set_pc(pc);
+            cpu.bus_mut().idle_cycle();
         }
-        cpu.bus_mut().idle_cycle();
     }
 
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) -> String {
         let value = cpu.fetch_byte();
         match self.condition {
             Some(condition) => format!("JR {},{:#04X}", condition, value),

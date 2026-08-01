@@ -1,4 +1,4 @@
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 
@@ -12,9 +12,9 @@ impl Undefined {
 }
 
 impl Instruction for Undefined {
-    fn execute<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) {}
+    fn execute<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) {}
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         "Undefined".into()
     }
 }

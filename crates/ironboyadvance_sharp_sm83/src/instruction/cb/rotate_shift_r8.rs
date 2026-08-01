@@ -1,6 +1,6 @@
 use ironboyadvance_common::bits::BitOps;
 
-use crate::cpu::SharpSm83;
+use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
 use crate::{Register8, RotateShiftOpcode};
@@ -21,7 +21,7 @@ impl RotateShiftR8 {
 }
 
 impl Instruction for RotateShiftR8 {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut SharpSm83<I>) {
+    fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         let value = cpu.register_8(self.r8);
         let (result, carry) = match self.opcode {
             RotateShiftOpcode::RLC => {
@@ -54,7 +54,7 @@ impl Instruction for RotateShiftR8 {
         cpu.registers_mut().f_mut().set_carry(carry);
     }
 
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut SharpSm83<I>) -> String {
+    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
         format!("{} {}", self.opcode, self.r8)
     }
 }

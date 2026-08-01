@@ -6,14 +6,11 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
 
-    use crate::{GbMode, cpu::SharpSm83, memory::MemoryInterface};
+    use crate::{GbMode, cpu::Sm83, memory::MemoryInterface};
 
-    /// The suite pads `HALT` and `STOP` out to a fixed three machine cycles instead of
-    /// timing them like a normal fetch, so their cycle counts are not compared.
     const HALT_OPCODE: u8 = 0x76;
     const STOP_OPCODE: u8 = 0x10;
 
-    /// Which pins the suite recorded as driven for one M-state.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
     enum BusKind {
         #[serde(rename = "r-m")]
@@ -24,8 +21,6 @@ mod tests {
         Internal,
     }
 
-    /// The address and data pins sampled between two M-states. A `None` pin means the bus
-    /// was electrically disconnected from the processor, so its value is a don't-care.
     #[derive(Debug, Deserialize)]
     #[serde(from = "(Option<u16>, Option<u8>, BusKind)")]
     struct BusState {
@@ -59,7 +54,6 @@ mod tests {
             }
         }
 
-        /// Loads take `&self`, so the counter needs interior mutability.
         fn step(&self, m_cycles: u64) {
             self.m_cycles.set(self.m_cycles.get() + m_cycles);
         }
@@ -72,28 +66,23 @@ mod tests {
             self.trace.len() as u64
         }
 
-        /// Compares one M-state's pins against the recorded trace, then advances the cursor.
         fn check_bus_state(&self, kind: BusKind, address: Option<u16>, data: Option<u8>) {
             let index = self.trace_index.get();
             self.trace_index.set(index + 1);
             self.step(1);
 
             let Some(expected) = self.trace.get(index) else {
-                panic!("{}: M-state {} ran past the end of the recorded trace", self.name, index);
+                panic!("{}: state {} ran past the end of the recorded trace", self.name, index);
             };
 
-            assert_eq!(kind, expected.kind, "{}: M-state {} bus kind mismatch", self.name, index);
+            assert_eq!(kind, expected.kind, "{}: state {} bus kind mismatch", self.name, index);
 
             if let (Some(address), Some(expected_address)) = (address, expected.address) {
-                assert_eq!(
-                    address, expected_address,
-                    "{}: M-state {} address mismatch",
-                    self.name, index
-                );
+                assert_eq!(address, expected_address, "{}: state {} address mismatch", self.name, index);
             }
 
             if let (Some(data), Some(expected_data)) = (data, expected.data) {
-                assert_eq!(data, expected_data, "{}: M-state {} data mismatch", self.name, index);
+                assert_eq!(data, expected_data, "{}: state {} data mismatch", self.name, index);
             }
         }
 
@@ -130,8 +119,6 @@ mod tests {
         }
 
         fn idle_cycle(&mut self) {
-            // The suite records the last address the CPU drove, which an idle cycle does not
-            // hand us, so only the pin kind is checked here.
             self.check_bus_state(BusKind::Internal, None, None);
         }
 
@@ -173,7 +160,7 @@ mod tests {
             let final_state = test.final_state;
 
             let bus = TestBus::new(name.clone(), test.cycles);
-            let mut cpu = SharpSm83::new(bus, false, false, GbMode::Monochrome);
+            let mut cpu = Sm83::new(bus, false, false, GbMode::Monochrome);
 
             cpu.registers_mut().set_pc(initial_state.pc);
             cpu.registers_mut().set_sp(initial_state.sp);
@@ -201,12 +188,7 @@ mod tests {
             assert_eq!(cpu.registers().c(), final_state.c, "C mismatch for test {}", name);
             assert_eq!(cpu.registers().d(), final_state.d, "D mismatch for test {}", name);
             assert_eq!(cpu.registers().e(), final_state.e, "E mismatch for test {}", name);
-            assert_eq!(
-                cpu.registers().f().into_bits(),
-                final_state.f,
-                "F mismatch for test {}",
-                name
-            );
+            assert_eq!(cpu.registers().f().into_bits(), final_state.f, "F mismatch for test {}", name);
             assert_eq!(cpu.registers().h(), final_state.h, "H mismatch for test {}", name);
             assert_eq!(cpu.registers().l(), final_state.l, "L mismatch for test {}", name);
 
@@ -243,7 +225,6 @@ mod tests {
             .filter(|path| path.extension().and_then(|extension| extension.to_str()) == Some("json"))
             .collect();
 
-        // Process files in parallel
         file_paths
             .par_iter()
             .try_for_each(|path| {
