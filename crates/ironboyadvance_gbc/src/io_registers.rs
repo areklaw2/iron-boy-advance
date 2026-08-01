@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use getset::{Getters, MutGetters};
 use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
+use ironboyadvance_sm83::GbMode;
 use tracing::debug;
 
 use crate::{
@@ -22,9 +23,9 @@ pub struct IoRegisters {
 }
 
 impl IoRegisters {
-    pub fn new(scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
+    pub fn new(mode: GbMode, skip_boot: bool, scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
         IoRegisters {
-            ppu: Ppu::new(scheduler.clone()),
+            ppu: Ppu::new(mode, skip_boot, scheduler.clone()),
             apu: Apu::new(scheduler.clone()),
             joypad: Joypad::new(),
             interrupt_controller: InterruptController::new(),
@@ -51,7 +52,9 @@ impl SystemMemoryAccess for IoRegisters {
             // Apu
             0xFF10..=0xFF3F => self.apu.read_8(address),
             // Ppu
-            0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF4B | 0xFF4F => self.ppu.read_8(address),
+            0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF45 | 0xFF47..=0xFF4C | 0xFF4E..=0xFF4F | 0xFF68..=0xFF6B => {
+                self.ppu.read_8(address)
+            }
             // Speed Control
             0xFF4D => self.speed_controller.read_8(address),
             _ => {
@@ -74,7 +77,9 @@ impl SystemMemoryAccess for IoRegisters {
             // Apu
             0xFF10..=0xFF3F => self.apu.write_8(address, value),
             // Ppu
-            0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF4B | 0xFF4F => self.ppu.write_8(address, value),
+            0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF45 | 0xFF47..=0xFF4C | 0xFF4E..=0xFF4F | 0xFF68..=0xFF6B => {
+                self.ppu.write_8(address, value)
+            }
             // Speed Control
             0xFF4D => self.speed_controller.write_8(address, value),
             _ => debug!("Write byte not implemented for I/O register: {:#06X}", address),

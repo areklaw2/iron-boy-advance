@@ -11,7 +11,12 @@ pub enum InterruptEvent {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum PpuEvent {}
+pub enum PpuEvent {
+    OamScan,
+    DrawingPixels,
+    HBlank,
+    VBlank,
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 #[allow(unused)]

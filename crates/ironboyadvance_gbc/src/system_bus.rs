@@ -11,7 +11,7 @@ use tracing::debug;
 use crate::{
     boot_rom::BootRom,
     cartridge::Cartridge,
-    events::{GbcEvent, InterruptEvent, SerialEvent, TimerEvent},
+    events::{GbcEvent, InterruptEvent, PpuEvent, SerialEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
 };
@@ -31,11 +31,14 @@ pub struct SystemBus {
 
 impl SystemBus {
     pub fn new(cartridge: Cartridge, boot_rom: BootRom, scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
+        let mode = cartridge.mode();
+        let skip_boot = !boot_rom.loaded();
+
         SystemBus {
             boot_rom,
             cartridge,
             memory: Memory::new(),
-            io_registers: IoRegisters::new(scheduler.clone()),
+            io_registers: IoRegisters::new(mode, skip_boot, scheduler.clone()),
             scheduler,
         }
     }
@@ -63,6 +66,10 @@ impl SystemBus {
 
     pub fn handle_timer_event(&mut self, timer_event: TimerEvent) {
         self.io_registers.timer_mut().handle_event(timer_event);
+    }
+
+    pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent, timestamp: usize) {
+        self.io_registers.ppu_mut().handle_event(ppu_event, timestamp);
     }
 
     pub fn speed(&self) -> GbSpeed {

@@ -98,7 +98,7 @@ impl GameBoyColor {
                 GbcEvent::FrameComplete => return true,
                 GbcEvent::Interrupt(interrupt_event) => self.sm83.bus_mut().raise_interrupt(interrupt_event),
                 GbcEvent::Serial(serial_event) => self.sm83.bus_mut().handle_serial_event(serial_event, timestamp),
-                GbcEvent::Ppu(_) => todo!(),
+                GbcEvent::Ppu(ppu_event) => self.sm83.bus_mut().handle_ppu_event(ppu_event, timestamp),
                 GbcEvent::Apu(_) => todo!(),
                 GbcEvent::Timer(timer_event) => self.sm83.bus_mut().handle_timer_event(timer_event),
                 GbcEvent::Dma(_) => todo!(),
