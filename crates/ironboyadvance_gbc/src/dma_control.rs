@@ -29,6 +29,7 @@ pub struct DmaTransfer {
 pub struct DmaController {
     oam_source: u16,
     oam_index: u16,
+    oam_pending: bool,
     oam_active: bool,
     vram_mode: VramDmaMode,
     vram_source: u16,
@@ -43,6 +44,7 @@ impl DmaController {
         DmaController {
             oam_source: 0,
             oam_index: 0,
+            oam_pending: false,
             oam_active: false,
             vram_mode: VramDmaMode::Stopped,
             vram_source: 0,
@@ -90,12 +92,38 @@ impl DmaController {
     }
 
     fn start_oam_dma(&mut self, value: u8) {
+        self.scheduler
+            .borrow_mut()
+            .cancel_events(GbcEvent::Dma(DmaEvent::OamTransfer));
+
         self.oam_source = (value as u16) << 8;
         self.oam_index = 0;
-        self.oam_active = true;
+        self.oam_pending = true;
+        self.oam_active = false;
 
         let timestamp = self.scheduler.borrow().timestamp();
         self.schedule_transfer(timestamp);
+    }
+
+    pub fn activate_oam_dma(&mut self) {
+        if self.oam_pending {
+            self.oam_pending = false;
+            self.oam_active = true;
+        }
+    }
+
+    pub fn oam_dma_conflict(&self, address: u16) -> bool {
+        if !self.oam_active {
+            return false;
+        }
+
+        let vram_source = matches!(self.oam_source, 0x8000..=0x9FFF);
+        match address {
+            0x8000..=0x9FFF => vram_source,
+            0xFE00..=0xFE9F => true,
+            0xFF00..=0xFFFF => false,
+            _ => !vram_source,
+        }
     }
 
     pub fn vram_dma_active(&self) -> bool {

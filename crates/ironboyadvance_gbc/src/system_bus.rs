@@ -17,6 +17,8 @@ use crate::{
     memory::Memory,
 };
 
+const SPEED_SWITCH_T_CYCLES: usize = 8200;
+
 #[derive(Getters, MutGetters)]
 #[getset(get = "pub", get_mut = "pub")]
 pub struct SystemBus {
@@ -98,6 +100,8 @@ impl SystemBus {
     }
 
     fn run_oam_dma(&mut self, timestamp: usize) {
+        self.io_registers.dma_controller_mut().activate_oam_dma();
+
         let Some(transfer) = self.io_registers.dma_controller().next_oam_transfer() else {
             return;
         };
@@ -164,7 +168,11 @@ impl SystemMemoryAccess for SystemBus {
 impl MemoryInterface for SystemBus {
     fn load_8(&mut self, address: u16) -> u8 {
         self.m_cycle();
-        self.read_8(address)
+
+        match self.io_registers.dma_controller().oam_dma_conflict(address) {
+            true => 0xFF,
+            false => self.read_8(address),
+        }
     }
 
     fn load_16(&mut self, address: u16) -> u16 {
@@ -175,7 +183,10 @@ impl MemoryInterface for SystemBus {
 
     fn store_8(&mut self, address: u16, value: u8) {
         self.m_cycle();
-        self.write_8(address, value);
+
+        if !self.io_registers.dma_controller().oam_dma_conflict(address) {
+            self.write_8(address, value);
+        }
     }
 
     fn store_16(&mut self, address: u16, value: u16) {
@@ -188,11 +199,17 @@ impl MemoryInterface for SystemBus {
     }
 
     fn change_speed(&mut self) {
-        self.io_registers.speed_controller_mut().change_speed();
+        if !self.io_registers.speed_controller_mut().change_speed() {
+            return;
+        }
+
         let speed = self.speed();
         self.io_registers.serial_transfer_mut().set_speed(speed);
         self.io_registers.timer_mut().set_speed(speed);
         self.io_registers.dma_controller_mut().set_speed(speed);
+
+        self.scheduler.borrow_mut().step(SPEED_SWITCH_T_CYCLES);
+        self.handle_events();
     }
 
     fn interrupt_context(&self) -> &InterruptContext {

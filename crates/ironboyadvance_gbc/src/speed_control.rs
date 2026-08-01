@@ -31,13 +31,14 @@ impl SpeedController {
         }
     }
 
-    pub fn change_speed(&mut self) {
+    pub fn change_speed(&mut self) -> bool {
         if !self.speed_switch.switch_armed() {
-            return;
+            return false;
         }
 
         self.speed_switch.set_double_speed(!self.speed_switch.double_speed());
         self.speed_switch.set_switch_armed(false);
+        true
     }
 }
 
