@@ -50,6 +50,10 @@ impl SystemBus {
         };
 
         self.scheduler.borrow_mut().step(t_cycles);
+        self.handle_events();
+    }
+
+    fn handle_events(&mut self) {
         loop {
             let Some((event, timestamp)) = self.scheduler.borrow_mut().pop() else {
                 return;

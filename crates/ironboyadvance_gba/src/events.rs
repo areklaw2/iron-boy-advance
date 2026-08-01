@@ -58,7 +58,6 @@ pub enum CartridgeEvent {
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum GbaEvent {
-    FrameComplete,
     Interrupt(InterruptEvent),
     Ppu(PpuEvent),
     Apu(ApuEvent),
@@ -70,11 +69,7 @@ pub enum GbaEvent {
 impl SystemEvent for GbaEvent {
     fn priority(&self) -> u8 {
         match self {
-            GbaEvent::FrameComplete
-            | GbaEvent::Interrupt(_)
-            | GbaEvent::Ppu(_)
-            | GbaEvent::Apu(_)
-            | GbaEvent::Cartridge(_) => 0,
+            GbaEvent::Interrupt(_) | GbaEvent::Ppu(_) | GbaEvent::Apu(_) | GbaEvent::Cartridge(_) => 0,
             GbaEvent::Dma(dma_event) => match dma_event {
                 DmaEvent::Activate { .. } => 0,
                 DmaEvent::Request(_) => 1,

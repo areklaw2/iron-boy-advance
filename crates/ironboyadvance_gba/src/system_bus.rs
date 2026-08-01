@@ -96,6 +96,7 @@ impl MemoryInterface for SystemBus {
             self.run_dma();
         }
         self.scheduler.borrow_mut().step(1);
+        self.handle_events();
     }
 
     fn cpu_context_mut(&mut self) -> &mut CpuContext {
@@ -292,6 +293,24 @@ impl SystemBus {
         let index = ((address >> 24) & 0xF) as usize;
         let cycles = self.io_registers.system_controller().cycles(index, width, access);
         self.scheduler.borrow_mut().step(cycles);
+        self.handle_events();
+    }
+
+    pub fn handle_events(&mut self) {
+        loop {
+            let Some((event, timestamp)) = self.scheduler.borrow_mut().pop() else {
+                return;
+            };
+
+            match event {
+                GbaEvent::Interrupt(interrupt_event) => self.raise_interrupt(interrupt_event),
+                GbaEvent::Timer(timers_event) => self.handle_timer_event(timers_event),
+                GbaEvent::Ppu(ppu_event) => self.handle_ppu_event(ppu_event, timestamp),
+                GbaEvent::Apu(apu_event) => self.handle_apu_event(apu_event),
+                GbaEvent::Dma(dma_event) => self.handle_dma_event(dma_event),
+                GbaEvent::Cartridge(cartridge_event) => self.handle_cartridge_event(cartridge_event),
+            }
+        }
     }
 
     pub fn interrupt_pending(&self) -> bool {

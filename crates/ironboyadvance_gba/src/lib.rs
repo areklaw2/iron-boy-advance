@@ -74,6 +74,7 @@ impl GameBoyAdvance {
                     self.arm7tdmi.bus_mut().run_dma();
                 } else {
                     self.scheduler.borrow_mut().step_to_next_event();
+                    self.arm7tdmi.bus_mut().handle_events();
                 }
             }
             HaltMode::Running => {
@@ -84,24 +85,6 @@ impl GameBoyAdvance {
             }
         }
     }
-
-    fn handle_events(&mut self) -> bool {
-        loop {
-            let Some((event, timestamp)) = self.scheduler.borrow_mut().pop() else {
-                return false;
-            };
-
-            match event {
-                GbaEvent::FrameComplete => return true,
-                GbaEvent::Interrupt(interrupt_event) => self.arm7tdmi.bus_mut().raise_interrupt(interrupt_event),
-                GbaEvent::Timer(timers_event) => self.arm7tdmi.bus_mut().handle_timer_event(timers_event),
-                GbaEvent::Ppu(ppu_event) => self.arm7tdmi.bus_mut().handle_ppu_event(ppu_event, timestamp),
-                GbaEvent::Apu(apu_event) => self.arm7tdmi.bus_mut().handle_apu_event(apu_event),
-                GbaEvent::Dma(dma_event) => self.arm7tdmi.bus_mut().handle_dma_event(dma_event),
-                GbaEvent::Cartridge(cartridge_event) => self.arm7tdmi.bus_mut().handle_cartridge_event(cartridge_event),
-            }
-        }
-    }
 }
 
 impl Emulator for GameBoyAdvance {
@@ -109,18 +92,8 @@ impl Emulator for GameBoyAdvance {
         let start_time = self.scheduler.borrow().timestamp();
         let end_time = start_time + cycles - overshoot;
 
-        self.scheduler
-            .borrow_mut()
-            .schedule_at_timestamp(GbaEvent::FrameComplete, end_time);
-
-        'events: loop {
-            while self.scheduler.borrow().timestamp() < self.scheduler.borrow().timestamp_of_next_event() {
-                self.cycle();
-            }
-
-            if self.handle_events() {
-                break 'events;
-            }
+        while self.scheduler.borrow().timestamp() < end_time {
+            self.cycle();
         }
 
         let elapsed = self.scheduler.borrow().timestamp() - start_time;
