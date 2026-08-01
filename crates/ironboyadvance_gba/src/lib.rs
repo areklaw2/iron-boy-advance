@@ -29,7 +29,7 @@ mod timer_control;
 pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 
 pub use apu::APU_SAMPLING_FREQUENCY;
-pub use keypad::KeypadButton;
+
 pub use ppu::{CYCLES_PER_FRAME, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 
 #[derive(Error, Debug)]

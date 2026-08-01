@@ -34,7 +34,7 @@ pub trait MemoryInterface {
 
     fn idle_cycle(&mut self);
 
-    fn change_speed(&mut self);
+    fn change_speed(&mut self) -> bool;
 
     fn interrupt_context(&self) -> &InterruptContext;
 

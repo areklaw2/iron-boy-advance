@@ -38,10 +38,6 @@ impl BootRom {
         })
     }
 
-    pub fn is_color(&self) -> bool {
-        self.data.len() == CGB_BOOT_ROM_SIZE
-    }
-
     pub fn contains(&self, address: u16) -> bool {
         self.mapped
             && (address as usize) < self.data.len()

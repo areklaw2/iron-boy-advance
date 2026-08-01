@@ -51,22 +51,6 @@ impl RegisterOps<u16> for KeyControl {
     }
 }
 
-// Order matters: discriminant is used as a bit position by consumers that pack button
-// presses into the KEYINPUT register format below (A=bit0, B=bit1, ... R=bit8, L=bit9).
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub enum KeypadButton {
-    A,
-    B,
-    Select,
-    Start,
-    Right,
-    Left,
-    Up,
-    Down,
-    R,
-    L,
-}
-
 pub struct Keypad {
     key_input: KeyInput,
     key_control: KeyControl,

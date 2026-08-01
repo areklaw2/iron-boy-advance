@@ -25,6 +25,8 @@ pub struct Sm83<I: MemoryInterface> {
     #[getset(skip)]
     halt_bug: bool,
     #[getset(skip)]
+    stopped: bool,
+    #[getset(skip)]
     interrupt_master_enable: bool,
     #[getset(skip)]
     enable_interrupt_delay: u8,
@@ -52,8 +54,8 @@ impl<I: MemoryInterface> MemoryInterface for Sm83<I> {
         self.bus.idle_cycle();
     }
 
-    fn change_speed(&mut self) {
-        self.bus.change_speed();
+    fn change_speed(&mut self) -> bool {
+        self.bus.change_speed()
     }
 
     fn interrupt_context(&self) -> &InterruptContext {
@@ -73,6 +75,7 @@ impl<I: MemoryInterface> Sm83<I> {
             show_logs,
             halted: false,
             halt_bug: false,
+            stopped: false,
             interrupt_master_enable: false,
             enable_interrupt_delay: 0,
             lut: generate_lut(),
@@ -123,6 +126,18 @@ impl<I: MemoryInterface> Sm83<I> {
 
     pub fn un_halt(&mut self) {
         self.halted = false;
+    }
+
+    pub fn stopped(&self) -> bool {
+        self.stopped
+    }
+
+    pub fn un_stop(&mut self) {
+        self.stopped = false;
+    }
+
+    pub(crate) fn set_stopped(&mut self, stopped: bool) {
+        self.stopped = stopped;
     }
 
     pub(crate) fn set_halted(&mut self, halted: bool) {

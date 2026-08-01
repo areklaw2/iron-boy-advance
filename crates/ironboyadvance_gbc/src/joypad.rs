@@ -20,6 +20,10 @@ impl Joypad {
         previous & !self.selected_input() != 0
     }
 
+    pub fn selected_pressed(&self) -> bool {
+        self.selected_input() != 0x0F
+    }
+
     fn selected_input(&self) -> u8 {
         let mut input = 0x0F;
 

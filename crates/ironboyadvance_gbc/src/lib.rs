@@ -82,6 +82,11 @@ impl GameBoyColor {
     }
 
     pub fn cycle(&mut self) {
+        if self.sm83.stopped() {
+            self.sm83.bus_mut().idle_cycle();
+            return;
+        }
+
         let halted = self.sm83.halted();
         self.sm83.bus_mut().set_cpu_halted(halted);
 
@@ -131,8 +136,15 @@ impl Emulator for GameBoyColor {
 
     fn handle_pressed_buttons(&mut self, input: u16) {
         let joypad = self.sm83.bus_mut().io_registers_mut().joypad_mut();
-        if joypad.set_button_input(input) {
+        let interrupt_requested = joypad.set_button_input(input);
+        let selected_pressed = joypad.selected_pressed();
+
+        if interrupt_requested {
             self.sm83.bus_mut().raise_interrupt(InterruptEvent::Joypad);
+        }
+
+        if selected_pressed {
+            self.sm83.un_stop();
         }
     }
 }

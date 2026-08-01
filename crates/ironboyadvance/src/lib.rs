@@ -5,7 +5,7 @@ use ironboyadvance_gbc::{GameBoyColor, GbcError};
 use thiserror::Error;
 
 pub use ironboyadvance_common::emulator::{Emulator, System, detect_system};
-pub use ironboyadvance_gba::KeypadButton;
+pub use ironboyadvance_common::keypad::KeypadButton;
 
 #[derive(Error, Debug)]
 pub enum BootError {

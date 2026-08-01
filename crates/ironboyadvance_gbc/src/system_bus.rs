@@ -197,9 +197,9 @@ impl MemoryInterface for SystemBus {
         self.m_cycle();
     }
 
-    fn change_speed(&mut self) {
+    fn change_speed(&mut self) -> bool {
         if !self.io_registers.speed_controller_mut().change_speed() {
-            return;
+            return false;
         }
 
         let speed = self.speed();
@@ -209,6 +209,7 @@ impl MemoryInterface for SystemBus {
 
         self.scheduler.borrow_mut().step(SPEED_SWITCH_T_CYCLES);
         self.handle_events();
+        true
     }
 
     fn interrupt_context(&self) -> &InterruptContext {

@@ -128,7 +128,9 @@ mod tests {
             self.check_bus_state(BusKind::Internal, None, None);
         }
 
-        fn change_speed(&mut self) {}
+        fn change_speed(&mut self) -> bool {
+            false
+        }
 
         fn interrupt_context(&self) -> &InterruptContext {
             &self.interrupt_context

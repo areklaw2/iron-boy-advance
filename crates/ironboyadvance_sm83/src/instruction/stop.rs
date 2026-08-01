@@ -13,7 +13,9 @@ impl Stop {
 
 impl Instruction for Stop {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
-        cpu.bus_mut().change_speed();
+        if !cpu.bus_mut().change_speed() {
+            cpu.set_stopped(true);
+        }
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Sm83<I>) -> String {
