@@ -1,9 +1,12 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    io::{Write, stdout},
+    rc::Rc,
+};
 
 use bitfields::bitfield;
 use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
 use ironboyadvance_sm83::GbSpeed;
-use tracing::debug;
 
 use crate::{
     CPU_CLOCK_SPEED,
@@ -71,7 +74,8 @@ impl SerialTransfer {
 
     fn complete_transfer(&mut self) {
         self.serial_transfer_control.set_transfer_start(false);
-        debug!("{}", self.transferred_byte as char);
+        print!("{}", self.transferred_byte as char);
+        let _ = stdout().flush();
         self.scheduler
             .borrow_mut()
             .schedule((GbcEvent::Interrupt(InterruptEvent::Serial), 0));

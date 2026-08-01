@@ -75,7 +75,7 @@ impl SystemMemoryAccess for SystemBus {
             0xFF50 => self.boot_rom.read_8(address),
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.read_8(address),
             0xC000..=0xFDFF | 0xFF70 | 0xFF80..=0xFFFE => self.memory.read_8(address),
-            0xFF00..=0xFF7F | 0xFFFF => self.io_registers.read_8(address),
+            0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF00..=0xFF7F | 0xFFFF => self.io_registers.read_8(address),
             _ => {
                 debug!("Read byte not implemented for address: {:#06X}", address);
                 0xFF
@@ -88,7 +88,7 @@ impl SystemMemoryAccess for SystemBus {
             0xFF50 => self.boot_rom.write_8(address, value),
             0x0000..=0x7FFF | 0xA000..=0xBFFF => self.cartridge.write_8(address, value),
             0xC000..=0xFDFF | 0xFF70 | 0xFF80..=0xFFFE => self.memory.write_8(address, value),
-            0xFF00..=0xFF7F | 0xFFFF => self.io_registers.write_8(address, value),
+            0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF00..=0xFF7F | 0xFFFF => self.io_registers.write_8(address, value),
             _ => debug!("Write byte not implemented for address: {:#06X}", address),
         }
     }

@@ -7,19 +7,23 @@ use thiserror::Error;
 use crate::{
     boot_rom::{BootRom, BootRomError},
     cartridge::{Cartridge, CartridgeError},
-    events::GbcEvent,
+    events::{GbcEvent, InterruptEvent},
     system_bus::SystemBus,
 };
 
+mod apu;
 mod boot_rom;
 mod cartridge;
 mod events;
 mod interrupt_control;
 mod io_registers;
+mod joypad;
 mod memory;
+mod ppu;
 mod serial_transfer;
 mod speed_control;
 mod system_bus;
+mod timer;
 
 pub const VIEWPORT_WIDTH: usize = 160;
 pub const VIEWPORT_HEIGHT: usize = 144;
@@ -128,18 +132,21 @@ impl Emulator for GameBoyColor {
     }
 
     fn frame_buffer(&self) -> &[u32] {
-        todo!()
+        self.sm83.bus().io_registers().ppu().frame_buffer()
     }
 
     fn audio_buffer(&self) -> &[(f32, f32)] {
-        todo!()
+        self.sm83.bus().io_registers().apu().audio_buffer()
     }
 
     fn clear_audio_buffer(&mut self) {
-        todo!()
+        self.sm83.bus_mut().io_registers_mut().apu_mut().clear_audio_buffer();
     }
 
     fn handle_pressed_buttons(&mut self, input: u16) {
-        todo!()
+        let joypad = self.sm83.bus_mut().io_registers_mut().joypad_mut();
+        if joypad.set_button_input(input) {
+            self.sm83.bus_mut().raise_interrupt(InterruptEvent::Joypad);
+        }
     }
 }

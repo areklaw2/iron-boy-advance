@@ -5,13 +5,16 @@ use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
 use tracing::debug;
 
 use crate::{
-    events::GbcEvent, interrupt_control::InterruptController, serial_transfer::SerialTransfer,
-    speed_control::SpeedController,
+    apu::Apu, events::GbcEvent, interrupt_control::InterruptController, joypad::Joypad, ppu::Ppu,
+    serial_transfer::SerialTransfer, speed_control::SpeedController,
 };
 
 #[derive(Getters, MutGetters)]
 #[getset(get = "pub", get_mut = "pub")]
 pub struct IoRegisters {
+    ppu: Ppu,
+    apu: Apu,
+    joypad: Joypad,
     interrupt_controller: InterruptController,
     serial_transfer: SerialTransfer,
     speed_controller: SpeedController,
@@ -20,6 +23,9 @@ pub struct IoRegisters {
 impl IoRegisters {
     pub fn new(scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
         IoRegisters {
+            ppu: Ppu::new(scheduler.clone()),
+            apu: Apu::new(scheduler.clone()),
+            joypad: Joypad::new(),
             interrupt_controller: InterruptController::new(),
             serial_transfer: SerialTransfer::new(scheduler),
             speed_controller: SpeedController::new(),
@@ -32,10 +38,16 @@ impl SystemMemoryAccess for IoRegisters {
 
     fn read_8(&self, address: u16) -> u8 {
         match address {
+            // Joypad
+            0xFF00 => self.joypad.read_8(address),
             // Serial Transfer
             0xFF01..=0xFF02 => self.serial_transfer.read_8(address),
             // Interrupt Control
             0xFF0F | 0xFFFF => self.interrupt_controller.read_8(address),
+            // Apu
+            0xFF10..=0xFF3F => self.apu.read_8(address),
+            // Ppu
+            0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF4B | 0xFF4F => self.ppu.read_8(address),
             // Speed Control
             0xFF4D => self.speed_controller.read_8(address),
             _ => {
@@ -47,10 +59,16 @@ impl SystemMemoryAccess for IoRegisters {
 
     fn write_8(&mut self, address: u16, value: u8) {
         match address {
+            // Joypad
+            0xFF00 => self.joypad.write_8(address, value),
             // Serial Transfer
             0xFF01..=0xFF02 => self.serial_transfer.write_8(address, value),
             // Interrupt Control
             0xFF0F | 0xFFFF => self.interrupt_controller.write_8(address, value),
+            // Apu
+            0xFF10..=0xFF3F => self.apu.write_8(address, value),
+            // Ppu
+            0x8000..=0x9FFF | 0xFE00..=0xFE9F | 0xFF40..=0xFF4B | 0xFF4F => self.ppu.write_8(address, value),
             // Speed Control
             0xFF4D => self.speed_controller.write_8(address, value),
             _ => debug!("Write byte not implemented for I/O register: {:#06X}", address),
