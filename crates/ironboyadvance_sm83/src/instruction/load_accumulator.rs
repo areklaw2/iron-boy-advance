@@ -49,7 +49,7 @@ impl Instruction for LoadAccumulator {
 
         match self.is_load {
             true => {
-                let value = cpu.bus().load_8(address);
+                let value = cpu.bus_mut().load_8(address);
                 cpu.registers_mut().set_a(value);
             }
             false => {

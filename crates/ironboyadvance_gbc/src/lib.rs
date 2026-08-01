@@ -1,7 +1,7 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use ironboyadvance_common::{emulator::Emulator, scheduler::Scheduler};
-use ironboyadvance_sm83::{GbMode, cpu::Sm83};
+use ironboyadvance_sm83::{GbMode, cpu::Sm83, memory::MemoryInterface};
 use thiserror::Error;
 
 use crate::{
@@ -77,31 +77,13 @@ impl GameBoyColor {
                     self.sm83.un_halt();
                     self.sm83.irq();
                 }
-                false => self.scheduler.borrow_mut().step_to_next_event(),
+                false => self.sm83.bus_mut().idle_cycle(),
             },
             false => {
                 if self.sm83.bus().interrupts_pending() {
                     self.sm83.irq();
                 }
                 self.sm83.cycle();
-            }
-        }
-    }
-
-    fn handle_events(&mut self) -> bool {
-        loop {
-            let Some((event, timestamp)) = self.scheduler.borrow_mut().pop() else {
-                return false;
-            };
-
-            match event {
-                GbcEvent::FrameComplete => return true,
-                GbcEvent::Interrupt(interrupt_event) => self.sm83.bus_mut().raise_interrupt(interrupt_event),
-                GbcEvent::Serial(serial_event) => self.sm83.bus_mut().handle_serial_event(serial_event, timestamp),
-                GbcEvent::Ppu(ppu_event) => self.sm83.bus_mut().handle_ppu_event(ppu_event, timestamp),
-                GbcEvent::Apu(_) => todo!(),
-                GbcEvent::Timer(timer_event) => self.sm83.bus_mut().handle_timer_event(timer_event),
-                GbcEvent::Dma(_) => todo!(),
             }
         }
     }
@@ -112,18 +94,8 @@ impl Emulator for GameBoyColor {
         let start_time = self.scheduler.borrow().timestamp();
         let end_time = start_time + cycles - overshoot;
 
-        self.scheduler
-            .borrow_mut()
-            .schedule_at_timestamp(GbcEvent::FrameComplete, end_time);
-
-        'events: loop {
-            while self.scheduler.borrow().timestamp() < self.scheduler.borrow().timestamp_of_next_event() {
-                self.cycle();
-            }
-
-            if self.handle_events() {
-                break 'events;
-            }
+        while self.scheduler.borrow().timestamp() < end_time {
+            self.cycle();
         }
 
         let elapsed = self.scheduler.borrow().timestamp() - start_time;

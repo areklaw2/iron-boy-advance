@@ -41,7 +41,6 @@ pub enum SerialEvent {
 #[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum GbcEvent {
-    FrameComplete,
     Interrupt(InterruptEvent),
     Ppu(PpuEvent),
     Apu(ApuEvent),
@@ -53,13 +52,8 @@ pub enum GbcEvent {
 impl SystemEvent for GbcEvent {
     fn priority(&self) -> u8 {
         match self {
-            GbcEvent::FrameComplete
-            | GbcEvent::Interrupt(_)
-            | GbcEvent::Ppu(_)
-            | GbcEvent::Apu(_)
-            | GbcEvent::Dma(_)
-            | GbcEvent::Serial(_)
-            | GbcEvent::Timer(_) => 0,
+            GbcEvent::Ppu(_) | GbcEvent::Apu(_) | GbcEvent::Dma(_) | GbcEvent::Serial(_) | GbcEvent::Timer(_) => 0,
+            GbcEvent::Interrupt(_) => 1,
         }
     }
 }

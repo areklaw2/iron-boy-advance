@@ -32,11 +32,11 @@ pub struct Sm83<I: MemoryInterface> {
 }
 
 impl<I: MemoryInterface> MemoryInterface for Sm83<I> {
-    fn load_8(&self, address: u16) -> u8 {
+    fn load_8(&mut self, address: u16) -> u8 {
         self.bus.load_8(address)
     }
 
-    fn load_16(&self, address: u16) -> u16 {
+    fn load_16(&mut self, address: u16) -> u16 {
         self.bus.load_16(address)
     }
 
@@ -180,7 +180,7 @@ impl<I: MemoryInterface> Sm83<I> {
         self.registers.set_pc(self.registers.pc().wrapping_add(1));
     }
 
-    pub(crate) fn register_8(&self, reg: Register8) -> u8 {
+    pub(crate) fn register_8(&mut self, reg: Register8) -> u8 {
         match reg {
             Register8::A => self.registers.a(),
             Register8::B => self.registers.b(),

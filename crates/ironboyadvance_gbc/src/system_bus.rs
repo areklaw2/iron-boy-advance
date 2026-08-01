@@ -43,13 +43,27 @@ impl SystemBus {
         }
     }
 
-    fn m_cycle(&self) {
-        let ticks = match self.speed() {
+    fn m_cycle(&mut self) {
+        let t_cycles = match self.speed() {
             GbSpeed::Normal => NORMAL_SPEED_T_CYCLES,
             GbSpeed::Double => DOUBLE_SPEED_T_CYCLES,
         };
 
-        self.scheduler.borrow_mut().step(ticks);
+        self.scheduler.borrow_mut().step(t_cycles);
+        loop {
+            let Some((event, timestamp)) = self.scheduler.borrow_mut().pop() else {
+                return;
+            };
+
+            match event {
+                GbcEvent::Interrupt(interrupt_event) => self.raise_interrupt(interrupt_event),
+                GbcEvent::Serial(serial_event) => self.handle_serial_event(serial_event, timestamp),
+                GbcEvent::Ppu(ppu_event) => self.handle_ppu_event(ppu_event, timestamp),
+                GbcEvent::Timer(timer_event) => self.handle_timer_event(timer_event),
+                GbcEvent::Apu(_) => todo!(),
+                GbcEvent::Dma(_) => todo!(),
+            }
+        }
     }
 
     pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) {
@@ -106,12 +120,12 @@ impl SystemMemoryAccess for SystemBus {
 }
 
 impl MemoryInterface for SystemBus {
-    fn load_8(&self, address: u16) -> u8 {
+    fn load_8(&mut self, address: u16) -> u8 {
         self.m_cycle();
         self.read_8(address)
     }
 
-    fn load_16(&self, address: u16) -> u16 {
+    fn load_16(&mut self, address: u16) -> u16 {
         let low = self.load_8(address) as u16;
         let high = self.load_8(address.wrapping_add(1)) as u16;
         high << 8 | low

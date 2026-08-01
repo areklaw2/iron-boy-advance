@@ -24,9 +24,9 @@ impl InterruptContext {
 }
 
 pub trait MemoryInterface {
-    fn load_8(&self, address: u16) -> u8;
+    fn load_8(&mut self, address: u16) -> u8;
 
-    fn load_16(&self, address: u16) -> u16;
+    fn load_16(&mut self, address: u16) -> u16;
 
     fn store_8(&mut self, address: u16, value: u8);
 

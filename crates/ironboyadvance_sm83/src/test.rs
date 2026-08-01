@@ -102,13 +102,13 @@ mod tests {
     }
 
     impl MemoryInterface for TestBus {
-        fn load_8(&self, address: u16) -> u8 {
+        fn load_8(&mut self, address: u16) -> u8 {
             let value = self.data[address as usize];
             self.check_bus_state(BusKind::Read, Some(address), Some(value));
             value
         }
 
-        fn load_16(&self, address: u16) -> u16 {
+        fn load_16(&mut self, address: u16) -> u16 {
             let low = self.load_8(address) as u16;
             let high = self.load_8(address.wrapping_add(1)) as u16;
             high << 8 | low
