@@ -56,6 +56,7 @@ pub struct Ppu {
     #[getset(get = "pub")]
     frame_buffer: Vec<u32>,
     vram_bank: usize,
+    interrupt_line: bool,
     gb_mode: GbMode,
     scheduler: Rc<RefCell<Scheduler<GbcEvent>>>,
     events: Vec<FutureGbcEvent>,
@@ -97,7 +98,7 @@ impl SystemMemoryAccess for Ppu {
             }
             0xFE00..=0xFE9F => self.oam.write_8(address, value),
             0xFF40 => self.set_lcd_control(value),
-            0xFF41 => self.lcd_status = value.into(),
+            0xFF41 => self.write_lcd_status(value),
             0xFF42 | 0xFF43 => self.background.write_8(address, value),
             0xFF44 => {}
             0xFF45 => self.set_lyc(value),
@@ -155,6 +156,7 @@ impl Ppu {
             line_priority: [(0, false); VIEWPORT_WIDTH],
             frame_buffer: vec![0xFFFFFF; VIEWPORT_WIDTH * VIEWPORT_HEIGHT],
             vram_bank: 0,
+            interrupt_line: false,
             gb_mode: mode,
             scheduler,
             events: Vec::new(),
@@ -173,17 +175,14 @@ impl Ppu {
     }
 
     fn oam_scan_complete(&mut self) {
-        self.lcd_status.set_mode(PpuMode::DrawingPixels);
+        self.set_mode(PpuMode::DrawingPixels);
         self.events
             .push((GbcEvent::Ppu(PpuEvent::DrawingPixels), DRAWING_PIXELS_CYCLES));
     }
 
     fn drawing_pixels_complete(&mut self) {
         self.render_scanline();
-        if self.set_mode(PpuMode::HBlank) {
-            self.raise_lcd_interrupt();
-        }
-
+        self.set_mode(PpuMode::HBlank);
         self.events.push((GbcEvent::Ppu(PpuEvent::HBlank), HBLANK_CYCLES));
     }
 
@@ -193,15 +192,11 @@ impl Ppu {
         match self.ly == VIEWPORT_HEIGHT as u8 - 1 {
             true => {
                 self.events.push((GbcEvent::Interrupt(InterruptEvent::VBlank), 0));
-                if self.set_mode(PpuMode::VBlank) {
-                    self.raise_lcd_interrupt();
-                }
+                self.set_mode(PpuMode::VBlank);
                 self.events.push((GbcEvent::Ppu(PpuEvent::VBlank), VBLANK_CYCLES));
             }
             false => {
-                if self.set_mode(PpuMode::OamScan) {
-                    self.raise_lcd_interrupt();
-                }
+                self.set_mode(PpuMode::OamScan);
                 self.events.push((GbcEvent::Ppu(PpuEvent::OamScan), OAM_SCAN_CYCLES));
             }
         }
@@ -215,9 +210,7 @@ impl Ppu {
         match self.ly {
             0 => {
                 self.window.reset_line_counter();
-                if self.set_mode(PpuMode::OamScan) {
-                    self.raise_lcd_interrupt();
-                }
+                self.set_mode(PpuMode::OamScan);
                 self.events.push((GbcEvent::Ppu(PpuEvent::OamScan), OAM_SCAN_CYCLES));
             }
             _ => self.events.push((GbcEvent::Ppu(PpuEvent::VBlank), VBLANK_CYCLES)),
@@ -246,18 +239,25 @@ impl Ppu {
         self.lcd_status.mode()
     }
 
-    fn set_mode(&mut self, mode: PpuMode) -> bool {
-        if self.lcd_status.mode() == mode {
-            return false;
+    fn set_mode(&mut self, mode: PpuMode) {
+        self.lcd_status.set_mode(mode);
+        self.update_interrupt_line();
+    }
+
+    fn update_interrupt_line(&mut self) {
+        let interrupt_line = (self.lcd_status.lyc_interrupt() && self.lcd_status.lyc_equals_ly())
+            || match self.lcd_status.mode() {
+                PpuMode::HBlank => self.lcd_status.mode0_interrupt(),
+                PpuMode::VBlank => self.lcd_status.mode1_interrupt(),
+                PpuMode::OamScan => self.lcd_status.mode2_interrupt(),
+                PpuMode::DrawingPixels => false,
+            };
+
+        if interrupt_line && !self.interrupt_line {
+            self.raise_lcd_interrupt();
         }
 
-        self.lcd_status.set_mode(mode);
-        match self.lcd_status.mode() {
-            PpuMode::HBlank => self.lcd_status.mode0_interrupt(),
-            PpuMode::VBlank => self.lcd_status.mode1_interrupt(),
-            PpuMode::OamScan => self.lcd_status.mode2_interrupt(),
-            PpuMode::DrawingPixels => false,
-        }
+        self.interrupt_line = interrupt_line;
     }
 
     fn clear_screen(&mut self) {
@@ -278,15 +278,17 @@ impl Ppu {
     }
 
     fn compare_line(&mut self) {
-        self.lcd_status.set_lyc_equals_ly(false);
-        if self.lyc != self.ly {
-            return;
-        }
+        self.lcd_status.set_lyc_equals_ly(self.lyc == self.ly);
+        self.update_interrupt_line();
+    }
 
-        self.lcd_status.set_lyc_equals_ly(true);
-        if self.lcd_status.lyc_interrupt() {
-            self.raise_lcd_interrupt();
-        }
+    fn write_lcd_status(&mut self, value: u8) {
+        let status: u8 = self.lcd_status.into();
+        self.lcd_status = (value & 0x78 | status & 0x07).into();
+        self.update_interrupt_line();
+
+        let timestamp = self.scheduler.borrow().timestamp();
+        self.schedule_pending_events(timestamp);
     }
 
     fn set_lcd_control(&mut self, value: u8) {
