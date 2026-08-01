@@ -21,7 +21,7 @@ impl Instruction for InterruptEnable {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match self.enables_interrupts {
             true => cpu.set_enable_interrupt_delay(2),
-            false => cpu.set_disable_interrupt_delay(2),
+            false => cpu.set_interrupt_master_enable(false),
         };
     }
 

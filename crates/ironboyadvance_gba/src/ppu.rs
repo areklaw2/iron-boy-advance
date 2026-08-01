@@ -137,6 +137,8 @@ impl Ppu {
 }
 
 impl SystemMemoryAccess for Ppu {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // DISPCNT

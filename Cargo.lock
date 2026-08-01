@@ -1492,13 +1492,13 @@ dependencies = [
  "bitfields",
  "getset",
  "ironboyadvance_common",
- "ironboyadvance_sharp_sm83",
+ "ironboyadvance_sm83",
  "thiserror 2.0.19",
  "tracing",
 ]
 
 [[package]]
-name = "ironboyadvance_sharp_sm83"
+name = "ironboyadvance_sm83"
 version = "0.1.0"
 dependencies = [
  "bitfields",

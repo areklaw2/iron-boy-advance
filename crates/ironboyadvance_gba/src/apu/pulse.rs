@@ -90,6 +90,8 @@ const WAVEFORMS: [[u8; 8]; 4] = [
 const PERIOD_TICK_CYCLES: usize = 16;
 
 impl SystemMemoryAccess for PulseChannel {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // SOUND1CNT_L

@@ -4,9 +4,13 @@ use tracing::debug;
 use crate::{
     Condition, GbMode, R16Memory, Register8, Register16, Register16Stack,
     instruction::{Instruction, SharpSm83InstructionFactory, generate_lut},
-    memory::MemoryInterface,
+    memory::{InterruptContext, MemoryInterface},
     registers::Registers,
 };
+
+const INTERRUPT_VECTOR_BASE: u16 = 0x0040;
+const INTERRUPT_VECTOR_SIZE: u16 = 0x0008;
+const CANCELLED_INTERRUPT_VECTOR: u16 = 0x0000;
 
 #[derive(Getters, MutGetters, Setters)]
 #[getset(get = "pub(crate)", set = "pub(crate)")]
@@ -16,10 +20,14 @@ pub struct Sm83<I: MemoryInterface> {
     #[getset(get = "pub", get_mut = "pub", set = "pub")]
     bus: I,
     show_logs: bool,
+    #[getset(skip)]
     halted: bool,
+    #[getset(skip)]
+    halt_bug: bool,
+    #[getset(skip)]
     interrupt_master_enable: bool,
+    #[getset(skip)]
     enable_interrupt_delay: u8,
-    disable_interrupt_delay: u8,
     lut: [SharpSm83InstructionFactory; 256],
 }
 
@@ -47,6 +55,14 @@ impl<I: MemoryInterface> MemoryInterface for Sm83<I> {
     fn change_speed(&mut self) {
         self.bus.change_speed();
     }
+
+    fn interrupt_context(&self) -> &InterruptContext {
+        self.bus.interrupt_context()
+    }
+
+    fn interrupt_context_mut(&mut self) -> &mut InterruptContext {
+        self.bus.interrupt_context_mut()
+    }
 }
 
 impl<I: MemoryInterface> Sm83<I> {
@@ -56,9 +72,9 @@ impl<I: MemoryInterface> Sm83<I> {
             bus,
             show_logs,
             halted: false,
+            halt_bug: false,
             interrupt_master_enable: false,
             enable_interrupt_delay: 0,
-            disable_interrupt_delay: 0,
             lut: generate_lut(),
         }
     }
@@ -69,8 +85,76 @@ impl<I: MemoryInterface> Sm83<I> {
         if self.show_logs {
             debug!("{}", instruction.disassemble(self));
         }
-        self.advance_pc();
+        match self.halt_bug {
+            true => self.halt_bug = false,
+            false => self.advance_pc(),
+        }
         instruction.execute(self);
+        self.step_enable_interrupt_delay();
+    }
+
+    pub fn irq(&mut self) {
+        if !self.interrupt_master_enable {
+            return;
+        }
+
+        self.interrupt_master_enable = false;
+        self.enable_interrupt_delay = 0;
+        self.bus.idle_cycle();
+        self.push_stack(self.registers.pc());
+
+        let interrupt_context = self.bus.interrupt_context_mut();
+        let vector = match interrupt_context.pending_interrupt() {
+            0 => CANCELLED_INTERRUPT_VECTOR,
+            pending => {
+                let bit = pending.trailing_zeros() as u8;
+                interrupt_context.clear_interrupt(bit);
+                INTERRUPT_VECTOR_BASE + u16::from(bit) * INTERRUPT_VECTOR_SIZE
+            }
+        };
+
+        self.bus.idle_cycle();
+        self.registers.set_pc(vector);
+    }
+
+    pub fn halted(&self) -> bool {
+        self.halted
+    }
+
+    pub fn un_halt(&mut self) {
+        self.halted = false;
+    }
+
+    pub(crate) fn set_halted(&mut self, halted: bool) {
+        self.halted = halted;
+    }
+
+    pub(crate) fn interrupt_master_enable(&self) -> bool {
+        self.interrupt_master_enable
+    }
+
+    pub(crate) fn set_interrupt_master_enable(&mut self, enable: bool) {
+        self.interrupt_master_enable = enable;
+        self.enable_interrupt_delay = 0;
+    }
+
+    pub(crate) fn set_enable_interrupt_delay(&mut self, delay: u8) {
+        self.enable_interrupt_delay = delay;
+    }
+
+    pub(crate) fn trigger_halt_bug(&mut self) {
+        self.halt_bug = true;
+    }
+
+    fn step_enable_interrupt_delay(&mut self) {
+        match self.enable_interrupt_delay {
+            0 => (),
+            1 => {
+                self.enable_interrupt_delay = 0;
+                self.interrupt_master_enable = true;
+            }
+            _ => self.enable_interrupt_delay -= 1,
+        }
     }
 
     #[inline]

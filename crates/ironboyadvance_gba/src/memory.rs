@@ -15,6 +15,8 @@ impl Memory {
 }
 
 impl SystemMemoryAccess for Memory {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         match address {
             0x02000000..=0x02FFFFFF => self.wram_board[(address & 0x3FFFF) as usize],

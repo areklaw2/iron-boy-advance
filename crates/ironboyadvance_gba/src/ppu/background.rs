@@ -284,6 +284,8 @@ impl Background {
 }
 
 impl SystemMemoryAccess for Background {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // BG0CNT, BG1CNT, BG2CNT, BG3CNT

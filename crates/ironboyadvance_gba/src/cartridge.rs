@@ -36,7 +36,7 @@ pub enum CartridgeError {
     MissingEepromSize,
 }
 
-pub trait CartridgeBackup: SystemMemoryAccess {
+pub trait CartridgeBackup: SystemMemoryAccess<Address = u32> {
     fn rom(&self) -> &[u8];
 
     fn rom_read(&self, address: u32) -> u8 {
@@ -91,6 +91,8 @@ impl Cartridge {
 }
 
 impl SystemMemoryAccess for Cartridge {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         self.backup.read_8(address)
     }

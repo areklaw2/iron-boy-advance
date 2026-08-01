@@ -216,6 +216,8 @@ impl Window {
 }
 
 impl SystemMemoryAccess for Window {
+    type Address = u32;
+
     fn read_8(&self, _address: u32) -> u8 {
         0
     }

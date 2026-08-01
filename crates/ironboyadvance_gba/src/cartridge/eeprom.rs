@@ -118,6 +118,8 @@ impl Eeprom {
 }
 
 impl SystemMemoryAccess for Eeprom {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         if self.in_range(address) {
             panic!("Only 16 bit reads accepted for Eeprom: {:08X}", address);

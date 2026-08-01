@@ -416,6 +416,8 @@ impl DmaController {
 }
 
 impl SystemMemoryAccess for DmaController {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // DMA0SAD, DMA0DAD, DMA0CNT_L, DMA0CNT_H

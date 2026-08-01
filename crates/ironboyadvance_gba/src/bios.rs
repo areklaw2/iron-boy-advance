@@ -47,6 +47,8 @@ impl Bios {
 }
 
 impl SystemMemoryAccess for Bios {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         let word = self.read_32(address & !3);
         (word >> ((address & 3) * 8)) as u8

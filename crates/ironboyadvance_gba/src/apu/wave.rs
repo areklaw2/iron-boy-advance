@@ -123,6 +123,8 @@ pub struct WaveChannel {
 }
 
 impl SystemMemoryAccess for WaveChannel {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         match address {
             0x04000070..=0x04000071 => self.control.read_byte(address),

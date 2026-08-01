@@ -6,7 +6,11 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
 
-    use crate::{GbMode, cpu::Sm83, memory::MemoryInterface};
+    use crate::{
+        GbMode,
+        cpu::Sm83,
+        memory::{InterruptContext, MemoryInterface},
+    };
 
     const HALT_OPCODE: u8 = 0x76;
     const STOP_OPCODE: u8 = 0x10;
@@ -41,6 +45,7 @@ mod tests {
         m_cycles: Cell<u64>,
         trace: Vec<BusState>,
         trace_index: Cell<usize>,
+        interrupt_context: InterruptContext,
     }
 
     impl TestBus {
@@ -51,6 +56,7 @@ mod tests {
                 m_cycles: Cell::new(0),
                 trace,
                 trace_index: Cell::new(0),
+                interrupt_context: InterruptContext::default(),
             }
         }
 
@@ -123,6 +129,14 @@ mod tests {
         }
 
         fn change_speed(&mut self) {}
+
+        fn interrupt_context(&self) -> &InterruptContext {
+            &self.interrupt_context
+        }
+
+        fn interrupt_context_mut(&mut self) -> &mut InterruptContext {
+            &mut self.interrupt_context
+        }
     }
 
     #[derive(Debug, Deserialize)]

@@ -148,6 +148,8 @@ mod tests {
     }
 
     impl SystemMemoryAccess for TestBus {
+        type Address = u32;
+
         fn read_8(&self, address: u32) -> u8 {
             match self.data.get(&address) {
                 Some(value) => *value,

@@ -22,12 +22,13 @@ impl InterruptController {
     }
 
     pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) {
-        let interrupt_flag = 1 << (interrupt_event as u8);
-        self.interrupt_flags |= interrupt_flag;
+        self.interrupt_flags |= 1 << (interrupt_event as u8);
     }
 }
 
 impl SystemMemoryAccess for InterruptController {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         match address {
             // IE

@@ -104,6 +104,8 @@ impl MemoryInterface for SystemBus {
 }
 
 impl SystemMemoryAccess for SystemBus {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.read_8(address),

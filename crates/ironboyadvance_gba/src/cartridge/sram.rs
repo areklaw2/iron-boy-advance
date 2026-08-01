@@ -19,6 +19,8 @@ impl Sram {
 }
 
 impl SystemMemoryAccess for Sram {
+    type Address = u32;
+
     fn read_8(&self, address: u32) -> u8 {
         match address {
             0x08000000..=0x0DFFFFFF => self.rom_read(address),
