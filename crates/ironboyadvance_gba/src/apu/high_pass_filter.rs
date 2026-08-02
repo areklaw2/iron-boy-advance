@@ -1,9 +1,5 @@
-/// High-pass charge factor at 32768 Hz. Closer to 1.0 = gentler (more bass).
-/// DMG hardware value: `0.999958^(4194304/32768) ≈ 0.9946`.
 const HIGH_PASS_CHARGE_FACTOR: f32 = 0.999;
 
-/// One-pole high-pass that removes the DC offset from the mixed output, so a
-/// channel enabling/disabling doesn't click. Models the hardware output capacitor.
 #[derive(Debug)]
 pub struct HighPassFilter {
     charge_factor: f32,

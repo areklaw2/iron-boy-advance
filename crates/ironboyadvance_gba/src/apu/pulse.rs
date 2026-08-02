@@ -168,7 +168,7 @@ impl PulseChannel {
         }
 
         let period_cycles = PERIOD_TICK_CYCLES * (2048 - self.frequency.frequency() as usize);
-        let steps = self.period.step(cycles, period_cycles);
+        let steps = self.period.cycle(cycles, period_cycles);
         self.wave_duty_position = ((self.wave_duty_position as usize + steps) % 8) as u8;
     }
 

@@ -132,12 +132,12 @@ impl PulseChannel {
         TICKS_PER_PERIOD_STEP * (2048 - self.frequency())
     }
 
-    pub fn cycle(&mut self, ticks: usize) {
+    pub fn cycle(&mut self, cycles: usize) {
         if !self.enabled {
             return;
         }
 
-        let steps = self.period.cycle(ticks, self.period_reload());
+        let steps = self.period.cycle(cycles, self.period_reload());
         self.wave_duty_position = ((self.wave_duty_position as usize + steps) % 8) as u8;
     }
 

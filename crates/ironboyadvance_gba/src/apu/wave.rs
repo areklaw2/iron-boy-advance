@@ -180,7 +180,7 @@ impl WaveChannel {
             return;
         }
 
-        let steps = self.period.step(cycles, self.period_cycles());
+        let steps = self.period.cycle(cycles, self.period_cycles());
         let sample_count = self.control.dimension().sample_count();
         self.wave_position = ((self.wave_position as usize + steps) % sample_count) as u8;
     }

@@ -173,7 +173,7 @@ impl NoiseChannel {
             return;
         }
 
-        let steps = self.period.step(cycles, self.period_cycles());
+        let steps = self.period.cycle(cycles, self.period_cycles());
         for _ in 0..steps {
             self.lfsr = self.frequency.counter_width().step(self.lfsr);
         }

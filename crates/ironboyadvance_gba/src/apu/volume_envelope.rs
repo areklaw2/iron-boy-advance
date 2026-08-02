@@ -31,19 +31,20 @@ impl VolumeEnvelope {
     }
 
     pub fn cycle(&mut self) {
-        if self.pace != 0 {
-            if self.timer > 0 {
-                self.timer -= 1
-            }
+        if self.pace == 0 {
+            return;
+        }
 
-            if self.timer == 0 {
-                self.timer = self.pace;
+        if self.timer > 0 {
+            self.timer -= 1;
+        }
 
-                match self.direction {
-                    EnvelopeDirection::Increase if self.volume < 0xF => self.volume += 1,
-                    EnvelopeDirection::Decrease if self.volume > 0x0 => self.volume -= 1,
-                    _ => {}
-                }
+        if self.timer == 0 {
+            self.timer = self.pace;
+            match self.direction {
+                EnvelopeDirection::Increase if self.volume < 0xF => self.volume += 1,
+                EnvelopeDirection::Decrease if self.volume > 0x0 => self.volume -= 1,
+                _ => {}
             }
         }
     }

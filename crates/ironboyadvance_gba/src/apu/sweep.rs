@@ -2,6 +2,8 @@ use bitfields::{bitfield, bitflag};
 use getset::CopyGetters;
 use ironboyadvance_common::register_ops::RegisterOps;
 
+const MAX_PERIOD: u16 = 2047;
+
 #[bitflag(u8)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum SweepDirection {
@@ -14,7 +16,7 @@ pub enum SweepDirection {
 #[derive(PartialEq, Eq)]
 pub struct SweepControl {
     #[bits(3)]
-    shift: u8,
+    step: u8,
     #[bits(1)]
     direction: SweepDirection,
     #[bits(3)]
@@ -61,37 +63,39 @@ impl Sweep {
             self.timer -= 1;
         }
 
-        if self.timer == 0 {
-            let pace = self.control.pace();
-            match pace > 0 {
-                true => self.timer = pace,
-                false => self.timer = 8,
-            }
+        if self.timer != 0 {
+            return None;
+        }
 
-            if self.enabled && pace > 0 {
-                let new_period = self.calculate_period();
+        let pace = self.control.pace();
+        self.timer = match pace > 0 {
+            true => pace,
+            false => 8,
+        };
 
-                if new_period <= 2047 && self.control.shift() > 0 {
-                    self.shadow_period = new_period;
-                    self.calculate_period();
-                    return Some(new_period);
-                }
-            } else {
-                self.period_calculated = false;
-            }
+        if !self.enabled || pace == 0 {
+            self.period_calculated = false;
+            return None;
+        }
+
+        let new_period = self.calculate_period();
+        if new_period <= MAX_PERIOD && self.control.step() > 0 {
+            self.shadow_period = new_period;
+            self.calculate_period();
+            return Some(new_period);
         }
 
         None
     }
 
     fn calculate_period(&mut self) -> u16 {
-        let offset = self.shadow_period >> self.control.shift();
+        let offset = self.shadow_period >> self.control.step();
         let new_period = match self.control.direction() {
-            SweepDirection::Decrease => self.shadow_period - offset,
+            SweepDirection::Decrease => self.shadow_period.wrapping_sub(offset),
             SweepDirection::Increase => self.shadow_period + offset,
         };
 
-        match new_period > 2047 {
+        match new_period > MAX_PERIOD {
             true => self.disable_channel = true,
             false => self.period_calculated = true,
         }
@@ -116,18 +120,19 @@ impl Sweep {
         self.shadow_period = frequency;
 
         let pace = self.control.pace();
-        match pace > 0 {
-            true => self.timer = pace,
-            false => self.timer = 8,
-        }
+        self.timer = match pace > 0 {
+            true => pace,
+            false => 8,
+        };
 
-        self.enabled = pace > 0 || self.control.shift() > 0;
+        self.enabled = pace > 0 || self.control.step() > 0;
         self.disable_channel = false;
 
-        if self.control.shift() > 0 {
-            self.calculate_period();
-        } else {
-            self.period_calculated = false;
+        match self.control.step() > 0 {
+            true => {
+                self.calculate_period();
+            }
+            false => self.period_calculated = false,
         }
     }
 }

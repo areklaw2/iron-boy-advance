@@ -17,14 +17,14 @@ impl Period {
         }
     }
 
-    pub fn cycle(&mut self, ticks: usize, reload: u16) -> usize {
+    pub fn cycle(&mut self, cycles: usize, reload: u16) -> usize {
         self.reloaded = false;
         if reload == 0 {
             return 0;
         }
 
         let mut steps = 0;
-        for _ in 0..ticks {
+        for _ in 0..cycles {
             self.timer = self.timer.saturating_sub(1);
             if self.timer == 0 {
                 self.timer = reload;
