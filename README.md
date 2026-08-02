@@ -21,9 +21,9 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
       - [ ] Real-time clock support
     - [x] Bios
       - [x] Ability to load External BIOS
-- [ ] Game Boy/ Game Boy Color support
+- [x] Game Boy/ Game Boy Color support
 - [ ] Just-in-time (JIT) compilation
-- [ ] Scheduler based game Loop
+- [x] Scheduler based game Loop
 - [ ] UI
   - [ ] Desktop frontend
     - [ ] Graphics Views
@@ -42,10 +42,12 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
   - [ ] Drag and drop file loading
   - [ ] Game savestates
   - [ ] Fast Forwarding
-  - [ ] Pausing
+  - [x] Pausing
   - [x] Game Controller input
 
 ## Testing
+
+### GBA
 
 - [ARM7TDMI Single Step Test](https://github.com/SingleStepTests/ARM7TDMI) :white_check_mark:
 - [gba-tests](https://github.com/jsmolka/gba-tests)
@@ -57,6 +59,20 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
   - memory :white_check_mark:
   - unsafe :white_check_mark:
 - [arm-wrestler](https://github.com/destoer/armwrestler-gba-fixed) :white_check_mark:
+
+### GB/GBC
+
+- [SM83 Single Step Test](https://github.com/SingleStepTests/sm83) :white_check_mark:
+- [gb-test-roms](https://github.com/retrio/gb-test-roms)
+  - cpu instrs | :white_check_mark:
+  - instr timing | :white_check_mark:
+  - mem timing | :white_check_mark:
+  - mem timing 2 | :white_check_mark:
+  - interrupt_time | :white_check_mark:
+  - dmg sound | :white_check_mark:
+  - cgb sound | :white_check_mark:
+  - oam bug | :x:
+  - halt bug | :white_check_mark:
 
 ## Acknowledgements and Sources
 
@@ -86,6 +102,10 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
 ### Libraries
 
 - [bitfields-rs](https://github.com/gregorygaines/bitfields-rs) - a crate created by Gregory Gaines (a really awesome dude) that help me streamline my code.
+
+### GB/GBC Sources
+
+[IronBoy Acknowledgements and Sources](https://github.com/areklaw2/iron-boy#acknowledgements-and-sources)
 
 ## License
 
