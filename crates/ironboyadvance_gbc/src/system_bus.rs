@@ -45,7 +45,7 @@ impl SystemBus {
         }
     }
 
-    fn m_cycle(&mut self) {
+    fn cycle(&mut self) {
         if self.io_registers.dma_controller().vram_dma_active() {
             self.run_vram_dma();
         }
@@ -67,21 +67,30 @@ impl SystemBus {
 
             match event {
                 GbcEvent::Interrupt(interrupt_event) => self.raise_interrupt(interrupt_event),
-                GbcEvent::Serial(serial_event) => self.handle_serial_event(serial_event, timestamp),
-                GbcEvent::Ppu(ppu_event) => self.handle_ppu_event(ppu_event, timestamp),
                 GbcEvent::Timer(timer_event) => self.handle_timer_event(timer_event),
+                GbcEvent::Ppu(ppu_event) => self.handle_ppu_event(ppu_event, timestamp),
                 GbcEvent::Apu(_) => todo!(),
                 GbcEvent::Dma(dma_event) => self.handle_dma_event(dma_event, timestamp),
+                GbcEvent::Serial(serial_event) => self.handle_serial_event(serial_event, timestamp),
             }
         }
+    }
+
+    pub fn interrupts_pending(&self) -> bool {
+        self.io_registers.interrupt_controller().interrupts_pending()
     }
 
     pub fn raise_interrupt(&mut self, interrupt_event: InterruptEvent) {
         self.io_registers.interrupt_controller_mut().raise_interrupt(interrupt_event);
     }
 
-    pub fn interrupts_pending(&self) -> bool {
-        self.io_registers.interrupt_controller().interrupts_pending()
+    pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent, timestamp: usize) {
+        self.io_registers.ppu_mut().handle_event(ppu_event, timestamp);
+
+        if ppu_event == PpuEvent::DrawingPixels {
+            let cpu_halted = self.cpu_halted;
+            self.io_registers.dma_controller_mut().start_h_blank_block(cpu_halted);
+        }
     }
 
     pub fn handle_serial_event(&mut self, serial_event: SerialEvent, timestamp: usize) {
@@ -115,15 +124,6 @@ impl SystemBus {
             let value = self.read_8(transfer.source);
             self.write_8(transfer.destination, value);
             self.io_registers.dma_controller_mut().complete_vram_transfer();
-        }
-    }
-
-    pub fn handle_ppu_event(&mut self, ppu_event: PpuEvent, timestamp: usize) {
-        self.io_registers.ppu_mut().handle_event(ppu_event, timestamp);
-
-        if ppu_event == PpuEvent::DrawingPixels {
-            let cpu_halted = self.cpu_halted;
-            self.io_registers.dma_controller_mut().start_h_blank_block(cpu_halted);
         }
     }
 
@@ -166,7 +166,7 @@ impl SystemMemoryAccess for SystemBus {
 
 impl MemoryInterface for SystemBus {
     fn load_8(&mut self, address: u16) -> u8 {
-        self.m_cycle();
+        self.cycle();
 
         match self.io_registers.dma_controller().oam_dma_conflict(address) {
             true => 0xFF,
@@ -181,7 +181,7 @@ impl MemoryInterface for SystemBus {
     }
 
     fn store_8(&mut self, address: u16, value: u8) {
-        self.m_cycle();
+        self.cycle();
 
         if !self.io_registers.dma_controller().oam_dma_conflict(address) {
             self.write_8(address, value);
@@ -194,7 +194,7 @@ impl MemoryInterface for SystemBus {
     }
 
     fn idle_cycle(&mut self) {
-        self.m_cycle();
+        self.cycle();
     }
 
     fn change_speed(&mut self) -> bool {
