@@ -55,7 +55,6 @@ pub enum CartridgeEvent {
     EepromReady,
 }
 
-#[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum GbaEvent {
     Interrupt(InterruptEvent),

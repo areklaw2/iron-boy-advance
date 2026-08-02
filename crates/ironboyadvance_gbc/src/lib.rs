@@ -1,7 +1,8 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use ironboyadvance_common::{
-    emulator::{Emulator, System},
+    emulator::{Emulator, System, SystemInspection},
+    memory::SystemMemoryAccess,
     scheduler::Scheduler,
 };
 use ironboyadvance_sm83::{CPU_CLOCK_SPEED, GbMode, HaltMode, cpu::Sm83, memory::MemoryInterface};
@@ -119,10 +120,6 @@ impl Emulator for GameBoyColor {
         self.sm83.bus().io_registers().apu().audio_buffer()
     }
 
-    fn serial_output(&self) -> &[u8] {
-        self.sm83.bus().io_registers().serial_transfer().output()
-    }
-
     fn clear_audio_buffer(&mut self) {
         self.sm83.bus_mut().io_registers_mut().apu_mut().clear_audio_buffer();
     }
@@ -139,5 +136,15 @@ impl Emulator for GameBoyColor {
         if selected_pressed && self.sm83.halt_mode() == HaltMode::Stopped {
             self.sm83.set_halt_mode(HaltMode::Running);
         }
+    }
+}
+
+impl SystemInspection for GameBoyColor {
+    fn serial_output(&self) -> &[u8] {
+        self.sm83.bus().io_registers().serial_transfer().output()
+    }
+
+    fn read_memory(&self, address: u32) -> u8 {
+        self.sm83.bus().read_8(address as u16)
     }
 }

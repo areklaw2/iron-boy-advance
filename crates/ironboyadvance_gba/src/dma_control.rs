@@ -137,7 +137,6 @@ pub struct DmaTransfer {
     pub chunk_size: ChunkSize,
 }
 
-#[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum RequestType {
     HBlank,

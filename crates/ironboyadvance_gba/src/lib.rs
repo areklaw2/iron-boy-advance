@@ -1,7 +1,10 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
-use ironboyadvance_common::{emulator::Emulator, scheduler::Scheduler};
+use ironboyadvance_common::{
+    emulator::{Emulator, SystemInspection},
+    scheduler::Scheduler,
+};
 use thiserror::Error;
 
 use crate::{
@@ -121,3 +124,5 @@ impl Emulator for GameBoyAdvance {
         }
     }
 }
+
+impl SystemInspection for GameBoyAdvance {}

@@ -11,7 +11,7 @@ use tracing::debug;
 use crate::{
     boot_rom::BootRom,
     cartridge::Cartridge,
-    events::{DmaEvent, GbcEvent, InterruptEvent, PpuEvent, SerialEvent, TimerEvent},
+    events::{ApuEvent, DmaEvent, GbcEvent, InterruptEvent, PpuEvent, SerialEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
     speed_control::{DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES},
@@ -56,6 +56,7 @@ impl SystemBus {
         };
 
         self.scheduler.borrow_mut().step(t_cycles);
+        self.io_registers.apu_mut().cycle(t_cycles);
         self.handle_events();
     }
 
@@ -69,7 +70,7 @@ impl SystemBus {
                 GbcEvent::Interrupt(interrupt_event) => self.raise_interrupt(interrupt_event),
                 GbcEvent::Timer(timer_event) => self.handle_timer_event(timer_event),
                 GbcEvent::Ppu(ppu_event) => self.handle_ppu_event(ppu_event, timestamp),
-                GbcEvent::Apu(_) => todo!(),
+                GbcEvent::Apu(apu_event) => self.handle_apu_event(apu_event),
                 GbcEvent::Dma(dma_event) => self.handle_dma_event(dma_event, timestamp),
                 GbcEvent::Serial(serial_event) => self.handle_serial_event(serial_event, timestamp),
             }
@@ -95,6 +96,14 @@ impl SystemBus {
 
     pub fn handle_serial_event(&mut self, serial_event: SerialEvent, timestamp: usize) {
         self.io_registers.serial_transfer_mut().handle_event(serial_event, timestamp);
+    }
+
+    pub fn handle_apu_event(&mut self, apu_event: ApuEvent) {
+        self.io_registers.apu_mut().handle_event(apu_event);
+
+        if apu_event == ApuEvent::FrameSequence {
+            self.io_registers.timer_mut().schedule_frame_sequence();
+        }
     }
 
     pub fn handle_timer_event(&mut self, timer_event: TimerEvent) {

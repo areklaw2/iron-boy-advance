@@ -1,12 +1,19 @@
-pub trait Emulator {
+pub trait SystemInspection {
+    fn serial_output(&self) -> &[u8] {
+        &[]
+    }
+
+    fn read_memory(&self, _address: u32) -> u8 {
+        0xFF
+    }
+}
+
+pub trait Emulator: SystemInspection {
     fn run(&mut self, cycles: usize, overshoot: usize) -> usize;
     fn frame_buffer(&self) -> &[u32];
     fn audio_buffer(&self) -> &[(f32, f32)];
     fn clear_audio_buffer(&mut self);
     fn handle_pressed_buttons(&mut self, input: u16);
-    fn serial_output(&self) -> &[u8] {
-        &[]
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

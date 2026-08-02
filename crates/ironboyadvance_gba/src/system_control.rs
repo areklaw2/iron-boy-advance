@@ -191,7 +191,6 @@ impl RegisterOps<u32> for InternalMemoryControl {
 pub enum HaltMode {
     Halted,
     Stopped,
-    //TODO: see if i can refactor this out once i have hardware implemented
     Running,
 }
 

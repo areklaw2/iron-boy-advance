@@ -1,6 +1,5 @@
 use ironboyadvance_common::scheduler::SystemEvent;
 
-#[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum InterruptEvent {
     VBlank,
@@ -19,7 +18,6 @@ pub enum PpuEvent {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-#[allow(unused)]
 pub enum ApuEvent {
     Sample,
     FrameSequence,
@@ -40,7 +38,6 @@ pub enum SerialEvent {
     TransferBit,
 }
 
-#[allow(unused)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum GbcEvent {
     Interrupt(InterruptEvent),

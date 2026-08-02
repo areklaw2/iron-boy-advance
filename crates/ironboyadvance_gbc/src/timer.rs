@@ -4,7 +4,10 @@ use bitfields::bitfield;
 use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
 use ironboyadvance_sm83::GbSpeed;
 
-use crate::events::{GbcEvent, InterruptEvent, TimerEvent};
+use crate::events::{ApuEvent, GbcEvent, InterruptEvent, TimerEvent};
+
+const DIV_APU_T_CYCLES: usize = 8192;
+const DIV_APU_BIT: usize = 12;
 
 #[bitfield(u8)]
 #[derive(PartialEq, Eq)]
@@ -41,7 +44,7 @@ impl Timer {
     pub fn new(scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
         let timestamp = scheduler.borrow().timestamp();
 
-        Timer {
+        let mut timer = Timer {
             divider: timestamp,
             counter: 0,
             counter_cycles: 0,
@@ -49,7 +52,9 @@ impl Timer {
             control: TimerControl::from_bits(0),
             speed: GbSpeed::Normal,
             scheduler,
-        }
+        };
+        timer.schedule_frame_sequence();
+        timer
     }
 
     fn speed_shift(&self) -> usize {
@@ -108,8 +113,31 @@ impl Timer {
 
     fn reset_divider(&mut self) {
         self.counter = self.read_counter();
+        if self.div_apu_bit_set() {
+            self.scheduler
+                .borrow_mut()
+                .schedule((GbcEvent::Apu(ApuEvent::FrameSequence), 0));
+        }
         self.divider = self.scheduler.borrow().timestamp();
         self.reset();
+        self.schedule_frame_sequence();
+    }
+
+    fn div_apu_bit_set(&self) -> bool {
+        let elapsed = self.scheduler.borrow().timestamp() - self.divider;
+        (elapsed >> DIV_APU_BIT) & 1 == 1
+    }
+
+    pub fn schedule_frame_sequence(&mut self) {
+        self.scheduler
+            .borrow_mut()
+            .cancel_events(GbcEvent::Apu(ApuEvent::FrameSequence));
+
+        let elapsed = self.scheduler.borrow().timestamp() - self.divider;
+        let next = self.divider + (elapsed / DIV_APU_T_CYCLES + 1) * DIV_APU_T_CYCLES;
+        self.scheduler
+            .borrow_mut()
+            .schedule_at_timestamp(GbcEvent::Apu(ApuEvent::FrameSequence), next);
     }
 
     fn read_counter(&self) -> u8 {
@@ -135,6 +163,7 @@ impl Timer {
         self.speed = speed;
         self.divider = self.scheduler.borrow().timestamp();
         self.reset();
+        self.schedule_frame_sequence();
     }
 }
 

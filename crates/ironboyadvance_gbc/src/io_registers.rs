@@ -34,7 +34,7 @@ impl IoRegisters {
     pub fn new(mode: GbMode, skip_boot: bool, scheduler: Rc<RefCell<Scheduler<GbcEvent>>>) -> Self {
         IoRegisters {
             ppu: Ppu::new(mode, skip_boot, scheduler.clone()),
-            apu: Apu::new(scheduler.clone()),
+            apu: Apu::new(mode, scheduler.clone()),
             joypad: Joypad::new(),
             interrupt_controller: InterruptController::new(),
             serial_transfer: SerialTransfer::new(scheduler.clone()),

@@ -63,19 +63,12 @@ impl Headless {
         }
     }
 
-    pub fn serial_text(&self) -> String {
-        String::from_utf8_lossy(self.system.serial_output()).into_owned()
+    pub fn read_memory(&self, address: u32) -> u8 {
+        self.system.read_memory(address)
     }
 
-    pub fn run_until_serial(&mut self, needles: &[&str], max_frames: usize) -> String {
-        for _ in 0..max_frames {
-            self.run_frame();
-            let text = self.serial_text();
-            if needles.iter().any(|needle| text.contains(needle)) {
-                return text;
-            }
-        }
-        self.serial_text()
+    pub fn serial_text(&self) -> String {
+        String::from_utf8_lossy(self.system.serial_output()).into_owned()
     }
 
     pub fn frame_hash(&self) -> u64 {

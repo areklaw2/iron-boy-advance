@@ -483,7 +483,7 @@ impl fmt::Display for HiRegOpsBxOpcode {
     }
 }
 
-#[allow(dead_code)]
+#[allow(unused)]
 pub(crate) enum Exception {
     Reset = 0x00,
     Undefined = 0x04,

@@ -54,7 +54,6 @@ mod tests {
     }
 
     #[derive(Debug)]
-    #[allow(unused)]
     struct State {
         r: [u32; 16],
         r_fiq: [u32; 7],
@@ -68,7 +67,6 @@ mod tests {
     }
 
     #[derive(Debug)]
-    #[allow(unused)]
     struct Test {
         initial_state: State,
         final_state: State,
@@ -162,7 +160,6 @@ mod tests {
         }
     }
 
-    #[allow(dead_code)]
     impl TestBus {
         pub fn new(base_address: u32, opcode: u32, transactions: VecDeque<Transaction>) -> Self {
             TestBus {
