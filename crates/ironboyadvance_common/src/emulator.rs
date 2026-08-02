@@ -4,6 +4,9 @@ pub trait Emulator {
     fn audio_buffer(&self) -> &[(f32, f32)];
     fn clear_audio_buffer(&mut self);
     fn handle_pressed_buttons(&mut self, input: u16);
+    fn serial_output(&self) -> &[u8] {
+        &[]
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

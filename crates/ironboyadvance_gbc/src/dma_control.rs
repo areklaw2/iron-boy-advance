@@ -4,8 +4,8 @@ use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
 use ironboyadvance_sm83::GbSpeed;
 
 use crate::{
-    speed_control::{DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES},
     events::{DmaEvent, GbcEvent},
+    speed_control::{DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES},
 };
 
 const OAM_DMA_LENGTH: u16 = 0x00A0;

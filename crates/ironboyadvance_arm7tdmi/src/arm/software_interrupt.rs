@@ -1,5 +1,5 @@
 use getset::CopyGetters;
-use ironboyadvance_common::bits::BitOps;
+use ironboyadvance_common::{bits::BitOps, memory::MemoryAccess};
 
 use crate::{
     Condition, CpuAction, Exception,
@@ -26,8 +26,13 @@ impl SoftwareInterrupt {
 
 impl Instruction for SoftwareInterrupt {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        cpu.exception(Exception::SoftwareInterrupt);
-        CpuAction::PipelineFlush
+        match !cpu.bios_loaded() && cpu.bios_call(self.comment >> 16) {
+            true => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
+            false => {
+                cpu.exception(Exception::SoftwareInterrupt);
+                CpuAction::PipelineFlush
+            }
+        }
     }
 
     fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {

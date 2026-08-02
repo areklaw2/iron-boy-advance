@@ -102,6 +102,7 @@ pub struct Ppu {
     obj_line: [Option<Pixel>; VIEWPORT_WIDTH],
     win_obj_line: [bool; VIEWPORT_WIDTH],
     win_control_line: [WindowControl; VIEWPORT_WIDTH],
+    scanline_forced_blank: bool,
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
     events: Vec<FutureGbaEvent>,
 }
@@ -130,6 +131,7 @@ impl Ppu {
             obj_line: [None; VIEWPORT_WIDTH],
             win_obj_line: [false; VIEWPORT_WIDTH],
             win_control_line: [WindowControl::no_windowing_control(); VIEWPORT_WIDTH],
+            scanline_forced_blank: false,
             scheduler,
             events: Vec::new(),
         }
@@ -301,6 +303,7 @@ impl Ppu {
         self.lcd_status.set_h_blank_flag(false);
 
         if (self.v_count as usize) < VDRAW_SCANLINES {
+            self.scanline_forced_blank = self.lcd_control.forced_blank();
             self.events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         } else {
             self.lcd_status.set_v_blank_flag(true);
@@ -351,12 +354,13 @@ impl Ppu {
 
             self.lcd_status.set_v_blank_flag(false);
             self.background.reload_affine_points();
+            self.scanline_forced_blank = self.lcd_control.forced_blank();
             self.events.push((GbaEvent::Ppu(PpuEvent::HDraw), HDRAW_CYCLES));
         }
     }
 
     fn render_scanline(&mut self) {
-        if self.lcd_control.forced_blank() {
+        if self.scanline_forced_blank {
             let start = self.v_count as usize * HDRAW_PIXELS;
             self.frame_buffer[start..start + HDRAW_PIXELS].fill(bgr555_to_rgb888(0x7FFF));
             return;

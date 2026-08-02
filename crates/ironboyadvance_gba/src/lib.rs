@@ -55,9 +55,9 @@ impl GameBoyAdvance {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         let cartridge = Cartridge::load(rom_path, rom_buffer, scheduler.clone())?;
         let bios = Bios::load(bios_buffer)?;
-        let skip_bios = !bios.loaded();
+        let bios_loaded = bios.loaded();
         let gba = GameBoyAdvance {
-            arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone()), show_logs, skip_bios),
+            arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone()), show_logs, bios_loaded),
             scheduler,
         };
         Ok(gba)

@@ -73,6 +73,8 @@ impl SystemMemoryAccess for Apu {
             0x04000084..=0x04000087 => self.read_sound_status(address),
             // SOUNDBIAS
             0x04000088..=0x0400008B => self.sound_bias.read_byte(address),
+            // NOT USED
+            0x0400008C..=0x0400008F => 0,
             // WAVE RAM
             0x04000090..=0x0400009F => self.ch3.read_8(address),
             // FIFO_A_L, FIFO_A_H
@@ -105,6 +107,8 @@ impl SystemMemoryAccess for Apu {
             0x04000084..=0x04000087 => self.write_sound_status(address, value),
             // SOUNDBIAS
             0x04000088..=0x0400008B => self.sound_bias.write_byte(address, value),
+            // NOT USED
+            0x0400008C..=0x0400008F => {}
             // WAVE RAM
             0x04000090..=0x0400009F => self.ch3.write_8(address, value),
             // FIFO_A_L, FIFO_A_H

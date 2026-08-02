@@ -9,12 +9,12 @@ use ironboyadvance_sm83::{
 use tracing::debug;
 
 use crate::{
-    speed_control::{DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES},
     boot_rom::BootRom,
     cartridge::Cartridge,
     events::{DmaEvent, GbcEvent, InterruptEvent, PpuEvent, SerialEvent, TimerEvent},
     io_registers::IoRegisters,
     memory::Memory,
+    speed_control::{DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES},
 };
 
 const SPEED_SWITCH_T_CYCLES: usize = 8200;

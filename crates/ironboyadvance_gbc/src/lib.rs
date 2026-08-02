@@ -119,6 +119,10 @@ impl Emulator for GameBoyColor {
         self.sm83.bus().io_registers().apu().audio_buffer()
     }
 
+    fn serial_output(&self) -> &[u8] {
+        self.sm83.bus().io_registers().serial_transfer().output()
+    }
+
     fn clear_audio_buffer(&mut self) {
         self.sm83.bus_mut().io_registers_mut().apu_mut().clear_audio_buffer();
     }

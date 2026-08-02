@@ -13,7 +13,7 @@ pub struct Sram {
 
 impl Sram {
     pub fn new(rom: Vec<u8>, save_file: &Path) -> Result<Self, CartridgeError> {
-        let backup_file = BackupFile::open(save_file, SRAM_SIZE, 0x00)?;
+        let backup_file = BackupFile::open(save_file, SRAM_SIZE, 0xFF)?;
         Ok(Self { rom, backup_file })
     }
 }

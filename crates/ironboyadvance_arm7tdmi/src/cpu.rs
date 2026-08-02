@@ -46,6 +46,8 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     thumb_lut: [ThumbInstructionFactory; 1024],
     last_instruction: Option<LastInstruction>,
     show_logs: bool,
+    #[getset(skip)]
+    bios_loaded: bool,
 }
 
 impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
@@ -83,7 +85,7 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {
-    pub fn new(bus: I, show_logs: bool, skip_bios: bool) -> Self {
+    pub fn new(bus: I, show_logs: bool, bios_loaded: bool) -> Self {
         let mut cpu = Arm7tdmiCpu {
             general_registers: [0; 16],
             banked_registers_fiq: [0; 7], //r8 to r14
@@ -100,13 +102,18 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             thumb_lut: [|v| ThumbInstruction::Undefined(thumb::undefined::Undefined::new(v)); 1024],
             last_instruction: None,
             show_logs,
+            bios_loaded,
         };
 
         cpu.arm_lut = generate_arm_lut();
         cpu.thumb_lut = generate_thumb_lut();
 
-        match skip_bios {
+        match bios_loaded {
             true => {
+                cpu.cpsr.set_mode(CpuMode::Supervisor);
+                cpu.cpsr.set_irq_disable(true);
+            }
+            false => {
                 cpu.general_registers[SP] = 0x03007F00;
                 cpu.general_registers[LR] = 0x08000000;
                 cpu.general_registers[PC] = 0x08000000;
@@ -114,10 +121,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 cpu.banked_registers_irq[0] = 0x3007FA0;
                 cpu.cpsr.set_mode(CpuMode::System);
                 cpu.cpsr.set_irq_disable(false);
-            }
-            false => {
-                cpu.cpsr.set_mode(CpuMode::Supervisor);
-                cpu.cpsr.set_irq_disable(true);
             }
         }
 
@@ -368,5 +371,43 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         if !self.cpsr.irq_disable() {
             self.exception(Exception::Irq);
         }
+    }
+
+    pub(crate) fn bios_loaded(&self) -> bool {
+        self.bios_loaded
+    }
+
+    pub(crate) fn bios_call(&mut self, function: u32) -> bool {
+        match function {
+            0x06 => self.bios_divide(),
+            0x08 => self.bios_square_root(),
+            _ => return false,
+        }
+        true
+    }
+
+    fn bios_divide(&mut self) {
+        let numerator = self.register(0) as i32;
+        let denominator = self.register(1) as i32;
+
+        let (quotient, remainder, absolute_quotient) = match denominator {
+            0 => match numerator < 0 {
+                true => (-1, numerator, 1),
+                false => (1, numerator, 1),
+            },
+            _ => {
+                let quotient = numerator.wrapping_div(denominator);
+                (quotient, numerator.wrapping_rem(denominator), quotient.wrapping_abs())
+            }
+        };
+
+        self.set_register(0, quotient as u32);
+        self.set_register(1, remainder as u32);
+        self.set_register(3, absolute_quotient as u32);
+    }
+
+    fn bios_square_root(&mut self) {
+        let value = self.register(0);
+        self.set_register(0, (value as f64).sqrt() as u32);
     }
 }

@@ -1,8 +1,8 @@
 use ironboyadvance_common::memory::SystemMemoryAccess;
 
 use crate::{
-    ppu::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH},
     ppu::tile::{TILE_HEIGHT, TILE_WIDTH},
+    ppu::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH},
 };
 
 pub struct Window {

@@ -5,6 +5,7 @@ use std::{
 };
 
 use bitfields::bitfield;
+use getset::Getters;
 use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
 use ironboyadvance_sm83::{CPU_CLOCK_SPEED, GbSpeed};
 
@@ -27,6 +28,7 @@ struct SerialTransferControl {
     transfer_start: bool,
 }
 
+#[derive(Getters)]
 pub struct SerialTransfer {
     serial_transfer_data: u8,
     serial_transfer_control: SerialTransferControl,
@@ -34,7 +36,8 @@ pub struct SerialTransfer {
     transferred_byte: u8,
     speed: GbSpeed,
     scheduler: Rc<RefCell<Scheduler<GbcEvent>>>,
-    //TODO: add an output vec for the transfer
+    #[getset(get = "pub")]
+    output: Vec<u8>,
 }
 
 impl SerialTransfer {
@@ -46,6 +49,7 @@ impl SerialTransfer {
             transferred_byte: 0,
             speed: GbSpeed::Normal,
             scheduler,
+            output: Vec::new(),
         }
     }
 
@@ -71,6 +75,7 @@ impl SerialTransfer {
 
     fn complete_transfer(&mut self) {
         self.serial_transfer_control.set_transfer_start(false);
+        self.output.push(self.transferred_byte);
         print!("{}", self.transferred_byte as char);
         let _ = stdout().flush();
         self.scheduler

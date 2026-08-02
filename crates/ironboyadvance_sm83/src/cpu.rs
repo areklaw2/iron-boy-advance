@@ -13,20 +13,15 @@ const INTERRUPT_VECTOR_SIZE: u16 = 0x0008;
 const CANCELLED_INTERRUPT_VECTOR: u16 = 0x0000;
 
 #[derive(Getters, MutGetters, Setters)]
-#[getset(get = "pub(crate)", set = "pub(crate)")]
 pub struct Sm83<I: MemoryInterface> {
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     registers: Registers,
     #[getset(get = "pub", get_mut = "pub", set = "pub")]
     bus: I,
     show_logs: bool,
-    #[getset(skip)]
     halt_mode: HaltMode,
-    #[getset(skip)]
     halt_bug: bool,
-    #[getset(skip)]
     interrupt_master_enable: bool,
-    #[getset(skip)]
     enable_interrupt_delay: u8,
     lut: [SharpSm83InstructionFactory; 256],
 }

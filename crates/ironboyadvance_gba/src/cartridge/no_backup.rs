@@ -18,7 +18,7 @@ impl SystemMemoryAccess for NoBackup {
     fn read_8(&self, address: u32) -> u8 {
         match address {
             0x08000000..=0x0DFFFFFF => self.rom_read(address),
-            0x0E000000..=0x0FFFFFFF => 0,
+            0x0E000000..=0x0FFFFFFF => 0xFF,
             _ => panic!("Invalid byte read for NoBackup: {:08X}", address),
         }
     }
