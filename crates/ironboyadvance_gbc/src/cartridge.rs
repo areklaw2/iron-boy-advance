@@ -39,7 +39,7 @@ pub trait MemoryBankController: SystemMemoryAccess<Address = u16> {
     fn rom(&self) -> &[u8];
 
     fn rom_read(&self, bank: usize, address: u16) -> u8 {
-        let offset = bank * ROM_BANK_SIZE | (address as usize & (ROM_BANK_SIZE - 1));
+        let offset = (bank * ROM_BANK_SIZE) | (address as usize & (ROM_BANK_SIZE - 1));
         *self.rom().get(offset).unwrap_or(&0xFF)
     }
 }

@@ -129,8 +129,8 @@ impl Header {
         };
 
         let mut checksum: u8 = 0;
-        for address in CHECKSUM_START..=CHECKSUM_END {
-            checksum = checksum.wrapping_sub(bytes[address]).wrapping_sub(1)
+        for byte in &bytes[CHECKSUM_START..=CHECKSUM_END] {
+            checksum = checksum.wrapping_sub(*byte).wrapping_sub(1)
         }
 
         if checksum != header.checksum {

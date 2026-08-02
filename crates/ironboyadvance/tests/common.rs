@@ -63,6 +63,10 @@ impl Headless {
         }
     }
 
+    pub fn frame_buffer(&self) -> &[u32] {
+        self.system.frame_buffer()
+    }
+
     pub fn read_memory(&self, address: u32) -> u8 {
         self.system.read_memory(address)
     }

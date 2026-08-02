@@ -64,9 +64,7 @@ impl RealTimeClock {
     }
 
     fn calculate_time(&self) -> Option<u64> {
-        if self.time.is_none() {
-            return None;
-        }
+        self.time?;
         let mut time = match time::SystemTime::now().duration_since(time::UNIX_EPOCH) {
             Ok(t) => t.as_secs(),
             Err(_) => panic!("System clock is set to a time before the unix epoch (1970-01-01)"),

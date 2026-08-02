@@ -40,7 +40,7 @@ impl Palette {
     pub fn read(&self) -> u8 {
         let mut pallete = 0;
         for i in 0..self.data.len() {
-            pallete |= (self.data[i] as u8) << (i * 2);
+            pallete |= self.data[i] << (i * 2);
         }
         pallete
     }

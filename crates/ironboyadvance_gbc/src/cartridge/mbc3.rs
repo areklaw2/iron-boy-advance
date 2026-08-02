@@ -67,7 +67,7 @@ impl Mbc3 {
     }
 
     fn ram_offset(&self, address: u16) -> usize {
-        self.current_ram_bank * RAM_BANK_SIZE | (address as usize & (RAM_BANK_SIZE - 1))
+        (self.current_ram_bank * RAM_BANK_SIZE) | (address as usize & (RAM_BANK_SIZE - 1))
     }
 
     fn persist_clock(&mut self) {

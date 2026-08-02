@@ -475,7 +475,7 @@ impl Ppu {
         }
 
         if self.gb_mode == GbMode::Color {
-            self.oam_buffer.sort_by(|a, b| a.0.cmp(&b.0));
+            self.oam_buffer.sort_by_key(|entry| entry.0);
         } else {
             self.oam_buffer.sort_by(|a, b| a.1.cmp(&b.1).then(a.0.cmp(&b.0)));
         }

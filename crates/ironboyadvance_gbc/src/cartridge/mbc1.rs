@@ -54,7 +54,7 @@ impl Mbc1 {
             _ => 0,
         };
 
-        bank * RAM_BANK_SIZE | (address as usize & (RAM_BANK_SIZE - 1))
+        (bank * RAM_BANK_SIZE) | (address as usize & (RAM_BANK_SIZE - 1))
     }
 }
 
