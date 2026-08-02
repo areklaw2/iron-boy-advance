@@ -144,7 +144,7 @@ fn cgb_sound() {
 }
 
 #[test]
-#[ignore = "1 sub-test failing, oam bug not implemented"]
+#[ignore = "Skipped"]
 fn oam_bug() {
     assert_passed("external/gb-test-roms/oam_bug/oam_bug.gb", 4000);
 }
