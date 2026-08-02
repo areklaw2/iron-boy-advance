@@ -43,7 +43,6 @@ fn save_none() {
 }
 
 #[test]
-#[ignore = "fails test 4, sram is an 8 bit bus so 16 and 32 bit reads must replicate the byte"]
 fn save_sram() {
     assert_frame_hash("external/gba-tests/save/sram.gba", 3000, ALL_TESTS_PASSED);
 }

@@ -101,11 +101,19 @@ impl SystemMemoryAccess for Cartridge {
         self.backup.read_16(address)
     }
 
+    fn read_32(&self, address: u32) -> u32 {
+        self.backup.read_32(address)
+    }
+
     fn write_8(&mut self, address: u32, value: u8) {
         self.backup.write_8(address, value)
     }
 
     fn write_16(&mut self, address: u32, value: u16) {
         self.backup.write_16(address, value)
+    }
+
+    fn write_32(&mut self, address: u32, value: u32) {
+        self.backup.write_32(address, value)
     }
 }

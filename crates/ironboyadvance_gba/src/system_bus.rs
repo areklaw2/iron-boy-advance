@@ -128,7 +128,7 @@ impl SystemMemoryAccess for SystemBus {
     }
 
     fn read_16(&self, address: u32) -> u16 {
-        let address = address & !1;
+        let address = self.align(address, MemoryAccessWidth::HalfWord);
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.read_16(address),
             WRAM_BOARD_BASE => self.memory.read_16(address),
@@ -149,7 +149,7 @@ impl SystemMemoryAccess for SystemBus {
     }
 
     fn read_32(&self, address: u32) -> u32 {
-        let address = address & !3;
+        let address = self.align(address, MemoryAccessWidth::Word);
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.read_32(address),
             WRAM_BOARD_BASE => self.memory.read_32(address),
@@ -187,7 +187,7 @@ impl SystemMemoryAccess for SystemBus {
     }
 
     fn write_16(&mut self, address: u32, value: u16) {
-        let address = address & !1;
+        let address = self.align(address, MemoryAccessWidth::HalfWord);
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.write_16(address, value),
             WRAM_BOARD_BASE => self.memory.write_16(address, value),
@@ -205,7 +205,7 @@ impl SystemMemoryAccess for SystemBus {
     }
 
     fn write_32(&mut self, address: u32, value: u32) {
-        let address = address & !3;
+        let address = self.align(address, MemoryAccessWidth::Word);
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.write_32(address, value),
             WRAM_BOARD_BASE => self.memory.write_32(address, value),
@@ -240,6 +240,17 @@ impl SystemBus {
     fn latch_dma_open_bus(&mut self, access: u8, value: u32) {
         if MemoryAccess::Dma.is_set(access) {
             self.dma_open_bus_value = value;
+        }
+    }
+
+    fn align(&self, address: u32, width: MemoryAccessWidth) -> u32 {
+        match address & 0xFF000000 {
+            SRAM_LO | SRAM_HI => address,
+            _ => match width {
+                MemoryAccessWidth::Byte => address,
+                MemoryAccessWidth::HalfWord => address & !1,
+                MemoryAccessWidth::Word => address & !3,
+            },
         }
     }
 
