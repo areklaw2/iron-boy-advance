@@ -4,7 +4,7 @@ use ironboyadvance_common::{
     emulator::{Emulator, System},
     scheduler::Scheduler,
 };
-use ironboyadvance_sm83::{GbMode, cpu::Sm83, memory::MemoryInterface};
+use ironboyadvance_sm83::{CPU_CLOCK_SPEED, GbMode, HaltMode, cpu::Sm83, memory::MemoryInterface};
 use thiserror::Error;
 
 use crate::{
@@ -29,14 +29,11 @@ mod speed_control;
 mod system_bus;
 mod timer;
 
-pub const VIEWPORT_WIDTH: usize = 160;
-pub const VIEWPORT_HEIGHT: usize = 144;
-pub const CPU_CLOCK_SPEED: usize = 4_194_304;
-pub const CYCLES_PER_FRAME: usize = 70_224;
 pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
-pub const SAMPLE_RATE: u32 = 32768;
-pub(crate) const NORMAL_SPEED_T_CYCLES: usize = 4;
-pub(crate) const DOUBLE_SPEED_T_CYCLES: usize = 2;
+
+pub use apu::SAMPLE_RATE;
+
+pub use ppu::{CYCLES_PER_FRAME, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 
 #[derive(Error, Debug)]
 pub enum GbcError {
@@ -63,7 +60,6 @@ impl GameBoyColor {
         let cartridge = Cartridge::load(rom_path, rom_buffer)?;
         let boot_rom = BootRom::load(boot_rom_buffer)?;
         let skip_boot = !boot_rom.loaded();
-
         let mode = match kind {
             System::Gb => GbMode::ColorAsMonochrome,
             _ => cartridge.mode(),
@@ -82,23 +78,16 @@ impl GameBoyColor {
     }
 
     pub fn cycle(&mut self) {
-        if self.sm83.stopped() {
-            self.sm83.bus_mut().idle_cycle();
-            return;
-        }
-
-        let halted = self.sm83.halted();
-        self.sm83.bus_mut().set_cpu_halted(halted);
-
-        match self.sm83.halted() {
-            true => match self.sm83.bus().interrupts_pending() {
+        match self.sm83.halt_mode() {
+            HaltMode::Stopped => self.sm83.bus_mut().idle_cycle(),
+            HaltMode::Halted => match self.sm83.bus().interrupts_pending() {
                 true => {
-                    self.sm83.un_halt();
+                    self.sm83.set_halt_mode(HaltMode::Running);
                     self.sm83.irq();
                 }
                 false => self.sm83.bus_mut().idle_cycle(),
             },
-            false => {
+            HaltMode::Running => {
                 if self.sm83.bus().interrupts_pending() {
                     self.sm83.irq();
                 }
@@ -143,8 +132,8 @@ impl Emulator for GameBoyColor {
             self.sm83.bus_mut().raise_interrupt(InterruptEvent::Joypad);
         }
 
-        if selected_pressed {
-            self.sm83.un_stop();
+        if selected_pressed && self.sm83.halt_mode() == HaltMode::Stopped {
+            self.sm83.set_halt_mode(HaltMode::Running);
         }
     }
 }

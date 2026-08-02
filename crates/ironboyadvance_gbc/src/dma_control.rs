@@ -4,7 +4,7 @@ use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
 use ironboyadvance_sm83::GbSpeed;
 
 use crate::{
-    DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES,
+    speed_control::{DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES},
     events::{DmaEvent, GbcEvent},
 };
 

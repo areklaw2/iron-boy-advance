@@ -6,17 +6,14 @@ use std::{
 
 use bitfields::bitfield;
 use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
-use ironboyadvance_sm83::GbSpeed;
+use ironboyadvance_sm83::{CPU_CLOCK_SPEED, GbSpeed};
 
-use crate::{
-    CPU_CLOCK_SPEED,
-    events::{GbcEvent, InterruptEvent, SerialEvent},
-};
+use crate::events::{GbcEvent, InterruptEvent, SerialEvent};
 
 const NORMAL_CLOCK_FREQUENCY: usize = 8192;
 const FAST_CLOCK_FREQUENCY: usize = 262144;
-const NORMAL_CLOCK_CYCLES: usize = CPU_CLOCK_SPEED / NORMAL_CLOCK_FREQUENCY;
-const FAST_CLOCK_CYCLES: usize = CPU_CLOCK_SPEED / FAST_CLOCK_FREQUENCY;
+const NORMAL_CLOCK_CYCLES: usize = CPU_CLOCK_SPEED as usize / NORMAL_CLOCK_FREQUENCY;
+const FAST_CLOCK_CYCLES: usize = CPU_CLOCK_SPEED as usize / FAST_CLOCK_FREQUENCY;
 const BITS_TO_TRANSFER: u8 = 8;
 const DISCONNECTED_BIT: u8 = 1;
 

@@ -1,3 +1,4 @@
+use crate::HaltMode;
 use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
@@ -14,7 +15,7 @@ impl Stop {
 impl Instruction for Stop {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         if !cpu.bus_mut().change_speed() {
-            cpu.set_stopped(true);
+            cpu.set_halt_mode(HaltMode::Stopped);
         }
     }
 

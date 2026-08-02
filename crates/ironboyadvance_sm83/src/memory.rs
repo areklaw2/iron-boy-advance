@@ -36,6 +36,8 @@ pub trait MemoryInterface {
 
     fn change_speed(&mut self) -> bool;
 
+    fn set_cpu_halted(&mut self, halted: bool);
+
     fn interrupt_context(&self) -> &InterruptContext;
 
     fn interrupt_context_mut(&mut self) -> &mut InterruptContext;

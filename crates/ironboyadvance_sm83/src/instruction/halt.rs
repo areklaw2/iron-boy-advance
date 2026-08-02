@@ -1,3 +1,4 @@
+use crate::HaltMode;
 use crate::cpu::Sm83;
 use crate::instruction::Instruction;
 use crate::memory::MemoryInterface;
@@ -14,7 +15,7 @@ impl Halt {
 impl Instruction for Halt {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Sm83<I>) {
         match cpu.interrupt_master_enable() || cpu.bus().interrupt_context().pending_interrupt() == 0 {
-            true => cpu.set_halted(true),
+            true => cpu.set_halt_mode(HaltMode::Halted),
             false => cpu.trigger_halt_bug(),
         }
     }

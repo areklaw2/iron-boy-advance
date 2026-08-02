@@ -9,7 +9,7 @@ use ironboyadvance_sm83::{
 use tracing::debug;
 
 use crate::{
-    DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES,
+    speed_control::{DOUBLE_SPEED_T_CYCLES, NORMAL_SPEED_T_CYCLES},
     boot_rom::BootRom,
     cartridge::Cartridge,
     events::{DmaEvent, GbcEvent, InterruptEvent, PpuEvent, SerialEvent, TimerEvent},
@@ -127,10 +127,6 @@ impl SystemBus {
         }
     }
 
-    pub fn set_cpu_halted(&mut self, cpu_halted: bool) {
-        self.cpu_halted = cpu_halted;
-    }
-
     pub fn speed(&self) -> GbSpeed {
         self.io_registers.speed_controller().speed()
     }
@@ -195,6 +191,10 @@ impl MemoryInterface for SystemBus {
 
     fn idle_cycle(&mut self) {
         self.cycle();
+    }
+
+    fn set_cpu_halted(&mut self, halted: bool) {
+        self.cpu_halted = halted;
     }
 
     fn change_speed(&mut self) -> bool {

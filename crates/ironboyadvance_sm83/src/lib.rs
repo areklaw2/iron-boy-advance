@@ -22,6 +22,13 @@ pub enum GbSpeed {
     Double,
 }
 
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum HaltMode {
+    Running,
+    Halted,
+    Stopped,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Register8 {
     B = 0b000,

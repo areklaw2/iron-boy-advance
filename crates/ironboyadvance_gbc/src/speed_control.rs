@@ -4,6 +4,9 @@ use ironboyadvance_sm83::GbSpeed;
 
 const SPEED_SWITCH_UNUSED_BITS: u8 = 0x7E;
 
+pub(crate) const NORMAL_SPEED_T_CYCLES: usize = 4;
+pub(crate) const DOUBLE_SPEED_T_CYCLES: usize = 2;
+
 #[bitfield(u8)]
 #[derive(PartialEq, Eq)]
 struct SpeedSwitch {

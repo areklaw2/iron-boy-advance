@@ -132,6 +132,8 @@ mod tests {
             false
         }
 
+        fn set_cpu_halted(&mut self, _halted: bool) {}
+
         fn interrupt_context(&self) -> &InterruptContext {
             &self.interrupt_context
         }

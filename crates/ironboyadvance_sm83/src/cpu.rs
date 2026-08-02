@@ -2,7 +2,7 @@ use getset::{Getters, MutGetters, Setters};
 use tracing::debug;
 
 use crate::{
-    Condition, GbMode, R16Memory, Register8, Register16, Register16Stack,
+    Condition, GbMode, HaltMode, R16Memory, Register8, Register16, Register16Stack,
     instruction::{Instruction, SharpSm83InstructionFactory, generate_lut},
     memory::{InterruptContext, MemoryInterface},
     registers::Registers,
@@ -21,11 +21,9 @@ pub struct Sm83<I: MemoryInterface> {
     bus: I,
     show_logs: bool,
     #[getset(skip)]
-    halted: bool,
+    halt_mode: HaltMode,
     #[getset(skip)]
     halt_bug: bool,
-    #[getset(skip)]
-    stopped: bool,
     #[getset(skip)]
     interrupt_master_enable: bool,
     #[getset(skip)]
@@ -58,6 +56,10 @@ impl<I: MemoryInterface> MemoryInterface for Sm83<I> {
         self.bus.change_speed()
     }
 
+    fn set_cpu_halted(&mut self, halted: bool) {
+        self.bus.set_cpu_halted(halted);
+    }
+
     fn interrupt_context(&self) -> &InterruptContext {
         self.bus.interrupt_context()
     }
@@ -73,9 +75,8 @@ impl<I: MemoryInterface> Sm83<I> {
             registers: Registers::new(skip_boot, mode),
             bus,
             show_logs,
-            halted: false,
+            halt_mode: HaltMode::Running,
             halt_bug: false,
-            stopped: false,
             interrupt_master_enable: false,
             enable_interrupt_delay: 0,
             lut: generate_lut(),
@@ -120,28 +121,13 @@ impl<I: MemoryInterface> Sm83<I> {
         self.registers.set_pc(vector);
     }
 
-    pub fn halted(&self) -> bool {
-        self.halted
+    pub fn halt_mode(&self) -> HaltMode {
+        self.halt_mode
     }
 
-    pub fn un_halt(&mut self) {
-        self.halted = false;
-    }
-
-    pub fn stopped(&self) -> bool {
-        self.stopped
-    }
-
-    pub fn un_stop(&mut self) {
-        self.stopped = false;
-    }
-
-    pub(crate) fn set_stopped(&mut self, stopped: bool) {
-        self.stopped = stopped;
-    }
-
-    pub(crate) fn set_halted(&mut self, halted: bool) {
-        self.halted = halted;
+    pub fn set_halt_mode(&mut self, halt_mode: HaltMode) {
+        self.halt_mode = halt_mode;
+        self.bus.set_cpu_halted(halt_mode == HaltMode::Halted);
     }
 
     pub(crate) fn interrupt_master_enable(&self) -> bool {

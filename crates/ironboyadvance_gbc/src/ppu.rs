@@ -10,7 +10,6 @@ use tile::{TILE_HEIGHT, TILE_WIDTH};
 use window::Window;
 
 use crate::{
-    VIEWPORT_HEIGHT, VIEWPORT_WIDTH,
     events::{FutureGbcEvent, GbcEvent, InterruptEvent, PpuEvent},
     ppu::{
         background::BgMapAttributes,
@@ -34,6 +33,10 @@ const OAM_SCAN_CYCLES: usize = 80;
 const DRAWING_PIXELS_CYCLES: usize = 172;
 const HBLANK_CYCLES: usize = 204;
 const VBLANK_CYCLES: usize = TOTAL_LINE_CYCLES;
+
+pub const CYCLES_PER_FRAME: usize = TOTAL_LINE_CYCLES * NUMBER_OF_LINES as usize;
+pub const VIEWPORT_WIDTH: usize = 160;
+pub const VIEWPORT_HEIGHT: usize = 144;
 
 #[derive(Getters)]
 pub struct Ppu {

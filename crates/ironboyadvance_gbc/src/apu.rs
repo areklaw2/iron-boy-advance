@@ -4,6 +4,8 @@ use ironboyadvance_common::{memory::SystemMemoryAccess, scheduler::Scheduler};
 
 use crate::events::GbcEvent;
 
+pub const SAMPLE_RATE: u32 = 32768;
+
 pub struct Apu {
     audio_registers: Vec<u8>,
     audio_buffer: Vec<(f32, f32)>,
