@@ -9,6 +9,8 @@ const FNV_PRIME: u64 = 1099511628211;
 
 const LUMINANCE_RAMP: &[u8] = b"@%#*+=-:. ";
 
+const TEST_UNIX_SECONDS: u64 = 1767225600;
+
 pub fn repo_path(relative_path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..").join(relative_path)
 }
@@ -40,7 +42,7 @@ impl Headless {
         let kind = detect_system(&rom).unwrap_or_else(|| panic!("unrecognized rom format: {path:?}"));
         let (viewport_width, viewport_height, _, _, cycles_per_frame) = system_info(kind);
 
-        let system = boot(kind, &path.to_string_lossy(), rom, Vec::new(), false)
+        let system = boot(kind, &path.to_string_lossy(), rom, Vec::new(), TEST_UNIX_SECONDS, false)
             .unwrap_or_else(|error| panic!("failed to boot {path:?}: {error}"));
 
         Headless {

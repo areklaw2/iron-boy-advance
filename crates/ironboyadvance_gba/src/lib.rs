@@ -53,10 +53,11 @@ impl GameBoyAdvance {
         rom_path: PathBuf,
         rom_buffer: Vec<u8>,
         bios_buffer: Vec<u8>,
+        base_unix_seconds: u64,
         show_logs: bool,
     ) -> Result<GameBoyAdvance, GbaError> {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
-        let cartridge = Cartridge::load(rom_path, rom_buffer, scheduler.clone())?;
+        let cartridge = Cartridge::load(rom_path, rom_buffer, base_unix_seconds, scheduler.clone())?;
         let bios = Bios::load(bios_buffer)?;
         let bios_loaded = bios.loaded();
         let gba = GameBoyAdvance {

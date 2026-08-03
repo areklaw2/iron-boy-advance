@@ -41,10 +41,17 @@ pub fn boot(
     rom_path: &str,
     rom: Vec<u8>,
     bios: Vec<u8>,
+    unix_seconds: u64,
     show_logs: bool,
 ) -> Result<Box<dyn Emulator>, BootError> {
     match kind {
-        System::Gba => Ok(Box::new(GameBoyAdvance::new(PathBuf::from(rom_path), rom, bios, show_logs)?)),
+        System::Gba => Ok(Box::new(GameBoyAdvance::new(
+            PathBuf::from(rom_path),
+            rom,
+            bios,
+            unix_seconds,
+            show_logs,
+        )?)),
         System::Gb | System::Gbc => Ok(Box::new(GameBoyColor::new(
             kind,
             PathBuf::from(rom_path),

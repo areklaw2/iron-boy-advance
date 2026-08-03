@@ -8,10 +8,15 @@ use std::{
     thread,
 };
 
+use chrono::Local;
 use ironboyadvance::{BootError, boot, detect_system, system_info};
 use ringbuf::traits::Producer;
 
 use crate::{DesktopError, audio, frame::FrameTimer, input::KEYPAD_IDLE};
+
+fn current_unix_seconds() -> u64 {
+    Local::now().naive_local().and_utc().timestamp().max(0) as u64
+}
 
 pub enum EmulatorCommand {
     Reset,
@@ -61,7 +66,7 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
 
     let emu_keypad = keypad.clone();
     thread::spawn(move || {
-        let mut system = boot(kind, &rom_path, rom_buffer, bios_buffer, show_logs)
+        let mut system = boot(kind, &rom_path, rom_buffer, bios_buffer, current_unix_seconds(), show_logs)
             .unwrap_or_else(|e| panic!("failed to initialize emulator: {e}"));
         let mut overshoot = 0;
         let mut frame_timer = FrameTimer::new(fps);
@@ -98,7 +103,7 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
                             tracing::error!("reset failed: unrecognized rom format");
                             continue 'commands;
                         };
-                        match boot(reset_kind, &rom_path, rom, bios, show_logs) {
+                        match boot(reset_kind, &rom_path, rom, bios, current_unix_seconds(), show_logs) {
                             Ok(new_system) => {
                                 system = new_system;
                                 overshoot = 0;

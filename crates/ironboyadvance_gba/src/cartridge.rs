@@ -12,7 +12,9 @@ use crate::{
         },
         eeprom::Eeprom,
         flash::{Flash, FlashSize},
+        gpio::Gpio,
         no_backup::NoBackup,
+        rtc::Rtc,
         sram::Sram,
     },
     events::{CartridgeEvent, GbaEvent},
@@ -22,8 +24,10 @@ mod backup_file;
 mod config;
 mod eeprom;
 mod flash;
+mod gpio;
 mod header;
 mod no_backup;
+mod rtc;
 mod sram;
 
 #[derive(Error, Debug)]
@@ -55,12 +59,14 @@ pub trait CartridgeBackup: SystemMemoryAccess<Address = u32> {
 
 pub struct Cartridge {
     backup: Box<dyn CartridgeBackup>,
+    gpio: Option<Gpio>,
 }
 
 impl Cartridge {
     pub fn load(
         rom_path: PathBuf,
         buffer: Vec<u8>,
+        base_unix_seconds: u64,
         scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
     ) -> Result<Cartridge, CartridgeError> {
         let header = Header::load(&buffer[0..228]);
@@ -74,17 +80,25 @@ impl Cartridge {
                 buffer,
                 &save_file,
                 config.eeprom_size().ok_or(CartridgeError::MissingEepromSize)?,
-                scheduler,
+                scheduler.clone(),
             )?),
             BackupType::Flash64KB => Box::new(Flash::new(buffer, &save_file, FlashSize::Small)?),
             BackupType::Flash128KB => Box::new(Flash::new(buffer, &save_file, FlashSize::Large)?),
         };
 
-        if CartridgeDevice::Rtc.is_set(config.device_pattern()) {
-            println!("RTC")
-        }
+        let gpio = CartridgeDevice::Rtc
+            .is_set(config.device_pattern())
+            .then(|| Gpio::new(Some(Rtc::new(base_unix_seconds, scheduler))));
 
-        Ok(Cartridge { backup })
+        Ok(Cartridge { backup, gpio })
+    }
+
+    fn gpio_for_read(&self, address: u32) -> Option<&Gpio> {
+        self.gpio.as_ref().filter(|gpio| gpio.readable() && Gpio::in_range(address))
+    }
+
+    fn gpio_for_write(&mut self, address: u32) -> Option<&mut Gpio> {
+        self.gpio.as_mut().filter(|_| Gpio::in_range(address))
     }
 
     pub fn handle_event(&mut self, cartridge_event: CartridgeEvent) {
@@ -96,26 +110,47 @@ impl SystemMemoryAccess for Cartridge {
     type Address = u32;
 
     fn read_8(&self, address: u32) -> u8 {
-        self.backup.read_8(address)
+        match self.gpio_for_read(address) {
+            Some(gpio) => (gpio.read_16(address) >> ((address & 1) * 8)) as u8,
+            None => self.backup.read_8(address),
+        }
     }
 
     fn read_16(&self, address: u32) -> u16 {
-        self.backup.read_16(address)
+        match self.gpio_for_read(address) {
+            Some(gpio) => gpio.read_16(address),
+            None => self.backup.read_16(address),
+        }
     }
 
     fn read_32(&self, address: u32) -> u32 {
-        self.backup.read_32(address)
+        match self.gpio_for_read(address) {
+            Some(gpio) => gpio.read_16(address) as u32 | (gpio.read_16(address + 2) as u32) << 16,
+            None => self.backup.read_32(address),
+        }
     }
 
     fn write_8(&mut self, address: u32, value: u8) {
-        self.backup.write_8(address, value)
+        match self.gpio_for_write(address) {
+            Some(_) => {}
+            None => self.backup.write_8(address, value),
+        }
     }
 
     fn write_16(&mut self, address: u32, value: u16) {
-        self.backup.write_16(address, value)
+        match self.gpio_for_write(address) {
+            Some(gpio) => gpio.write_16(address, value),
+            None => self.backup.write_16(address, value),
+        }
     }
 
     fn write_32(&mut self, address: u32, value: u32) {
-        self.backup.write_32(address, value)
+        match self.gpio_for_write(address) {
+            Some(gpio) => {
+                gpio.write_16(address, value as u16);
+                gpio.write_16(address + 2, (value >> 16) as u16);
+            }
+            None => self.backup.write_32(address, value),
+        }
     }
 }
