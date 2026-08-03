@@ -36,8 +36,14 @@ impl Gpio {
 
     pub fn write_16(&mut self, address: u32, value: u16) {
         match address & !1 {
-            0x080000C4 => self.write_pins(value as u8 & 0xF),
-            0x080000C6 => self.direction = value as u8 & 0xF,
+            0x080000C4 => {
+                self.data = value as u8 & 0xF;
+                self.write_pins();
+            }
+            0x080000C6 => {
+                self.direction = value as u8 & 0xF;
+                self.write_pins();
+            }
             0x080000C8 => self.readable = value & 1 != 0,
             _ => {}
         }
@@ -52,10 +58,10 @@ impl Gpio {
         (self.data & self.direction | device_pins & !self.direction) & 0xF
     }
 
-    fn write_pins(&mut self, value: u8) {
-        self.data = value;
+    fn write_pins(&mut self) {
+        let driven_pins = self.data & self.direction;
         if let Some(rtc) = &mut self.rtc {
-            rtc.write_pins(self.data & self.direction);
+            rtc.write_pins(driven_pins);
         }
     }
 }

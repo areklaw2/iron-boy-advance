@@ -17,8 +17,8 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
     - [x] Keypad
     - [x] Interrupts
     - [x] System Control
-    - [ ] Cartridges
-      - [ ] Real-time clock support
+    - [x] Cartridges
+      - [x] Real-time clock support
     - [x] Bios
       - [x] Ability to load External BIOS
 - [x] Game Boy/ Game Boy Color support

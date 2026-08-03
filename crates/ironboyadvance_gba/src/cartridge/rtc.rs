@@ -1,13 +1,18 @@
 use std::cell::RefCell;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use bitfields::bitfield;
 use ironboyadvance_arm7tdmi::CPU_CLOCK_SPEED;
 use ironboyadvance_common::scheduler::Scheduler;
+use tracing::warn;
 
 use crate::events::GbaEvent;
 
 const SECONDS_PER_DAY: i64 = 24 * 60 * 60;
+const SAVED_STATE_BYTES: usize = 16;
+const DEFAULT_DAY_OF_WEEK_OFFSET: i64 = 3;
 
 #[bitfield(u8)]
 #[derive(PartialEq, Eq)]
@@ -87,54 +92,57 @@ impl RtcRegister {
 enum TransferState {
     WaitingForChipSelectLow,
     WaitingForChipSelectHigh,
-    ReceivingCommand,
-    Reading,
-    Writing,
+    ReceivingCommand {
+        bits_transferred: u8,
+    },
+    Reading {
+        register: RtcRegister,
+        byte_index: usize,
+        bits_transferred: u8,
+    },
+    Writing {
+        register: RtcRegister,
+        byte_index: usize,
+        bits_transferred: u8,
+    },
 }
 
 pub struct Rtc {
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
+    save_path: PathBuf,
     base_unix_seconds: u64,
     offset_seconds: i64,
     day_of_week_offset: i64,
     control: RtcControl,
     state: TransferState,
     previous_pins: RtcPins,
-    register: RtcRegister,
     bytes: [u8; 7],
-    byte_index: usize,
-    bits_transferred: u8,
+    output_bit: bool,
 }
 
 impl Rtc {
-    pub fn new(base_unix_seconds: u64, scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Rtc {
+    pub fn new(base_unix_seconds: u64, save_path: PathBuf, scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Rtc {
         let mut control = RtcControl::from_bits(0);
-        control.set_power_off(true);
-        control.set_irq_duty_hold(true);
+        control.set_hour_mode_24(true);
+        let (offset_seconds, day_of_week_offset) = load_save(&save_path);
 
         Rtc {
             scheduler,
+            save_path,
             base_unix_seconds,
-            offset_seconds: 0,
-            day_of_week_offset: 3,
+            offset_seconds,
+            day_of_week_offset,
             control,
             state: TransferState::WaitingForChipSelectLow,
             previous_pins: RtcPins::from_bits(0),
-            register: RtcRegister::Unused,
             bytes: [0; 7],
-            byte_index: 0,
-            bits_transferred: 0,
+            output_bit: false,
         }
     }
 
     pub fn read_pins(&self) -> u8 {
-        let outgoing_bit = match self.state {
-            TransferState::Reading => (self.bytes[self.byte_index] >> self.bits_transferred) & 1 != 0,
-            _ => false,
-        };
-
         let mut pins = RtcPins::from_bits(0);
-        pins.set_serial_data(outgoing_bit);
+        pins.set_serial_data(self.output_bit);
         pins.into_bits()
     }
 
@@ -153,53 +161,70 @@ impl Rtc {
             }
             TransferState::WaitingForChipSelectHigh => {
                 if pins.serial_clock() && pins.chip_select() {
-                    self.state = TransferState::ReceivingCommand;
-                    self.reset_buffer();
+                    self.bytes = [0; 7];
+                    self.state = TransferState::ReceivingCommand { bits_transferred: 0 };
                 }
             }
-            TransferState::ReceivingCommand | TransferState::Reading | TransferState::Writing => match pins.chip_select() {
-                false => self.end_transfer(),
-                true => {
-                    if clock_rising {
-                        self.transfer_bit(pins);
+            TransferState::ReceivingCommand { .. } | TransferState::Reading { .. } | TransferState::Writing { .. } => {
+                match pins.chip_select() {
+                    false => self.state = TransferState::WaitingForChipSelectLow,
+                    true => {
+                        if clock_rising {
+                            self.transfer_bit(pins);
+                        }
                     }
                 }
-            },
+            }
         }
-    }
-
-    fn reset_buffer(&mut self) {
-        self.bytes = [0; 7];
-        self.byte_index = 0;
-        self.bits_transferred = 0;
-    }
-
-    fn end_transfer(&mut self) {
-        self.state = TransferState::WaitingForChipSelectLow;
     }
 
     fn transfer_bit(&mut self, pins: RtcPins) {
-        if self.state != TransferState::Reading {
-            self.bytes[self.byte_index] |= (pins.serial_data() as u8) << self.bits_transferred;
-        }
-
-        self.bits_transferred += 1;
-        if self.bits_transferred < 8 {
-            return;
-        }
-
-        self.bits_transferred = 0;
         match self.state {
-            TransferState::ReceivingCommand => self.decode_command(),
-            _ => {
-                self.byte_index += 1;
-                if self.byte_index >= self.register.byte_count() {
-                    if self.state == TransferState::Writing {
-                        self.apply_written_bytes();
+            TransferState::ReceivingCommand { bits_transferred } => {
+                self.bytes[0] |= (pins.serial_data() as u8) << bits_transferred;
+                match bits_transferred == 7 {
+                    true => self.decode_command(),
+                    false => {
+                        self.state = TransferState::ReceivingCommand {
+                            bits_transferred: bits_transferred + 1,
+                        }
                     }
-                    self.end_transfer();
                 }
             }
+            TransferState::Reading {
+                register,
+                byte_index,
+                bits_transferred,
+            } => {
+                self.output_bit = (self.bytes[byte_index] >> bits_transferred) & 1 != 0;
+                self.state = match next_position(register, byte_index, bits_transferred) {
+                    Some((byte_index, bits_transferred)) => TransferState::Reading {
+                        register,
+                        byte_index,
+                        bits_transferred,
+                    },
+                    None => TransferState::WaitingForChipSelectLow,
+                };
+            }
+            TransferState::Writing {
+                register,
+                byte_index,
+                bits_transferred,
+            } => {
+                self.bytes[byte_index] |= (pins.serial_data() as u8) << bits_transferred;
+                self.state = match next_position(register, byte_index, bits_transferred) {
+                    Some((byte_index, bits_transferred)) => TransferState::Writing {
+                        register,
+                        byte_index,
+                        bits_transferred,
+                    },
+                    None => {
+                        self.apply_written_bytes(register);
+                        TransferState::WaitingForChipSelectLow
+                    }
+                };
+            }
+            TransferState::WaitingForChipSelectLow | TransferState::WaitingForChipSelectHigh => {}
         }
     }
 
@@ -210,31 +235,39 @@ impl Rtc {
         };
 
         if command & 0xF0 != 0x60 {
-            self.end_transfer();
+            self.state = TransferState::WaitingForChipSelectLow;
             return;
         }
 
-        self.register = RtcRegister::from_command((command >> 1) & 0b111);
-        self.reset_buffer();
+        let register = RtcRegister::from_command((command >> 1) & 0b111);
+        self.bytes = [0; 7];
 
-        match self.register {
+        self.state = match register {
             RtcRegister::ForceReset => {
                 self.force_reset();
-                self.end_transfer();
+                TransferState::WaitingForChipSelectLow
             }
-            RtcRegister::ForceIrq => self.end_transfer(),
+            RtcRegister::ForceIrq => TransferState::WaitingForChipSelectLow,
             _ => match command & 1 != 0 {
                 true => {
-                    self.load_registers();
-                    self.state = TransferState::Reading;
+                    self.load_registers(register);
+                    TransferState::Reading {
+                        register,
+                        byte_index: 0,
+                        bits_transferred: 0,
+                    }
                 }
-                false => self.state = TransferState::Writing,
+                false => TransferState::Writing {
+                    register,
+                    byte_index: 0,
+                    bits_transferred: 0,
+                },
             },
-        }
+        };
     }
 
-    fn load_registers(&mut self) {
-        match self.register {
+    fn load_registers(&mut self, register: RtcRegister) {
+        match register {
             RtcRegister::Control => {
                 self.bytes[0] = self.control.into_bits();
                 self.control.set_power_off(false);
@@ -256,8 +289,8 @@ impl Rtc {
         }
     }
 
-    fn apply_written_bytes(&mut self) {
-        match self.register {
+    fn apply_written_bytes(&mut self, register: RtcRegister) {
+        match register {
             RtcRegister::Control => {
                 let written = RtcControl::from_bits(self.bytes[0]);
                 self.control.set_irq_duty_hold(written.irq_duty_hold());
@@ -284,12 +317,25 @@ impl Rtc {
     }
 
     fn force_reset(&mut self) {
+        let days = days_from_civil(2000, 1, 1);
         self.control = RtcControl::from_bits(0);
-        self.offset_seconds = 0;
+        self.day_of_week_offset = (-days).rem_euclid(7);
+        self.set_clock(days * SECONDS_PER_DAY);
     }
 
     fn set_clock(&mut self, unix_seconds: i64) {
         self.offset_seconds = unix_seconds - self.unadjusted_unix_seconds() as i64;
+        self.save();
+    }
+
+    fn save(&self) {
+        let mut bytes = [0u8; SAVED_STATE_BYTES];
+        bytes[0..8].copy_from_slice(&self.offset_seconds.to_le_bytes());
+        bytes[8..16].copy_from_slice(&self.day_of_week_offset.to_le_bytes());
+
+        if let Err(error) = fs::write(&self.save_path, bytes) {
+            warn!("rtc save failed at {:?}: {}", self.save_path, error);
+        }
     }
 
     fn encode_time(&self, date_time: &DateTime) -> [u8; 3] {
@@ -348,6 +394,30 @@ impl Rtc {
     }
 }
 
+fn next_position(register: RtcRegister, byte_index: usize, bits_transferred: u8) -> Option<(usize, u8)> {
+    match bits_transferred == 7 {
+        false => Some((byte_index, bits_transferred + 1)),
+        true => match byte_index + 1 >= register.byte_count() {
+            true => None,
+            false => Some((byte_index + 1, 0)),
+        },
+    }
+}
+
+fn load_save(path: &Path) -> (i64, i64) {
+    let Ok(bytes) = fs::read(path) else {
+        return (0, DEFAULT_DAY_OF_WEEK_OFFSET);
+    };
+
+    match bytes.len() == SAVED_STATE_BYTES {
+        true => (
+            i64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap_or_default()),
+            i64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap_or_default()),
+        ),
+        false => (0, DEFAULT_DAY_OF_WEEK_OFFSET),
+    }
+}
+
 fn to_binary_coded_decimal(value: u8) -> u8 {
     ((value / 10) << 4) | (value % 10)
 }
@@ -385,4 +455,189 @@ fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
 
     era * 146097 + day_of_era - 719468
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cartridge::gpio::Gpio;
+
+    const DATA_ADDRESS: u32 = 0x080000C4;
+    const DIRECTION_ADDRESS: u32 = 0x080000C6;
+    const CONTROL_ADDRESS: u32 = 0x080000C8;
+
+    const SERIAL_CLOCK: u16 = 1;
+    const SERIAL_DATA: u16 = 2;
+    const CHIP_SELECT: u16 = 4;
+
+    const NEW_YEARS_DAY_2026: u64 = 1767225600;
+    const AFTERNOON: u64 = 13 * 3600 + 45 * 60 + 30;
+
+    fn command(register: RtcRegister, read: bool) -> u8 {
+        let index: u8 = match register {
+            RtcRegister::ForceReset => 0,
+            RtcRegister::Control => 1,
+            RtcRegister::DateTime => 2,
+            RtcRegister::Time => 3,
+            RtcRegister::ForceIrq => 6,
+            RtcRegister::Unused => 7,
+        };
+
+        (0x60 | (index << 1) | read as u8).reverse_bits()
+    }
+
+    fn save_path(name: &str) -> PathBuf {
+        let path = std::env::temp_dir().join(format!("ironboyadvance-rtc-{name}.rtc"));
+        let _ = fs::remove_file(&path);
+        path
+    }
+
+    fn open(path: PathBuf, unix_seconds: u64) -> Gpio {
+        let scheduler = Rc::new(RefCell::new(Scheduler::new()));
+        let mut gpio = Gpio::new(Some(Rtc::new(unix_seconds, path, scheduler)));
+        gpio.write_16(CONTROL_ADDRESS, 1);
+        gpio
+    }
+
+    fn harness(name: &str, unix_seconds: u64) -> Gpio {
+        open(save_path(name), unix_seconds)
+    }
+
+    fn begin_transfer(gpio: &mut Gpio) {
+        gpio.write_16(DIRECTION_ADDRESS, SERIAL_CLOCK | SERIAL_DATA | CHIP_SELECT);
+        gpio.write_16(DATA_ADDRESS, SERIAL_CLOCK);
+        gpio.write_16(DATA_ADDRESS, SERIAL_CLOCK | CHIP_SELECT);
+    }
+
+    fn end_transfer(gpio: &mut Gpio) {
+        gpio.write_16(DATA_ADDRESS, 0);
+    }
+
+    fn send_byte(gpio: &mut Gpio, byte: u8) {
+        gpio.write_16(DIRECTION_ADDRESS, SERIAL_CLOCK | SERIAL_DATA | CHIP_SELECT);
+        for index in 0..8 {
+            let bit = ((byte >> index) & 1) as u16;
+            gpio.write_16(DATA_ADDRESS, CHIP_SELECT | (bit * SERIAL_DATA));
+            gpio.write_16(DATA_ADDRESS, CHIP_SELECT | (bit * SERIAL_DATA) | SERIAL_CLOCK);
+        }
+    }
+
+    fn receive_byte(gpio: &mut Gpio) -> u8 {
+        gpio.write_16(DIRECTION_ADDRESS, SERIAL_CLOCK | CHIP_SELECT);
+        let mut byte = 0;
+        for index in 0..8 {
+            gpio.write_16(DATA_ADDRESS, CHIP_SELECT);
+            gpio.write_16(DATA_ADDRESS, CHIP_SELECT | SERIAL_CLOCK);
+            let bit = (gpio.read_16(DATA_ADDRESS) & SERIAL_DATA) >> 1;
+            byte |= (bit as u8) << index;
+        }
+        byte
+    }
+
+    fn read_register(gpio: &mut Gpio, command: u8, count: usize) -> Vec<u8> {
+        begin_transfer(gpio);
+        send_byte(gpio, command);
+        let bytes = (0..count).map(|_| receive_byte(gpio)).collect();
+        end_transfer(gpio);
+        bytes
+    }
+
+    fn write_register(gpio: &mut Gpio, command: u8, bytes: &[u8]) {
+        begin_transfer(gpio);
+        send_byte(gpio, command);
+        for byte in bytes {
+            send_byte(gpio, *byte);
+        }
+        end_transfer(gpio);
+    }
+
+    #[test]
+    fn control_boots_in_24_hour_mode_without_power_failure() {
+        let mut gpio = harness("boot_control", NEW_YEARS_DAY_2026);
+        assert_eq!(read_register(&mut gpio, command(RtcRegister::Control, true), 1), vec![0x40]);
+    }
+
+    #[test]
+    fn date_time_reads_back_as_binary_coded_decimal() {
+        let mut gpio = harness("date_time", NEW_YEARS_DAY_2026 + AFTERNOON);
+        let bytes = read_register(&mut gpio, command(RtcRegister::DateTime, true), 7);
+
+        assert_eq!(bytes[0], 0x26, "year");
+        assert_eq!(bytes[1], 0x01, "month");
+        assert_eq!(bytes[2], 0x01, "day");
+        assert_eq!(bytes[3], 3, "day of week, thursday with 0 = monday");
+        assert_eq!(bytes[4], 0x93, "hour keeps the pm flag even in 24 hour mode");
+        assert_eq!(bytes[5], 0x45, "minute");
+        assert_eq!(bytes[6], 0x30, "second");
+    }
+
+    #[test]
+    fn time_register_matches_the_date_time_register() {
+        let mut gpio = harness("time", NEW_YEARS_DAY_2026 + AFTERNOON);
+        let date_time = read_register(&mut gpio, command(RtcRegister::DateTime, true), 7);
+        assert_eq!(
+            read_register(&mut gpio, command(RtcRegister::Time, true), 3),
+            date_time[4..7].to_vec()
+        );
+    }
+
+    #[test]
+    fn twelve_hour_mode_folds_afternoon_hours() {
+        let mut gpio = harness("twelve_hour", NEW_YEARS_DAY_2026 + AFTERNOON);
+        write_register(&mut gpio, command(RtcRegister::Control, false), &[0x00]);
+        assert_eq!(
+            read_register(&mut gpio, command(RtcRegister::DateTime, true), 7)[4],
+            0x81,
+            "1 pm in 12 hour mode"
+        );
+    }
+
+    #[test]
+    fn command_byte_accepts_either_bit_order() {
+        let mut gpio = harness("bit_order", NEW_YEARS_DAY_2026);
+        let reversed = read_register(&mut gpio, command(RtcRegister::Control, true), 1);
+        let plain = read_register(&mut gpio, 0x63, 1);
+        assert_eq!(reversed, plain, "0xC6 and 0x63 both select the control register");
+    }
+
+    #[test]
+    fn written_date_time_round_trips() {
+        let mut gpio = harness("round_trip", NEW_YEARS_DAY_2026);
+        let written = vec![0x99, 0x12, 0x25, 0x05, 0x08, 0x30, 0x15];
+        write_register(&mut gpio, command(RtcRegister::DateTime, false), &written);
+        assert_eq!(read_register(&mut gpio, command(RtcRegister::DateTime, true), 7), written);
+    }
+
+    #[test]
+    fn control_writes_cannot_set_the_read_only_power_failure_flag() {
+        let mut gpio = harness("read_only_power", NEW_YEARS_DAY_2026);
+        write_register(&mut gpio, command(RtcRegister::Control, false), &[0xFF]);
+        assert_eq!(read_register(&mut gpio, command(RtcRegister::Control, true), 1), vec![0x6A]);
+    }
+
+    #[test]
+    fn force_reset_zeroes_every_register() {
+        let mut gpio = harness("force_reset", NEW_YEARS_DAY_2026 + AFTERNOON);
+        begin_transfer(&mut gpio);
+        send_byte(&mut gpio, command(RtcRegister::ForceReset, false));
+        end_transfer(&mut gpio);
+
+        let bytes = read_register(&mut gpio, command(RtcRegister::DateTime, true), 7);
+        assert_eq!(&bytes[0..4], &[0x00, 0x01, 0x01, 0x00], "day and month reset to 01h");
+        assert_eq!(&bytes[4..7], &[0x00, 0x00, 0x00], "time reset to midnight");
+        assert_eq!(read_register(&mut gpio, command(RtcRegister::Control, true), 1), vec![0x00]);
+    }
+
+    #[test]
+    fn clock_survives_a_reload() {
+        let path = save_path("reload");
+        let written = vec![0x99, 0x12, 0x25, 0x05, 0x08, 0x30, 0x15];
+
+        let mut gpio = open(path.clone(), NEW_YEARS_DAY_2026);
+        write_register(&mut gpio, command(RtcRegister::DateTime, false), &written);
+        drop(gpio);
+
+        let mut reloaded = open(path, NEW_YEARS_DAY_2026);
+        assert_eq!(read_register(&mut reloaded, command(RtcRegister::DateTime, true), 7), written);
+    }
 }

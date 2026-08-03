@@ -88,7 +88,7 @@ impl Cartridge {
 
         let gpio = CartridgeDevice::Rtc
             .is_set(config.device_pattern())
-            .then(|| Gpio::new(Some(Rtc::new(base_unix_seconds, scheduler))));
+            .then(|| Gpio::new(Some(Rtc::new(base_unix_seconds, rom_path.with_extension("rtc"), scheduler))));
 
         Ok(Cartridge { backup, gpio })
     }
