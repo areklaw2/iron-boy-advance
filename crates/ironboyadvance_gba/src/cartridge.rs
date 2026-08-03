@@ -11,6 +11,7 @@ use crate::{
             CartridgeDevice, determine_cartridge_config,
         },
         eeprom::Eeprom,
+        flash::{Flash, FlashSize},
         no_backup::NoBackup,
         sram::Sram,
     },
@@ -20,6 +21,7 @@ use crate::{
 mod backup_file;
 mod config;
 mod eeprom;
+mod flash;
 mod header;
 mod no_backup;
 mod sram;
@@ -74,8 +76,8 @@ impl Cartridge {
                 config.eeprom_size().ok_or(CartridgeError::MissingEepromSize)?,
                 scheduler,
             )?),
-            BackupType::Flash64KB => todo!(),
-            BackupType::Flash128KB => todo!(),
+            BackupType::Flash64KB => Box::new(Flash::new(buffer, &save_file, FlashSize::Small)?),
+            BackupType::Flash128KB => Box::new(Flash::new(buffer, &save_file, FlashSize::Large)?),
         };
 
         if CartridgeDevice::Rtc.is_set(config.device_pattern()) {

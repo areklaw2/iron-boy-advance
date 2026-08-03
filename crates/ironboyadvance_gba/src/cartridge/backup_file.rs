@@ -53,4 +53,16 @@ impl BackupFile {
             warn!("backup write failed at offset {:08X}: {}", offset, e);
         }
     }
+
+    pub fn fill(&mut self, offset: usize, length: usize, value: u8) {
+        let range = offset..offset + length;
+        self.buffer[range.clone()].fill(value);
+        let result = self
+            .file
+            .seek(SeekFrom::Start(offset as u64))
+            .and_then(|_| self.file.write_all(&self.buffer[range]));
+        if let Err(e) = result {
+            warn!("backup fill failed at offset {:08X}: {}", offset, e);
+        }
+    }
 }

@@ -43,7 +43,7 @@ enum AccessMode {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum TransferState {
+enum EepromState {
     Idle,
     GetAccessMode,
     GetAddress {
@@ -71,7 +71,7 @@ pub struct Eeprom {
     rom: Vec<u8>,
     backup_file: BackupFile,
     size: EepromSize,
-    state: Cell<TransferState>,
+    state: Cell<EepromState>,
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
 }
 
@@ -86,7 +86,7 @@ impl Eeprom {
             rom,
             backup_file: BackupFile::open(save_file, size.backup_size(), 0xFF)?,
             size,
-            state: Cell::new(TransferState::Idle),
+            state: Cell::new(EepromState::Idle),
             scheduler,
         })
     }
@@ -133,7 +133,7 @@ impl SystemMemoryAccess for Eeprom {
         }
 
         match self.state.get() {
-            TransferState::Stream { data, position } => {
+            EepromState::Stream { data, position } => {
                 let data_bit = if position < DUMMY_BITS {
                     0
                 } else {
@@ -143,16 +143,16 @@ impl SystemMemoryAccess for Eeprom {
 
                 let next_position = position + 1;
                 self.state.set(if next_position >= STREAM_BITS {
-                    TransferState::Idle
+                    EepromState::Idle
                 } else {
-                    TransferState::Stream {
+                    EepromState::Stream {
                         data,
                         position: next_position,
                     }
                 });
                 data_bit
             }
-            TransferState::Busy => 0,
+            EepromState::Busy => 0,
             _ => 1,
         }
     }
@@ -171,22 +171,22 @@ impl SystemMemoryAccess for Eeprom {
         let bit = (value & 1) as u8;
 
         match self.state.get() {
-            TransferState::Idle => {
+            EepromState::Idle => {
                 let access_mode_started = bit == 1;
                 if access_mode_started {
-                    self.state.set(TransferState::GetAccessMode);
+                    self.state.set(EepromState::GetAccessMode);
                 }
             }
-            TransferState::GetAccessMode => {
+            EepromState::GetAccessMode => {
                 let is_read_mode = bit == 1;
                 let access_mode = if is_read_mode { AccessMode::Read } else { AccessMode::Write };
-                self.state.set(TransferState::GetAddress {
+                self.state.set(EepromState::GetAddress {
                     access_mode,
                     shift: 0,
                     bits_shifted: 0,
                 });
             }
-            TransferState::GetAddress {
+            EepromState::GetAddress {
                 access_mode,
                 shift,
                 bits_shifted,
@@ -195,25 +195,25 @@ impl SystemMemoryAccess for Eeprom {
                 let bits_shifted = bits_shifted + 1;
                 if bits_shifted == self.size.address_width() {
                     self.state.set(match access_mode {
-                        AccessMode::Read => TransferState::Stop {
+                        AccessMode::Read => EepromState::Stop {
                             address: shift,
                             data: None,
                         },
-                        AccessMode::Write => TransferState::GetData {
+                        AccessMode::Write => EepromState::GetData {
                             address: shift,
                             shift: 0,
                             bits_shifted: 0,
                         },
                     });
                 } else {
-                    self.state.set(TransferState::GetAddress {
+                    self.state.set(EepromState::GetAddress {
                         access_mode,
                         shift,
                         bits_shifted,
                     });
                 }
             }
-            TransferState::GetData {
+            EepromState::GetData {
                 address,
                 shift,
                 bits_shifted,
@@ -221,40 +221,40 @@ impl SystemMemoryAccess for Eeprom {
                 let shift = (shift << 1) | bit as u64;
                 let bits_shifted = bits_shifted + 1;
                 self.state.set(if bits_shifted == 64 {
-                    TransferState::Stop {
+                    EepromState::Stop {
                         address,
                         data: Some(shift),
                     }
                 } else {
-                    TransferState::GetData {
+                    EepromState::GetData {
                         address,
                         shift,
                         bits_shifted,
                     }
                 });
             }
-            TransferState::Stop { address, data } => match data {
-                None => self.state.set(TransferState::Stream {
+            EepromState::Stop { address, data } => match data {
+                None => self.state.set(EepromState::Stream {
                     data: self.read_block(address),
                     position: 0,
                 }),
                 Some(data) => {
                     self.write_block(address, data);
-                    self.state.set(TransferState::Busy);
+                    self.state.set(EepromState::Busy);
                     self.scheduler
                         .borrow_mut()
                         .schedule((GbaEvent::Cartridge(CartridgeEvent::EepromReady), WRITE_CYCLES));
                 }
             },
-            TransferState::Stream { .. } | TransferState::Busy => {
+            EepromState::Stream { .. } | EepromState::Busy => {
                 self.scheduler
                     .borrow_mut()
                     .cancel_events(GbaEvent::Cartridge(CartridgeEvent::EepromReady));
                 let is_command_start = bit == 1;
                 self.state.set(if is_command_start {
-                    TransferState::GetAccessMode
+                    EepromState::GetAccessMode
                 } else {
-                    TransferState::Idle
+                    EepromState::Idle
                 });
             }
         }
@@ -267,8 +267,8 @@ impl CartridgeBackup for Eeprom {
     }
 
     fn handle_event(&mut self, cartridge_event: CartridgeEvent) {
-        if cartridge_event == CartridgeEvent::EepromReady && matches!(self.state.get(), TransferState::Busy) {
-            self.state.set(TransferState::Idle)
+        if cartridge_event == CartridgeEvent::EepromReady && matches!(self.state.get(), EepromState::Busy) {
+            self.state.set(EepromState::Idle)
         }
     }
 }

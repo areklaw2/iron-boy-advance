@@ -48,13 +48,11 @@ fn save_sram() {
 }
 
 #[test]
-#[ignore = "flash backup not implemented, panics in cartridge.rs"]
 fn save_flash64() {
     assert_frame_hash("external/gba-tests/save/flash64.gba", 3000, ALL_TESTS_PASSED);
 }
 
 #[test]
-#[ignore = "flash backup not implemented, panics in cartridge.rs"]
 fn save_flash128() {
     assert_frame_hash("external/gba-tests/save/flash128.gba", 3000, ALL_TESTS_PASSED);
 }
