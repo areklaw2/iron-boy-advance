@@ -36,7 +36,7 @@ impl Instruction for PushPopRegisters {
                 if register_list.is_empty() && !store_lr_load_pc {
                     let value = cpu.load_32(address, memory_access as u8);
                     cpu.set_pc(value);
-                    cpu.set_register(SP, address + 64);
+                    cpu.set_register(SP, address.wrapping_add(64));
                     cpu.pipeline_flush();
                     return CpuAction::PipelineFlush;
                 }
@@ -45,13 +45,13 @@ impl Instruction for PushPopRegisters {
                     let value = cpu.load_32(address, memory_access as u8);
                     cpu.set_register(*register, value);
                     memory_access = MemoryAccess::Sequential;
-                    address += 4
+                    address = address.wrapping_add(4)
                 }
 
                 if store_lr_load_pc {
                     let value = cpu.load_32(address, memory_access as u8);
                     cpu.set_register(PC, value & !0b1);
-                    cpu.set_register(SP, address + 4);
+                    cpu.set_register(SP, address.wrapping_add(4));
                     cpu.idle_cycle();
                     cpu.pipeline_flush();
                     return CpuAction::PipelineFlush;
@@ -62,16 +62,16 @@ impl Instruction for PushPopRegisters {
             }
             false => {
                 if register_list.is_empty() && !store_lr_load_pc {
-                    address -= 64;
+                    address = address.wrapping_sub(64);
                     cpu.set_register(SP, address);
-                    let value = cpu.pc() + 2;
+                    let value = cpu.pc().wrapping_add(2);
                     cpu.store_32(address, value, memory_access as u8);
                     return CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential);
                 }
 
-                address -= register_list.len() as u32 * 4;
+                address = address.wrapping_sub(register_list.len() as u32 * 4);
                 if store_lr_load_pc {
-                    address -= 4
+                    address = address.wrapping_sub(4)
                 }
                 cpu.set_register(SP, address);
 
@@ -79,7 +79,7 @@ impl Instruction for PushPopRegisters {
                     let value = cpu.register(*register);
                     cpu.store_32(address, value, memory_access as u8);
                     memory_access = MemoryAccess::Sequential;
-                    address += 4
+                    address = address.wrapping_add(4)
                 }
 
                 if store_lr_load_pc {

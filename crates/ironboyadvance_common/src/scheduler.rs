@@ -1,7 +1,7 @@
 use getset::CopyGetters;
-use std::{cmp::Ordering, collections::BinaryHeap};
+use std::{cmp::Ordering, collections::BinaryHeap, fmt::Debug};
 
-pub trait SystemEvent: Copy + Eq + Ord {
+pub trait SystemEvent: Copy + Eq + Ord + Debug {
     fn priority(&self) -> u8;
 }
 
@@ -88,7 +88,7 @@ impl<E: SystemEvent> Scheduler<E> {
 
     pub fn cycles_until_next_event(&self) -> usize {
         if let Some(event) = self.events.peek() {
-            event.time() - self.time
+            event.time().saturating_sub(self.time)
         } else {
             0
         }

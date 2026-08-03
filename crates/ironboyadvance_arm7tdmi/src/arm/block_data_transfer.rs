@@ -60,10 +60,10 @@ impl Instruction for BlockDataTransfer {
         let mut base_address = address;
         if !add {
             pre_index = !pre_index;
-            address -= transfer_bytes;
-            base_address -= transfer_bytes;
+            address = address.wrapping_sub(transfer_bytes);
+            base_address = base_address.wrapping_sub(transfer_bytes);
         } else {
-            base_address += transfer_bytes
+            base_address = base_address.wrapping_add(transfer_bytes)
         }
 
         let write_back = self.write_back;
@@ -73,13 +73,13 @@ impl Instruction for BlockDataTransfer {
             true => {
                 for (i, register) in (0..16).filter(|&r| (register_list >> r) & 1 == 1).enumerate() {
                     if pre_index {
-                        address += 4
+                        address = address.wrapping_add(4)
                     }
 
                     let value = cpu.load_32(address, memory_access as u8);
                     if write_back && i == 0 {
                         if rn == PC {
-                            base_address += 4;
+                            base_address = base_address.wrapping_add(4);
                             if !transfer_pc {
                                 cpu.pipeline_flush();
                             }
@@ -89,7 +89,7 @@ impl Instruction for BlockDataTransfer {
                     cpu.set_register(register, value);
 
                     if !pre_index {
-                        address += 4
+                        address = address.wrapping_add(4)
                     }
 
                     memory_access = MemoryAccess::Sequential;
@@ -108,28 +108,28 @@ impl Instruction for BlockDataTransfer {
             false => {
                 for (i, register) in (0..16).filter(|&r| (register_list >> r) & 1 == 1).enumerate() {
                     if pre_index {
-                        address += 4
+                        address = address.wrapping_add(4)
                     }
 
                     let mut value = cpu.register(register);
                     if register == PC {
                         match write_back && rn == PC {
-                            true => value -= 4,
-                            false => value += 4,
+                            true => value = value.wrapping_sub(4),
+                            false => value = value.wrapping_add(4),
                         }
                     }
 
                     cpu.store_32(address, value, memory_access as u8);
                     if write_back && i == 0 {
                         if rn == PC {
-                            base_address += 4;
+                            base_address = base_address.wrapping_add(4);
                             cpu.pipeline_flush();
                         }
                         cpu.set_register(rn, base_address);
                     }
 
                     if !pre_index {
-                        address += 4
+                        address = address.wrapping_add(4)
                     }
 
                     memory_access = MemoryAccess::Sequential;
