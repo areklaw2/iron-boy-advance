@@ -1,7 +1,14 @@
+use getset::Getters;
+
+#[derive(Getters)]
 pub struct GpuContext {
+    #[getset(get = "pub")]
     instance: wgpu::Instance,
+    #[getset(get = "pub")]
     adapter: wgpu::Adapter,
+    #[getset(get = "pub")]
     device: wgpu::Device,
+    #[getset(get = "pub")]
     queue: wgpu::Queue,
 }
 
@@ -42,21 +49,5 @@ impl GpuContext {
             device,
             queue,
         }
-    }
-
-    pub fn instance(&self) -> &wgpu::Instance {
-        &self.instance
-    }
-
-    pub fn adapter(&self) -> &wgpu::Adapter {
-        &self.adapter
-    }
-
-    pub fn device(&self) -> &wgpu::Device {
-        &self.device
-    }
-
-    pub fn queue(&self) -> &wgpu::Queue {
-        &self.queue
     }
 }

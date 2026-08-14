@@ -4,7 +4,7 @@ use clap::{ArgAction, Parser};
 #[command(name = "Iron Boy Advance")]
 struct DesktopCli {
     #[arg(short, long)]
-    rom: String,
+    rom: Option<String>,
     #[arg(short, long, required = false)]
     bios: Option<String>,
     #[arg(short, long, action = ArgAction::SetTrue, required = false)]

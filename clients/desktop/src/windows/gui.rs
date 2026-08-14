@@ -29,7 +29,6 @@ pub struct Gui {
     overlay: Overlay,
 }
 
-/// Artifacts produced by `Gui::prepare` that must live until after painting.
 pub struct PreparedFrame {
     pub paint_jobs: Vec<ClippedPrimitive>,
     pub textures_delta: TexturesDelta,
@@ -65,7 +64,6 @@ impl Gui {
         }
     }
 
-    /// Returns true if egui wants to consume this event (so emu input should skip it).
     pub fn on_window_event(&mut self, window: &Window, event: &WindowEvent) -> bool {
         self.state.on_window_event(window, event).consumed
     }
@@ -79,10 +77,12 @@ impl Gui {
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         screen: &ScreenDescriptor,
+        content: impl Fn(&mut egui::Ui),
     ) -> PreparedFrame {
         let raw_input = self.state.take_egui_input(window);
         let overlay = &self.overlay;
         let full_output = self.context.run_ui(raw_input, |ui| {
+            content(ui);
             draw_overlay(ui.ctx(), overlay);
         });
 
@@ -136,7 +136,7 @@ fn draw_overlay(ctx: &egui::Context, overlay: &Overlay) {
 }
 
 fn install_gbboot_font(ctx: &egui::Context) {
-    const GBBOOT_TTF: &[u8] = include_bytes!("../../../media/gbboot-alpm.ttf");
+    const GBBOOT_TTF: &[u8] = include_bytes!("../../../../media/gbboot-alpm.ttf");
     let mut fonts = FontDefinitions::default();
     fonts
         .font_data

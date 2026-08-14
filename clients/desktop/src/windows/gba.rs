@@ -1,8 +1,5 @@
-use std::sync::Arc;
-
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
-use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::gpu::GpuContext;
 
@@ -13,13 +10,11 @@ struct Uniforms {
     offset: [f32; 2],
 }
 
-pub struct Renderer {
-    _window: Arc<Window>,
-    surface: wgpu::Surface<'static>,
-    config: wgpu::SurfaceConfiguration,
-    surface_format: wgpu::TextureFormat,
+pub struct GbaRenderer {
     viewport_width: usize,
     viewport_height: usize,
+    window_width: u32,
+    window_height: u32,
 
     frame_texture: wgpu::Texture,
     _frame_view: wgpu::TextureView,
@@ -29,36 +24,15 @@ pub struct Renderer {
     pipeline: wgpu::RenderPipeline,
 }
 
-impl Renderer {
-    pub fn new(gpu: &GpuContext, window: Arc<Window>, viewport_width: usize, viewport_height: usize) -> Self {
-        let size = window.inner_size();
-
-        let surface = gpu
-            .instance()
-            .create_surface(window.clone())
-            .expect("failed to create wgpu surface");
-
-        let caps = surface.get_capabilities(gpu.adapter());
-        let surface_format = caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| *f == wgpu::TextureFormat::Bgra8UnormSrgb)
-            .or_else(|| caps.formats.iter().copied().find(|f| f.is_srgb()))
-            .unwrap_or(caps.formats[0]);
-
-        let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
-            width: size.width.max(1),
-            height: size.height.max(1),
-            present_mode: caps.present_modes[0],
-            desired_maximum_frame_latency: 2,
-            alpha_mode: caps.alpha_modes[0],
-            view_formats: vec![],
-        };
-        surface.configure(gpu.device(), &config);
-
+impl GbaRenderer {
+    pub fn new(
+        gpu: &GpuContext,
+        surface_format: wgpu::TextureFormat,
+        window_width: u32,
+        window_height: u32,
+        viewport_width: usize,
+        viewport_height: usize,
+    ) -> Self {
         let frame_texture = gpu.device().create_texture(&wgpu::TextureDescriptor {
             label: Some("gba-frame-texture"),
             size: wgpu::Extent3d {
@@ -88,7 +62,12 @@ impl Renderer {
 
         let uniform_buffer = gpu.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("gba-frame-uniforms"),
-            contents: bytemuck::bytes_of(&compute_uniforms(size.width, size.height, viewport_width, viewport_height)),
+            contents: bytemuck::bytes_of(&compute_uniforms(
+                window_width,
+                window_height,
+                viewport_width,
+                viewport_height,
+            )),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -145,7 +124,7 @@ impl Renderer {
 
         let shader = gpu.device().create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("gba-frame-shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/frame.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/frame.wgsl").into()),
         });
 
         let pipeline_layout = gpu.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -185,12 +164,10 @@ impl Renderer {
         });
 
         Self {
-            _window: window,
-            surface,
-            config,
-            surface_format,
             viewport_width,
             viewport_height,
+            window_width,
+            window_height,
             frame_texture,
             _frame_view: frame_view,
             _sampler: sampler,
@@ -200,24 +177,13 @@ impl Renderer {
         }
     }
 
-    pub fn resize(&mut self, gpu: &GpuContext, size: PhysicalSize<u32>) {
-        if size.width == 0 || size.height == 0 {
+    pub fn resize(&mut self, gpu: &GpuContext, window_width: u32, window_height: u32) {
+        if window_width == 0 || window_height == 0 {
             return;
         }
-        // Clamp to the device's texture-dimension limit. wgpu::Surface::configure
-        // panics if either dimension exceeds max_texture_dimension_2d, which is
-        // easy to hit when the user resizes the window bigger than the limit
-        // (2048 on downlevel defaults).
-        let max_dim = gpu.device().limits().max_texture_dimension_2d;
-        self.config.width = size.width.min(max_dim);
-        self.config.height = size.height.min(max_dim);
-        self.surface.configure(gpu.device(), &self.config);
-        let uniforms = compute_uniforms(
-            self.config.width,
-            self.config.height,
-            self.viewport_width,
-            self.viewport_height,
-        );
+        self.window_width = window_width;
+        self.window_height = window_height;
+        let uniforms = compute_uniforms(window_width, window_height, self.viewport_width, self.viewport_height);
         gpu.queue()
             .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
@@ -249,18 +215,6 @@ impl Renderer {
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(0, &self.bind_group, &[]);
         rpass.draw(0..4, 0..1);
-    }
-
-    pub fn acquire(&self) -> wgpu::CurrentSurfaceTexture {
-        self.surface.get_current_texture()
-    }
-
-    pub fn surface_format(&self) -> wgpu::TextureFormat {
-        self.surface_format
-    }
-
-    pub fn config(&self) -> &wgpu::SurfaceConfiguration {
-        &self.config
     }
 }
 

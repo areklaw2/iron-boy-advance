@@ -8,12 +8,13 @@ mod controller;
 mod emulator;
 mod frame;
 mod gpu;
-mod gui;
 mod input;
 mod logger;
-mod renderer;
+mod windows;
 
 use crate::{app::Application, logger::initialize_logger};
+
+const BASE_TITLE: &str = "Iron Boy Advance";
 
 #[derive(Error, Debug)]
 pub enum DesktopError {
@@ -29,18 +30,23 @@ pub enum DesktopError {
     BootError(#[from] ironboyadvance::BootError),
 }
 
-pub fn run(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Result<(), DesktopError> {
+pub fn run(rom_path: Option<String>, bios_path: Option<String>, show_logs: bool) -> Result<(), DesktopError> {
     let _log_guard = if show_logs { Some(initialize_logger()) } else { None };
 
-    let rom_name = Path::new(&rom_path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .map(|s| s.to_string())
-        .ok_or(DesktopError::InvalidRomPath)?;
+    let (title, initial_emulator) = match rom_path {
+        Some(rom_path) => {
+            let rom_name = Path::new(&rom_path)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(|s| s.to_string())
+                .ok_or(DesktopError::InvalidRomPath)?;
+            let emu = emulator::spawn(rom_path, bios_path, show_logs)?;
+            (format!("{BASE_TITLE} - {rom_name}"), Some(emu))
+        }
+        None => (BASE_TITLE.to_string(), None),
+    };
 
-    let emu = emulator::spawn(rom_path, bios_path, show_logs)?;
-    let title = format!("Iron Boy Advance - {rom_name}");
-    let mut app = Application::new(title, emu);
+    let mut app = Application::new(title, initial_emulator, show_logs);
 
     let event_loop = EventLoop::new()?;
     event_loop.run_app(&mut app)?;
