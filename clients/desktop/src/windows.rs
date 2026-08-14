@@ -1,5 +1,6 @@
 mod gba;
 mod gui;
+mod overlay;
 mod splash;
 mod surface;
 

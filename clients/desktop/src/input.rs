@@ -12,7 +12,7 @@ pub enum HotKey {
     Reset,
     TogglePause,
     ToggleMaxSpeed,
-    ToggleFpsOverlay,
+    ToggleFps,
     Screenshot,
 }
 
@@ -22,7 +22,7 @@ pub fn keycode_to_hotkey(modifiers: ModifiersState, code: KeyCode) -> Option<Hot
         (true, KeyCode::KeyR) => Some(HotKey::Reset),
         (true, KeyCode::KeyP) => Some(HotKey::TogglePause),
         (false, KeyCode::F2) => Some(HotKey::ToggleMaxSpeed),
-        (false, KeyCode::F3) => Some(HotKey::ToggleFpsOverlay),
+        (false, KeyCode::F3) => Some(HotKey::ToggleFps),
         (false, KeyCode::F4) => Some(HotKey::Screenshot),
         _ => None,
     }

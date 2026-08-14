@@ -146,7 +146,7 @@ impl Application {
                 running.last_frame = Some(frame);
                 running.fps_timer.count_frame();
             }
-            state.gui.overlay_mut().set_fps(running.fps_timer.fps());
+            state.gui.fps_overlay_mut().set_fps(running.fps_timer.fps());
         }
 
         let output = match state.surface.acquire() {
@@ -297,9 +297,11 @@ impl Application {
         };
 
         match hotkey {
-            HotKey::ToggleFpsOverlay => {
-                for window_state in self.windows.values_mut() {
-                    *window_state.gui.overlay_mut().show_mut() ^= true;
+            HotKey::ToggleFps => {
+                if self.windows.values().any(|w| w.content.running().is_some()) {
+                    for window_state in self.windows.values_mut() {
+                        *window_state.gui.fps_overlay_mut().show_mut() ^= true;
+                    }
                 }
             }
 
@@ -308,7 +310,14 @@ impl Application {
                     tracing::error!("screenshot failed: {e}");
                 }
             }
-            HotKey::TogglePause => self.send_emulator_command(EmulatorCommand::TogglePause), //TODO: add an overlay for paused state
+            HotKey::TogglePause => {
+                if self.windows.values().any(|w| w.content.running().is_some()) {
+                    self.send_emulator_command(EmulatorCommand::TogglePause);
+                    for window_state in self.windows.values_mut() {
+                        *window_state.gui.paused_overlay_mut().show_mut() ^= true;
+                    }
+                }
+            }
             //TODO: add opt-in pause-on-minimize/unfocus config
             HotKey::ToggleMaxSpeed => self.send_emulator_command(EmulatorCommand::ToggleMaxSpeed),
             HotKey::Reset => {

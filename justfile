@@ -1,4 +1,7 @@
-run rom *flags:
+run *flags:
+  cargo run --bin IronBoyAdvance -- {{flags}}
+
+run-rom rom *flags:
   cargo run --bin IronBoyAdvance -- --rom "{{rom}}" {{flags}}
 
 run-bios bios rom *flags:

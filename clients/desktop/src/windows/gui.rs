@@ -1,24 +1,9 @@
-use egui::{
-    Align2, Area, Color32, FontData, FontDefinitions, FontFamily, Id, Label, RichText, TextWrapMode, TexturesDelta,
-    ViewportId, epaint::ClippedPrimitive, vec2,
-};
+use egui::{FontData, FontDefinitions, FontFamily, TexturesDelta, ViewportId, epaint::ClippedPrimitive};
 use egui_wgpu::{RendererOptions, ScreenDescriptor};
-use getset::{MutGetters, Setters};
+use getset::MutGetters;
 use winit::{event::WindowEvent, window::Window};
 
-#[derive(Setters, MutGetters)]
-pub struct Overlay {
-    #[getset(set = "pub")]
-    fps: f64,
-    #[getset(get_mut = "pub")]
-    show: bool,
-}
-
-impl Overlay {
-    pub fn new() -> Self {
-        Self { fps: 0.0, show: false }
-    }
-}
+use crate::windows::overlay::{FpsOverlay, OverlayKind, PausedOverlay};
 
 #[derive(MutGetters)]
 pub struct Gui {
@@ -26,7 +11,9 @@ pub struct Gui {
     state: egui_winit::State,
     renderer: egui_wgpu::Renderer,
     #[getset(get_mut = "pub")]
-    overlay: Overlay,
+    fps_overlay: FpsOverlay,
+    #[getset(get_mut = "pub")]
+    paused_overlay: PausedOverlay,
 }
 
 pub struct PreparedFrame {
@@ -60,7 +47,8 @@ impl Gui {
             context,
             state,
             renderer,
-            overlay: Overlay::new(),
+            fps_overlay: FpsOverlay::new(),
+            paused_overlay: PausedOverlay::new(),
         }
     }
 
@@ -80,10 +68,16 @@ impl Gui {
         content: impl Fn(&mut egui::Ui),
     ) -> PreparedFrame {
         let raw_input = self.state.take_egui_input(window);
-        let overlay = &self.overlay;
+        let fps_overlay = &self.fps_overlay;
+        let paused_overlay = &self.paused_overlay;
         let full_output = self.context.run_ui(raw_input, |ui| {
             content(ui);
-            draw_overlay(ui.ctx(), overlay);
+            if fps_overlay.show() {
+                OverlayKind::Fps(fps_overlay.fps()).draw(ui.ctx());
+            }
+            if paused_overlay.show() {
+                OverlayKind::Paused.draw(ui.ctx());
+            }
         });
 
         self.state.handle_platform_output(window, full_output.platform_output);
@@ -112,27 +106,6 @@ impl Gui {
             self.renderer.free_texture(id);
         }
     }
-}
-
-fn draw_overlay(ctx: &egui::Context, overlay: &Overlay) {
-    if !overlay.show {
-        return;
-    }
-
-    Area::new(Id::new("fps_overlay"))
-        .anchor(Align2::RIGHT_BOTTOM, vec2(-10.0, -10.0))
-        .interactable(false)
-        .show(ctx, |ui| {
-            ui.add(
-                Label::new(
-                    RichText::new(format!("{:.1} FPS", overlay.fps))
-                        .color(Color32::GREEN)
-                        .size(24.0)
-                        .family(FontFamily::Name("gbboot".into())),
-                )
-                .wrap_mode(TextWrapMode::Extend),
-            );
-        });
 }
 
 fn install_gbboot_font(ctx: &egui::Context) {
