@@ -4,6 +4,8 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
+use crate::gpu::GpuContext;
+
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 struct Uniforms {
@@ -14,8 +16,6 @@ struct Uniforms {
 pub struct Renderer {
     _window: Arc<Window>,
     surface: wgpu::Surface<'static>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     surface_format: wgpu::TextureFormat,
     viewport_width: usize,
@@ -30,43 +30,15 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub async fn new(window: Arc<Window>, viewport_width: usize, viewport_height: usize) -> Self {
+    pub fn new(gpu: &GpuContext, window: Arc<Window>, viewport_width: usize, viewport_height: usize) -> Self {
         let size = window.inner_size();
 
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            flags: wgpu::InstanceFlags::default(),
-            memory_budget_thresholds: Default::default(),
-            backend_options: Default::default(),
-            display: None,
-        });
-
-        let surface = instance
+        let surface = gpu
+            .instance()
             .create_surface(window.clone())
             .expect("failed to create wgpu surface");
 
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            })
-            .await
-            .expect("failed to find suitable wgpu adapter");
-
-        let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                label: Some("ironboyadvance-device"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::default(),
-                experimental_features: wgpu::ExperimentalFeatures::default(),
-                memory_hints: wgpu::MemoryHints::Performance,
-                trace: wgpu::Trace::Off,
-            })
-            .await
-            .expect("failed to acquire wgpu device");
-
-        let caps = surface.get_capabilities(&adapter);
+        let caps = surface.get_capabilities(gpu.adapter());
         let surface_format = caps
             .formats
             .iter()
@@ -85,9 +57,9 @@ impl Renderer {
             alpha_mode: caps.alpha_modes[0],
             view_formats: vec![],
         };
-        surface.configure(&device, &config);
+        surface.configure(gpu.device(), &config);
 
-        let frame_texture = device.create_texture(&wgpu::TextureDescriptor {
+        let frame_texture = gpu.device().create_texture(&wgpu::TextureDescriptor {
             label: Some("gba-frame-texture"),
             size: wgpu::Extent3d {
                 width: viewport_width as u32,
@@ -103,7 +75,7 @@ impl Renderer {
         });
         let frame_view = frame_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        let sampler = gpu.device().create_sampler(&wgpu::SamplerDescriptor {
             label: Some("gba-frame-sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -114,13 +86,13 @@ impl Renderer {
             ..Default::default()
         });
 
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let uniform_buffer = gpu.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("gba-frame-uniforms"),
             contents: bytemuck::bytes_of(&compute_uniforms(size.width, size.height, viewport_width, viewport_height)),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        let bind_group_layout = gpu.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("gba-frame-bgl"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
@@ -152,7 +124,7 @@ impl Renderer {
             ],
         });
 
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group = gpu.device().create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("gba-frame-bg"),
             layout: &bind_group_layout,
             entries: &[
@@ -171,18 +143,18 @@ impl Renderer {
             ],
         });
 
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader = gpu.device().create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("gba-frame-shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders/frame.wgsl").into()),
         });
 
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        let pipeline_layout = gpu.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("gba-frame-pl"),
             bind_group_layouts: &[Some(&bind_group_layout)],
             immediate_size: 0,
         });
 
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let pipeline = gpu.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("gba-frame-pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
@@ -215,8 +187,6 @@ impl Renderer {
         Self {
             _window: window,
             surface,
-            device,
-            queue,
             config,
             surface_format,
             viewport_width,
@@ -230,7 +200,7 @@ impl Renderer {
         }
     }
 
-    pub fn resize(&mut self, size: PhysicalSize<u32>) {
+    pub fn resize(&mut self, gpu: &GpuContext, size: PhysicalSize<u32>) {
         if size.width == 0 || size.height == 0 {
             return;
         }
@@ -238,23 +208,23 @@ impl Renderer {
         // panics if either dimension exceeds max_texture_dimension_2d, which is
         // easy to hit when the user resizes the window bigger than the limit
         // (2048 on downlevel defaults).
-        let max_dim = self.device.limits().max_texture_dimension_2d;
+        let max_dim = gpu.device().limits().max_texture_dimension_2d;
         self.config.width = size.width.min(max_dim);
         self.config.height = size.height.min(max_dim);
-        self.surface.configure(&self.device, &self.config);
+        self.surface.configure(gpu.device(), &self.config);
         let uniforms = compute_uniforms(
             self.config.width,
             self.config.height,
             self.viewport_width,
             self.viewport_height,
         );
-        self.queue
+        gpu.queue()
             .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
 
-    pub fn upload_frame(&self, frame: &[u32]) {
+    pub fn upload_frame(&self, gpu: &GpuContext, frame: &[u32]) {
         debug_assert_eq!(frame.len(), self.viewport_width * self.viewport_height);
-        self.queue.write_texture(
+        gpu.queue().write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.frame_texture,
                 mip_level: 0,
@@ -283,14 +253,6 @@ impl Renderer {
 
     pub fn acquire(&self) -> wgpu::CurrentSurfaceTexture {
         self.surface.get_current_texture()
-    }
-
-    pub fn device(&self) -> &wgpu::Device {
-        &self.device
-    }
-
-    pub fn queue(&self) -> &wgpu::Queue {
-        &self.queue
     }
 
     pub fn surface_format(&self) -> wgpu::TextureFormat {

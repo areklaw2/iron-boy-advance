@@ -7,6 +7,7 @@ mod audio;
 mod controller;
 mod emulator;
 mod frame;
+mod gpu;
 mod gui;
 mod input;
 mod logger;

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use egui_wgpu::ScreenDescriptor;
 use winit::{
@@ -15,10 +15,17 @@ use crate::{
     controller::Controller,
     emulator::{EmulatorCommand, EmulatorHandle},
     frame::FrameTimer,
+    gpu::GpuContext,
     gui::Gui,
     input::{HotKey, KeypadTracker, keycode_to_button, keycode_to_hotkey},
     renderer::Renderer,
 };
+
+struct WindowState {
+    window: Arc<Window>,
+    renderer: Renderer,
+    gui: Gui,
+}
 
 pub struct Application {
     title: String,
@@ -26,9 +33,8 @@ pub struct Application {
     keypad_tracker: KeypadTracker,
     modifiers: ModifiersState,
 
-    window: Option<Arc<Window>>,
-    renderer: Option<Renderer>,
-    gui: Option<Gui>,
+    gpu: Option<GpuContext>,
+    windows: HashMap<WindowId, WindowState>,
     controller: Option<Controller>,
 
     last_frame: Option<Vec<u32>>,
@@ -43,18 +49,16 @@ impl Application {
             emulator,
             keypad_tracker: KeypadTracker::new(),
             modifiers: ModifiersState::empty(),
-            window: None,
-            renderer: None,
-            gui: None,
+            gpu: None,
+            windows: HashMap::new(),
             controller: None,
             last_frame: None,
             fps_timer,
         }
     }
 
-    fn drain_and_render(&mut self) {
-        let (Some(window), Some(renderer), Some(gui)) = (self.window.as_ref(), self.renderer.as_mut(), self.gui.as_mut())
-        else {
+    fn drain_and_render(&mut self, window_id: WindowId) {
+        let (Some(gpu), Some(state)) = (self.gpu.as_ref(), self.windows.get_mut(&window_id)) else {
             return;
         };
 
@@ -63,12 +67,13 @@ impl Application {
             self.fps_timer.count_frame();
         }
 
-        gui.overlay_mut().set_fps(self.fps_timer.fps());
+        state.gui.overlay_mut().set_fps(self.fps_timer.fps());
 
-        let output = match renderer.acquire() {
+        let output = match state.renderer.acquire() {
             wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                renderer.resize(window.inner_size());
+                let size = state.window.inner_size();
+                state.renderer.resize(gpu, size);
                 return;
             }
             wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => return,
@@ -79,23 +84,25 @@ impl Application {
         };
 
         if let Some(ref fb) = self.last_frame {
-            renderer.upload_frame(fb);
+            state.renderer.upload_frame(gpu, fb);
         }
 
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = renderer.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        let mut encoder = gpu.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("desktop-encoder"),
         });
 
         let screen = ScreenDescriptor {
-            size_in_pixels: [renderer.config().width, renderer.config().height],
-            pixels_per_point: window.scale_factor() as f32,
+            size_in_pixels: [state.renderer.config().width, state.renderer.config().height],
+            pixels_per_point: state.window.scale_factor() as f32,
         };
 
         // Egui must upload its textures and vertex/index buffers BEFORE the render pass
         // begins, because begin_render_pass borrows the encoder.
-        let prepared = gui.prepare(window, renderer.device(), renderer.queue(), &mut encoder, &screen);
+        let prepared = state
+            .gui
+            .prepare(&state.window, gpu.device(), gpu.queue(), &mut encoder, &screen);
 
         {
             let mut rpass = encoder
@@ -118,15 +125,15 @@ impl Application {
                 .forget_lifetime();
 
             if self.last_frame.is_some() {
-                renderer.draw_frame(&mut rpass);
+                state.renderer.draw_frame(&mut rpass);
             }
 
-            gui.paint(&mut rpass, &prepared, &screen);
+            state.gui.paint(&mut rpass, &prepared, &screen);
         }
 
-        gui.cleanup(&prepared);
+        state.gui.cleanup(&prepared);
 
-        renderer.queue().submit(std::iter::once(encoder.finish()));
+        gpu.queue().submit(std::iter::once(encoder.finish()));
         output.present();
     }
 
@@ -137,15 +144,15 @@ impl Application {
             return Ok(());
         };
 
-        let Some(renderer) = self.renderer.as_ref() else {
+        let Some(state) = self.windows.values().next() else {
             return Ok(());
         };
 
         let viewport_width = self.emulator.viewport_width as f32;
         let viewport_height = self.emulator.viewport_height as f32;
 
-        let win_w = renderer.config().width as f32;
-        let win_h = renderer.config().height as f32;
+        let win_w = state.renderer.config().width as f32;
+        let win_h = state.renderer.config().height as f32;
         let scale = (win_w / viewport_width).min(win_h / viewport_height);
         let out_w = (viewport_width * scale).round().max(1.0) as u32;
         let out_h = (viewport_height * scale).round().max(1.0) as u32;
@@ -194,8 +201,8 @@ impl Application {
 
         match hotkey {
             HotKey::ToggleFpsOverlay => {
-                if let Some(gui) = self.gui.as_mut() {
-                    *gui.overlay_mut().show_mut() ^= true;
+                for window_state in self.windows.values_mut() {
+                    *window_state.gui.overlay_mut().show_mut() ^= true;
                 }
             }
 
@@ -220,7 +227,7 @@ impl Application {
 
 impl ApplicationHandler for Application {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_some() {
+        if !self.windows.is_empty() {
             return;
         }
 
@@ -231,34 +238,45 @@ impl ApplicationHandler for Application {
                 self.emulator.viewport_height as u32 * 6,
             ));
         let window = Arc::new(event_loop.create_window(attrs).expect("failed to create window"));
-        let renderer = pollster::block_on(Renderer::new(
+
+        if self.gpu.is_none() {
+            self.gpu = Some(pollster::block_on(GpuContext::new()));
+        }
+        let gpu = self.gpu.as_ref().unwrap();
+
+        let renderer = Renderer::new(
+            gpu,
             window.clone(),
             self.emulator.viewport_width,
             self.emulator.viewport_height,
-        ));
-        let gui = Gui::new(renderer.device(), renderer.surface_format(), &window);
+        );
+        let gui = Gui::new(gpu.device(), renderer.surface_format(), &window);
 
-        self.window = Some(window);
-        self.renderer = Some(renderer);
-        self.gui = Some(gui);
+        self.windows.insert(window.id(), WindowState { window, renderer, gui });
         self.controller = Controller::new();
     }
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
-        let Some(window) = self.window.clone() else {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
+        let Some(state) = self.windows.get_mut(&window_id) else {
             return;
         };
+        let window = state.window.clone();
 
-        let egui_consumed = self.gui.as_mut().map(|g| g.on_window_event(&window, &event)).unwrap_or(false);
+        let egui_consumed = state.gui.on_window_event(&window, &event);
 
         match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::CloseRequested => {
+                self.windows.remove(&window_id);
+                if self.windows.is_empty() {
+                    event_loop.exit();
+                }
+            }
             WindowEvent::ModifiersChanged(modifiers) => {
                 self.modifiers = modifiers.state();
             }
             WindowEvent::Resized(size) => {
-                if let Some(r) = self.renderer.as_mut() {
-                    r.resize(size);
+                if let (Some(gpu), Some(state)) = (self.gpu.as_ref(), self.windows.get_mut(&window_id)) {
+                    state.renderer.resize(gpu, size);
                 }
                 window.request_redraw();
             }
@@ -289,7 +307,7 @@ impl ApplicationHandler for Application {
                 }
             }
             WindowEvent::RedrawRequested => {
-                self.drain_and_render();
+                self.drain_and_render(window_id);
             }
             _ => {}
         }
@@ -303,8 +321,8 @@ impl ApplicationHandler for Application {
             }
         }
 
-        if let Some(window) = &self.window {
-            window.request_redraw();
+        for state in self.windows.values() {
+            state.window.request_redraw();
         }
     }
 }
