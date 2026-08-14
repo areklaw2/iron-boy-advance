@@ -94,14 +94,14 @@ impl GameBoyAdvance {
 impl Emulator for GameBoyAdvance {
     fn run(&mut self, cycles: usize, overshoot: usize) -> usize {
         let start_time = self.scheduler.borrow().timestamp();
-        let end_time = start_time + cycles - overshoot;
+        let target = cycles.saturating_sub(overshoot);
+        let end_time = start_time + target;
 
         while self.scheduler.borrow().timestamp() < end_time {
             self.cycle();
         }
 
         let elapsed = self.scheduler.borrow().timestamp() - start_time;
-        let target = cycles - overshoot;
         elapsed.saturating_sub(target)
     }
 

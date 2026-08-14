@@ -69,7 +69,12 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(_title: String, initial_emulator: Option<EmulatorHandle>, bios_path: Option<String>, show_logs: bool) -> Self {
+    pub fn new(
+        _title: String,
+        initial_emulator: Option<EmulatorHandle>,
+        bios_path: Option<String>,
+        show_logs: bool,
+    ) -> Self {
         Self {
             show_logs,
             bios_path,
