@@ -57,6 +57,7 @@ struct WindowState {
 
 pub struct Application {
     show_logs: bool,
+    bios_path: Option<String>,
     keypad_tracker: KeypadTracker,
     modifiers: ModifiersState,
 
@@ -68,9 +69,10 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(_title: String, initial_emulator: Option<EmulatorHandle>, show_logs: bool) -> Self {
+    pub fn new(_title: String, initial_emulator: Option<EmulatorHandle>, bios_path: Option<String>, show_logs: bool) -> Self {
         Self {
             show_logs,
+            bios_path,
             keypad_tracker: KeypadTracker::new(),
             modifiers: ModifiersState::empty(),
             gpu: None,
@@ -101,7 +103,7 @@ impl Application {
     }
 
     fn load_rom(&mut self, window_id: WindowId, rom_path: String) {
-        match emulator::spawn(rom_path.clone(), None, self.show_logs) {
+        match emulator::spawn(rom_path.clone(), self.bios_path.clone(), self.show_logs) {
             Ok(handle) => {
                 let Some(gpu) = self.gpu.as_ref() else { return };
                 let Some(state) = self.windows.get_mut(&window_id) else {
