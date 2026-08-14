@@ -1,6 +1,7 @@
 use std::{fs, io, path::PathBuf};
 
 use etcetera::{BaseStrategy, choose_base_strategy};
+use ironboyadvance::System;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -18,9 +19,11 @@ pub enum ConfigError {
     Serialize(#[from] toml::ser::Error),
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub bios_path: Option<String>,
+    pub gb_boot_rom: Option<String>,
+    pub gbc_boot_rom: Option<String>,
 }
 
 impl Config {
@@ -41,6 +44,23 @@ impl Config {
         }
         fs::write(&path, toml::to_string(self)?)?;
         Ok(())
+    }
+
+    pub fn set_bios(&mut self, kind: System, path: &str) {
+        let slot = match kind {
+            System::Gba => &mut self.bios_path,
+            System::Gb => &mut self.gb_boot_rom,
+            System::Gbc => &mut self.gbc_boot_rom,
+        };
+        *slot = Some(path.to_string());
+    }
+
+    pub fn bios(&self, kind: System) -> Option<&str> {
+        match kind {
+            System::Gba => self.bios_path.as_deref(),
+            System::Gb => self.gb_boot_rom.as_deref(),
+            System::Gbc => self.gbc_boot_rom.as_deref(),
+        }
     }
 }
 

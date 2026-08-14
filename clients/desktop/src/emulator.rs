@@ -12,7 +12,7 @@ use chrono::Local;
 use ironboyadvance::{BootError, boot, detect_system, system_info};
 use ringbuf::traits::Producer;
 
-use crate::{DesktopError, audio, frame::FrameTimer, input::KEYPAD_IDLE};
+use crate::{DesktopError, audio, config::Config, frame::FrameTimer, input::KEYPAD_IDLE};
 
 fn current_unix_seconds() -> u64 {
     Local::now().naive_local().and_utc().timestamp().max(0) as u64
@@ -34,7 +34,7 @@ pub struct EmulatorHandle {
     _audio_stream: Option<cpal::Stream>,
 }
 
-fn read_rom(path: &str) -> io::Result<Vec<u8>> {
+pub(crate) fn read_rom(path: &str) -> io::Result<Vec<u8>> {
     fs::read(path)
 }
 
@@ -45,11 +45,15 @@ fn read_bios(path: Option<&str>) -> io::Result<Vec<u8>> {
     }
 }
 
-pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Result<EmulatorHandle, DesktopError> {
-    let rom_buffer = read_rom(&rom_path)?;
-    let bios_buffer = read_bios(bios_path.as_deref())?;
-
+pub fn spawn(
+    rom_path: String,
+    rom_buffer: Vec<u8>,
+    config: Config,
+    show_logs: bool,
+) -> Result<EmulatorHandle, DesktopError> {
     let kind = detect_system(&rom_buffer).ok_or(BootError::UnknownFormat)?;
+    let bios_buffer = read_bios(config.bios(kind))?;
+
     let (viewport_width, viewport_height, fps, sample_rate, cycles_per_frame) = system_info(kind);
 
     let keypad = Arc::new(AtomicU16::new(KEYPAD_IDLE));
@@ -92,16 +96,16 @@ pub fn spawn(rom_path: String, bios_path: Option<String>, show_logs: bool) -> Re
                                 continue 'commands;
                             }
                         };
-                        let bios = match read_bios(bios_path.as_deref()) {
-                            Ok(bytes) => bytes,
-                            Err(e) => {
-                                tracing::error!("reset failed reading bios {bios_path:?}: {e}");
-                                continue 'commands;
-                            }
-                        };
                         let Some(reset_kind) = detect_system(&rom) else {
                             tracing::error!("reset failed: unrecognized rom format");
                             continue 'commands;
+                        };
+                        let bios = match read_bios(config.bios(reset_kind)) {
+                            Ok(bytes) => bytes,
+                            Err(e) => {
+                                tracing::error!("reset failed reading boot rom: {e}");
+                                continue 'commands;
+                            }
                         };
                         match boot(reset_kind, &rom_path, rom, bios, current_unix_seconds(), show_logs) {
                             Ok(new_system) => {

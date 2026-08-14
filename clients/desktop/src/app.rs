@@ -12,6 +12,7 @@ use winit::{
 
 use crate::{
     BASE_TITLE, DesktopError,
+    config::Config,
     controller::Controller,
     emulator::{self, EmulatorCommand, EmulatorHandle},
     frame::FrameTimer,
@@ -57,7 +58,7 @@ struct WindowState {
 
 pub struct Application {
     show_logs: bool,
-    bios_path: Option<String>,
+    config: Config,
     keypad_tracker: KeypadTracker,
     modifiers: ModifiersState,
 
@@ -69,15 +70,10 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(
-        _title: String,
-        initial_emulator: Option<EmulatorHandle>,
-        bios_path: Option<String>,
-        show_logs: bool,
-    ) -> Self {
+    pub fn new(_title: String, initial_emulator: Option<EmulatorHandle>, config: Config, show_logs: bool) -> Self {
         Self {
             show_logs,
-            bios_path,
+            config,
             keypad_tracker: KeypadTracker::new(),
             modifiers: ModifiersState::empty(),
             gpu: None,
@@ -108,7 +104,14 @@ impl Application {
     }
 
     fn load_rom(&mut self, window_id: WindowId, rom_path: String) {
-        match emulator::spawn(rom_path.clone(), self.bios_path.clone(), self.show_logs) {
+        let rom_buffer = match emulator::read_rom(&rom_path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                tracing::error!("failed to read rom {rom_path}: {e}");
+                return;
+            }
+        };
+        match emulator::spawn(rom_path.clone(), rom_buffer, self.config.clone(), self.show_logs) {
             Ok(handle) => {
                 let Some(gpu) = self.gpu.as_ref() else { return };
                 let Some(state) = self.windows.get_mut(&window_id) else {
