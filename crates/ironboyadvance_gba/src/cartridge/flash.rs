@@ -206,4 +206,8 @@ impl CartridgeBackup for Flash {
     fn rom(&self) -> &[u8] {
         &self.rom
     }
+
+    fn backup_size(&self) -> usize {
+        self.size.backup_size()
+    }
 }

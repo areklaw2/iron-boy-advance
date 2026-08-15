@@ -1,6 +1,7 @@
 use std::cell::RefCell;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::fs::OpenOptions;
+use std::io::{Read, Seek, SeekFrom, Write};
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use bitfields::bitfield;
@@ -11,7 +12,7 @@ use tracing::warn;
 use crate::events::GbaEvent;
 
 const SECONDS_PER_DAY: i64 = 24 * 60 * 60;
-const SAVED_STATE_BYTES: usize = 16;
+pub(super) const RTC_SAVE_BYTES: usize = 16;
 const DEFAULT_DAY_OF_WEEK_OFFSET: i64 = 3;
 
 #[bitfield(u8)]
@@ -109,7 +110,8 @@ enum TransferState {
 
 pub struct Rtc {
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
-    save_path: PathBuf,
+    save_file: PathBuf,
+    save_offset: usize,
     base_unix_seconds: u64,
     offset_seconds: i64,
     day_of_week_offset: i64,
@@ -121,14 +123,20 @@ pub struct Rtc {
 }
 
 impl Rtc {
-    pub fn new(base_unix_seconds: u64, save_path: PathBuf, scheduler: Rc<RefCell<Scheduler<GbaEvent>>>) -> Rtc {
+    pub fn new(
+        base_unix_seconds: u64,
+        save_file: PathBuf,
+        save_offset: usize,
+        scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
+    ) -> Rtc {
         let mut control = RtcControl::from_bits(0);
         control.set_hour_mode_24(true);
-        let (offset_seconds, day_of_week_offset) = load_save(&save_path);
+        let (offset_seconds, day_of_week_offset) = load_save(&save_file, save_offset);
 
         Rtc {
             scheduler,
-            save_path,
+            save_file,
+            save_offset,
             base_unix_seconds,
             offset_seconds,
             day_of_week_offset,
@@ -329,12 +337,22 @@ impl Rtc {
     }
 
     fn save(&self) {
-        let mut bytes = [0u8; SAVED_STATE_BYTES];
+        let mut bytes = [0u8; RTC_SAVE_BYTES];
         bytes[0..8].copy_from_slice(&self.offset_seconds.to_le_bytes());
         bytes[8..16].copy_from_slice(&self.day_of_week_offset.to_le_bytes());
 
-        if let Err(error) = fs::write(&self.save_path, bytes) {
-            warn!("rtc save failed at {:?}: {}", self.save_path, error);
+        let result = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&self.save_file)
+            .and_then(|mut file| {
+                file.seek(SeekFrom::Start(self.save_offset as u64))
+                    .and_then(|_| file.write_all(&bytes))
+            });
+
+        if let Err(error) = result {
+            warn!("rtc save failed at {:?}: {}", self.save_file, error);
         }
     }
 
@@ -404,17 +422,19 @@ fn next_position(register: RtcRegister, byte_index: usize, bits_transferred: u8)
     }
 }
 
-fn load_save(path: &Path) -> (i64, i64) {
-    let Ok(bytes) = fs::read(path) else {
-        return (0, DEFAULT_DAY_OF_WEEK_OFFSET);
-    };
+fn load_save(path: &PathBuf, offset: usize) -> (i64, i64) {
+    let mut bytes = [0u8; RTC_SAVE_BYTES];
+    let read = OpenOptions::new().read(true).open(path).and_then(|mut file| {
+        file.seek(SeekFrom::Start(offset as u64))
+            .and_then(|_| file.read_exact(&mut bytes))
+    });
 
-    match bytes.len() == SAVED_STATE_BYTES {
-        true => (
-            i64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap_or_default()),
-            i64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap_or_default()),
+    match read {
+        Ok(()) => (
+            i64::from_le_bytes(bytes[0..8].try_into().unwrap()),
+            i64::from_le_bytes(bytes[8..16].try_into().unwrap()),
         ),
-        false => (0, DEFAULT_DAY_OF_WEEK_OFFSET),
+        Err(_) => (0, DEFAULT_DAY_OF_WEEK_OFFSET),
     }
 }
 
@@ -487,14 +507,14 @@ mod tests {
     }
 
     fn save_path(name: &str) -> PathBuf {
-        let path = std::env::temp_dir().join(format!("ironboyadvance-rtc-{name}.rtc"));
-        let _ = fs::remove_file(&path);
+        let path = std::env::temp_dir().join(format!("ironboyadvance-rtc-{name}.sav"));
+        let _ = std::fs::remove_file(&path);
         path
     }
 
     fn open(path: PathBuf, unix_seconds: u64) -> Gpio {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
-        let mut gpio = Gpio::new(Some(Rtc::new(unix_seconds, path, scheduler)));
+        let mut gpio = Gpio::new(Some(Rtc::new(unix_seconds, path, 0, scheduler)));
         gpio.write_16(CONTROL_ADDRESS, 1);
         gpio
     }

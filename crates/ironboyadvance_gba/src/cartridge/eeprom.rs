@@ -266,6 +266,10 @@ impl CartridgeBackup for Eeprom {
         &self.rom
     }
 
+    fn backup_size(&self) -> usize {
+        self.size.backup_size()
+    }
+
     fn handle_event(&mut self, cartridge_event: CartridgeEvent) {
         if cartridge_event == CartridgeEvent::EepromReady && matches!(self.state.get(), TransferState::Busy) {
             self.state.set(TransferState::Idle)

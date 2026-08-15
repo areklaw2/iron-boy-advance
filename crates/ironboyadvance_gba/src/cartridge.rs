@@ -45,6 +45,10 @@ pub enum CartridgeError {
 pub trait CartridgeBackup: SystemMemoryAccess<Address = u32> {
     fn rom(&self) -> &[u8];
 
+    fn backup_size(&self) -> usize {
+        0
+    }
+
     fn rom_read(&self, address: u32) -> u8 {
         let offset = (address & 0x01FFFFFF) as usize;
         let rom = self.rom();
@@ -86,9 +90,10 @@ impl Cartridge {
             BackupType::Flash128KB => Box::new(Flash::new(buffer, &save_file, FlashSize::Large)?),
         };
 
+        let rtc_offset = backup.backup_size();
         let gpio = CartridgeDevice::Rtc
             .is_set(config.device_pattern())
-            .then(|| Gpio::new(Some(Rtc::new(base_unix_seconds, rom_path.with_extension("rtc"), scheduler))));
+            .then(|| Gpio::new(Some(Rtc::new(base_unix_seconds, save_file, rtc_offset, scheduler))));
 
         Ok(Cartridge { backup, gpio })
     }

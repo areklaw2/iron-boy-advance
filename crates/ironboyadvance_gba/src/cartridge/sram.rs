@@ -72,4 +72,8 @@ impl CartridgeBackup for Sram {
     fn rom(&self) -> &[u8] {
         &self.rom
     }
+
+    fn backup_size(&self) -> usize {
+        SRAM_SIZE
+    }
 }

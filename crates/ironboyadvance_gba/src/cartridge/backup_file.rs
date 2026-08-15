@@ -6,7 +6,7 @@ use std::{
 
 use tracing::warn;
 
-use crate::cartridge::CartridgeError;
+use crate::cartridge::{CartridgeError, rtc::RTC_SAVE_BYTES};
 
 pub struct BackupFile {
     buffer: Vec<u8>,
@@ -28,7 +28,7 @@ impl BackupFile {
                 file.write_all(&buffer)?;
                 buffer
             }
-            len if len == size => {
+            len if len == size || len == size + RTC_SAVE_BYTES => {
                 let mut buffer = vec![0; size];
                 file.read_exact(&mut buffer)?;
                 buffer
