@@ -48,7 +48,7 @@ pub enum ArmInstruction {
 }
 
 impl ArmInstruction {
-    pub(crate) fn cond(&self) -> Condition {
+    pub fn cond(&self) -> Condition {
         match self {
             Self::DataProcessing(i) => i.cond(),
             Self::PsrTransfer(i) => i.cond(),

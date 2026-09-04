@@ -1516,6 +1516,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ironboyadvance_arm7tdmi_interpreter"
+version = "0.1.0"
+dependencies = [
+ "ironboyadvance_arm7tdmi",
+ "ironboyadvance_common",
+ "tracing",
+]
+
+[[package]]
 name = "ironboyadvance_common"
 version = "0.1.0"
 dependencies = [

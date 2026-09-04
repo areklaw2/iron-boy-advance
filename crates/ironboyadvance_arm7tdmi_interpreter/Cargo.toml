@@ -1,0 +1,9 @@
+[package]
+name = "ironboyadvance_arm7tdmi_interpreter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ironboyadvance_arm7tdmi = { path = "../ironboyadvance_arm7tdmi" }
+ironboyadvance_common = { path = "../ironboyadvance_common" }
+tracing = { workspace = true }

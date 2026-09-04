@@ -11,9 +11,9 @@ use crate::{
 
 use super::{CpuMode, CpuState, psr::ProgramStatusRegister};
 
-pub(crate) const SP: usize = 13;
-pub(crate) const LR: usize = 14;
-pub(crate) const PC: usize = 15;
+pub const SP: usize = 13;
+pub const LR: usize = 14;
+pub const PC: usize = 15;
 
 #[derive(Debug, Clone, Copy)]
 pub enum LastInstruction {
@@ -21,13 +21,13 @@ pub enum LastInstruction {
     Thumb(ThumbInstruction),
 }
 
-pub(crate) trait Instruction {
+pub trait Instruction {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
     fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
 }
 
 #[derive(Getters, MutGetters, Setters)]
-#[getset(get = "pub(crate)", set = "pub(crate)")]
+#[getset(get = "pub", set = "pub")]
 pub struct Arm7tdmiCpu<I: MemoryInterface> {
     general_registers: [u32; 16],
     banked_registers_fiq: [u32; 7], //r8 to r14
@@ -36,7 +36,7 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     banked_registers_irq: [u32; 2], //r13 to r14
     banked_registers_und: [u32; 2], //r13 to r14
     spsrs: [ProgramStatusRegister; 5],
-    #[getset(get_mut = "pub(crate)")]
+    #[getset(get_copy = "pub", get_mut = "pub")]
     cpsr: ProgramStatusRegister,
     pipeline: [u32; 2],
     #[getset(get = "pub", get_mut = "pub", set = "pub")]
@@ -188,7 +188,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
     }
 
     #[inline]
-    pub(crate) fn is_condition_met(&self, condition: Condition) -> bool {
+    pub fn is_condition_met(&self, condition: Condition) -> bool {
         use Condition::*;
         match condition {
             EQ => self.cpsr.zero(),
@@ -210,7 +210,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub(crate) fn pc(&self) -> u32 {
+    pub fn pc(&self) -> u32 {
         self.general_registers[PC]
     }
 
@@ -218,11 +218,11 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.general_registers[PC] = value;
     }
 
-    pub(crate) fn advance_pc_thumb(&mut self) {
+    pub fn advance_pc_thumb(&mut self) {
         self.general_registers[PC] = self.general_registers[PC].wrapping_add(2);
     }
 
-    pub(crate) fn advance_pc_arm(&mut self) {
+    pub fn advance_pc_arm(&mut self) {
         self.general_registers[PC] = self.general_registers[PC].wrapping_add(4);
     }
 

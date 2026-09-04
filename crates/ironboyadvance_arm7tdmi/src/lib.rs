@@ -1,26 +1,32 @@
 use bitfields::bitflag;
 use std::fmt;
 
+use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
+
 mod alu;
-mod arm;
+pub mod arm;
 mod barrel_shifter;
 pub mod cpu;
 pub mod memory;
 mod psr;
 mod test;
-mod thumb;
+pub mod thumb;
 
 pub const CPU_CLOCK_SPEED: u32 = 16777216;
 
+pub trait ExecutionStrategy {
+    fn cycle<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>);
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum CpuAction {
+pub enum CpuAction {
     Advance(u8),
     PipelineFlush,
 }
 
 #[bitflag(u8)]
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum CpuMode {
+pub enum CpuMode {
     User = 0b10000,
     Fiq = 0b10001,
     Irq = 0b10010,
@@ -65,7 +71,7 @@ impl fmt::Display for CpuState {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum Register {
+pub enum Register {
     R0,
     R1,
     R2,
@@ -216,7 +222,7 @@ impl fmt::Display for HiRegister {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) enum Condition {
+pub enum Condition {
     EQ,
     NE,
     CS,
