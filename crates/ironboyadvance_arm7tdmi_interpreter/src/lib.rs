@@ -1,17 +1,37 @@
 use tracing::debug;
 
 use ironboyadvance_arm7tdmi::{
-    Condition, CpuAction, CpuState, ExecutionStrategy,
-    cpu::{Arm7tdmiCpu, Instruction, LastInstruction},
+    Condition, CpuAction, CpuState, Dissasemble, ExecutionStrategy,
+    cpu::{Arm7tdmiCpu, LastInstruction},
     memory::MemoryInterface,
 };
 use ironboyadvance_common::memory::MemoryAccess;
 
-pub trait Intrepret {
+use crate::{
+    arm::{ArmInstructionFactory, generate_arm_lut},
+    thumb::{ThumbInstructionFactory, generate_thumb_lut},
+};
+
+pub mod arm;
+pub mod thumb;
+
+pub trait Execute {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
 }
 
-pub struct Interpreter;
+pub struct Interpreter {
+    arm_lut: [ArmInstructionFactory; 4096],
+    thumb_lut: [ThumbInstructionFactory; 1024],
+}
+
+impl Interpreter {
+    pub fn new() -> Self {
+        Self {
+            arm_lut: generate_arm_lut(),
+            thumb_lut: generate_thumb_lut(),
+        }
+    }
+}
 
 impl ExecutionStrategy for Interpreter {
     fn cycle<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) {
@@ -32,7 +52,7 @@ impl ExecutionStrategy for Interpreter {
                 cpu.cpu_context_mut().pipeline = pipeline;
 
                 let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
-                let instruction = (cpu.arm_lut()[lut_index as usize])(instruction);
+                let instruction = (self.arm_lut[lut_index as usize])(instruction);
                 cpu.set_last_instruction(Some(LastInstruction::Arm(instruction)));
 
                 if *cpu.show_logs() {
@@ -63,7 +83,7 @@ impl ExecutionStrategy for Interpreter {
                 cpu.cpu_context_mut().pipeline = pipeline;
 
                 let lut_index = instruction as u16 >> 6;
-                let instruction = (cpu.thumb_lut()[lut_index as usize])(instruction as u16);
+                let instruction = (self.thumb_lut[lut_index as usize])(instruction as u16);
                 cpu.set_last_instruction(Some(LastInstruction::Thumb(instruction)));
 
                 if *cpu.show_logs() {

@@ -1,12 +1,11 @@
 use getset::{Getters, MutGetters, Setters};
 use ironboyadvance_common::memory::MemoryAccess;
-use tracing::debug;
 
 use crate::{
-    Condition, CpuAction, Exception,
-    arm::{self, ArmInstruction, ArmInstructionFactory, generate_arm_lut},
+    Condition, Exception,
+    arm::ArmInstruction,
     memory::{CpuContext, MemoryInterface},
-    thumb::{self, ThumbInstruction, ThumbInstructionFactory, generate_thumb_lut},
+    thumb::ThumbInstruction,
 };
 
 use super::{CpuMode, CpuState, psr::ProgramStatusRegister};
@@ -21,11 +20,6 @@ pub enum LastInstruction {
     Thumb(ThumbInstruction),
 }
 
-pub trait Instruction {
-    fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
-}
-
 #[derive(Getters, MutGetters, Setters)]
 #[getset(get = "pub", set = "pub")]
 pub struct Arm7tdmiCpu<I: MemoryInterface> {
@@ -36,14 +30,12 @@ pub struct Arm7tdmiCpu<I: MemoryInterface> {
     banked_registers_irq: [u32; 2], //r13 to r14
     banked_registers_und: [u32; 2], //r13 to r14
     spsrs: [ProgramStatusRegister; 5],
-    #[getset(get_copy = "pub", get_mut = "pub")]
+    #[getset(get_mut = "pub")]
     cpsr: ProgramStatusRegister,
     pipeline: [u32; 2],
     #[getset(get = "pub", get_mut = "pub", set = "pub")]
     bus: I,
     next_memory_access: u8,
-    arm_lut: [ArmInstructionFactory; 4096],
-    thumb_lut: [ThumbInstructionFactory; 1024],
     last_instruction: Option<LastInstruction>,
     show_logs: bool,
     #[getset(skip)]
@@ -98,15 +90,10 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
             pipeline: [0; 2],
             bus,
             next_memory_access: MemoryAccess::Instruction | MemoryAccess::NonSequential,
-            arm_lut: [|v| ArmInstruction::Undefined(arm::undefined::Undefined::new(v)); 4096],
-            thumb_lut: [|v| ThumbInstruction::Undefined(thumb::undefined::Undefined::new(v)); 1024],
             last_instruction: None,
             show_logs,
             bios_loaded,
         };
-
-        cpu.arm_lut = generate_arm_lut();
-        cpu.thumb_lut = generate_thumb_lut();
 
         match bios_loaded {
             true => {
@@ -127,64 +114,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         //TODO: not sure if i need this forever
         //cpu.refill_pipeline();
         cpu
-    }
-
-    pub fn cycle(&mut self) {
-        let pc = self.general_registers[PC] & !0x1;
-        let context = self.bus.cpu_context_mut();
-        context.pc = pc;
-        context.cpu_state = self.cpsr.state();
-
-        match self.cpsr.state() {
-            CpuState::Arm => {
-                let instruction = self.pipeline[0];
-                self.pipeline[0] = self.pipeline[1];
-                self.pipeline[1] = self.load_32(pc, self.next_memory_access);
-                self.cpu_context_mut().pipeline = self.pipeline;
-                let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
-                let instruction = (self.arm_lut[lut_index as usize])(instruction);
-                self.last_instruction = Some(LastInstruction::Arm(instruction));
-
-                if self.show_logs {
-                    debug!("{}", instruction.disassemble(self));
-                }
-
-                let condition = instruction.cond();
-                if condition != Condition::AL && !self.is_condition_met(condition) {
-                    self.advance_pc_arm();
-                    self.next_memory_access = MemoryAccess::Instruction | MemoryAccess::Sequential;
-                    return;
-                }
-                match instruction.execute(self) {
-                    CpuAction::Advance(memory_access) => {
-                        self.advance_pc_arm();
-                        self.next_memory_access = memory_access;
-                    }
-                    CpuAction::PipelineFlush => {}
-                };
-            }
-            CpuState::Thumb => {
-                let instruction = self.pipeline[0];
-                self.pipeline[0] = self.pipeline[1];
-                self.pipeline[1] = self.load_16(pc, self.next_memory_access);
-                self.cpu_context_mut().pipeline = self.pipeline;
-                let lut_index = (instruction) as u16 >> 6;
-                let instruction = (self.thumb_lut[lut_index as usize])(instruction as u16);
-                self.last_instruction = Some(LastInstruction::Thumb(instruction));
-
-                if self.show_logs {
-                    debug!("{}", instruction.disassemble(self));
-                }
-
-                match instruction.execute(self) {
-                    CpuAction::Advance(memory_access) => {
-                        self.advance_pc_thumb();
-                        self.next_memory_access = memory_access;
-                    }
-                    CpuAction::PipelineFlush => {}
-                };
-            }
-        }
     }
 
     #[inline]
@@ -214,7 +143,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.general_registers[PC]
     }
 
-    pub(crate) fn set_pc(&mut self, value: u32) {
+    pub fn set_pc(&mut self, value: u32) {
         self.general_registers[PC] = value;
     }
 
@@ -226,7 +155,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         self.general_registers[PC] = self.general_registers[PC].wrapping_add(4);
     }
 
-    pub(crate) fn pipeline_flush(&mut self) {
+    pub fn pipeline_flush(&mut self) {
         self.cpu_context_mut().pc = self.general_registers[PC];
         match self.cpsr.state() {
             CpuState::Arm => {
@@ -258,7 +187,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub(crate) fn register(&self, index: usize) -> u32 {
+    pub fn register(&self, index: usize) -> u32 {
         match index {
             0..=7 | 15 => self.general_registers[index],
             8..=12 => match self.cpsr.mode() == CpuMode::Fiq {
@@ -278,7 +207,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub(crate) fn set_register(&mut self, index: usize, value: u32) {
+    pub fn set_register(&mut self, index: usize, value: u32) {
         match index {
             0..=7 | 15 => self.general_registers[index] = value,
             8..=12 => match self.cpsr.mode() == CpuMode::Fiq {
@@ -298,7 +227,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub(crate) fn spsr(&self) -> ProgramStatusRegister {
+    pub fn spsr(&self) -> ProgramStatusRegister {
         match self.cpsr.mode() {
             CpuMode::User | CpuMode::System => self.cpsr,
             CpuMode::Fiq => self.spsrs[0],
@@ -310,7 +239,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub(crate) fn set_spsr(&mut self, spsr: ProgramStatusRegister) {
+    pub fn set_spsr(&mut self, spsr: ProgramStatusRegister) {
         match self.cpsr.mode() {
             CpuMode::User | CpuMode::System => self.cpsr = spsr,
             CpuMode::Fiq => self.spsrs[0] = spsr,
@@ -334,7 +263,7 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub(crate) fn exception(&mut self, exception: Exception) {
+    pub fn exception(&mut self, exception: Exception) {
         let (mode, disable_irq, disable_fiq) = match exception {
             Exception::Reset => (CpuMode::Supervisor, true, true),
             Exception::Undefined => (CpuMode::Undefined, true, false),
@@ -373,11 +302,11 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
         }
     }
 
-    pub(crate) fn bios_loaded(&self) -> bool {
+    pub fn bios_loaded(&self) -> bool {
         self.bios_loaded
     }
 
-    pub(crate) fn bios_call(&mut self, function: u32) -> bool {
+    pub fn bios_call(&mut self, function: u32) -> bool {
         match function {
             0x06 => self.bios_divide(),
             0x08 => self.bios_square_root(),

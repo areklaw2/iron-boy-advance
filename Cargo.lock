@@ -1519,6 +1519,7 @@ dependencies = [
 name = "ironboyadvance_arm7tdmi_interpreter"
 version = "0.1.0"
 dependencies = [
+ "getset",
  "ironboyadvance_arm7tdmi",
  "ironboyadvance_common",
  "tracing",
