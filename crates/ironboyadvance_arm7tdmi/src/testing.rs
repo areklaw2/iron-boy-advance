@@ -260,7 +260,7 @@ fn parse_bin_file(path: &PathBuf) -> Result<Vec<Test>, String> {
     Ok(tests)
 }
 
-fn run_test_file<S: ExecutionStrategy>(strategy: &S, file_path: PathBuf) -> Result<(), String> {
+fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> Result<(), String> {
     let tests = parse_bin_file(&file_path)?;
 
     let mut cpu = Arm7tdmiCpu::new(TestBus::default(), false, true);
@@ -320,7 +320,7 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &S, file_path: PathBuf) -> Resu
     Ok(())
 }
 
-pub fn run_single_step_tests<S: ExecutionStrategy + Sync>(strategy: &S) {
+pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");
     let directory = fs::read_dir(&directory_path).expect("Unable to access directory");
     let file_paths: Vec<PathBuf> = directory
@@ -332,7 +332,8 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Sync>(strategy: &S) {
     file_paths
         .par_iter()
         .try_for_each(|path| {
-            run_test_file(strategy, path.clone()).map_err(|e| {
+            let mut strategy = S::default();
+            run_test_file(&mut strategy, path.clone()).map_err(|e| {
                 eprintln!("Test failed in file {:?}: {}", path, e);
                 e
             })

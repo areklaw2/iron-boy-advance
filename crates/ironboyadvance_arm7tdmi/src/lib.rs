@@ -19,7 +19,7 @@ pub trait Dissasemble {
 }
 
 pub trait ExecutionStrategy {
-    fn cycle<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>);
+    fn cycle<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

@@ -3,6 +3,5 @@ use ironboyadvance_arm7tdmi_interpreter::Interpreter;
 
 #[test]
 fn single_step_tests() {
-    let strategy = Interpreter::new();
-    run_single_step_tests(&strategy);
+    run_single_step_tests::<Interpreter>();
 }

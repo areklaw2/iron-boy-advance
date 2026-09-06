@@ -1,3 +1,4 @@
+use dynasmrt::{VecAssembler, aarch64::Aarch64Relocation};
 use ironboyadvance_arm7tdmi::{
     Condition, CpuAction, CpuState, Dissasemble, ExecutionStrategy,
     cpu::{Arm7tdmiCpu, LastInstruction},
@@ -12,25 +13,33 @@ pub mod arm;
 pub mod thumb;
 
 pub trait Compile {
-    fn compile<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
+    fn compile(&self, assembler: &mut VecAssembler<Aarch64Relocation>);
 }
 
-pub struct Jit {}
+pub struct JitCompiler {
+    assembler: VecAssembler<Aarch64Relocation>,
+}
 
-impl Jit {
+impl JitCompiler {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            assembler: VecAssembler::<Aarch64Relocation>::new(0),
+        }
+    }
+
+    pub fn run<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+        todo!()
     }
 }
 
-impl Default for Jit {
+impl Default for JitCompiler {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ExecutionStrategy for Jit {
-    fn cycle<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) {
+impl ExecutionStrategy for JitCompiler {
+    fn cycle<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>) {
         let pc = cpu.pc() & !0x1;
         let cpu_state = cpu.cpsr().state();
         let context = cpu.cpu_context_mut();
@@ -60,7 +69,10 @@ impl ExecutionStrategy for Jit {
                     cpu.set_next_memory_access(MemoryAccess::Instruction | MemoryAccess::Sequential);
                     return;
                 }
-                match instruction.compile(cpu) {
+
+                instruction.compile(&mut self.assembler);
+
+                match self.run(cpu) {
                     CpuAction::Advance(memory_access) => {
                         cpu.advance_pc_arm();
                         cpu.set_next_memory_access(memory_access);
@@ -84,7 +96,9 @@ impl ExecutionStrategy for Jit {
                     debug!("{}", instruction.disassemble(cpu));
                 }
 
-                match instruction.compile(cpu) {
+                instruction.compile(&mut self.assembler);
+
+                match self.run(cpu) {
                     CpuAction::Advance(memory_access) => {
                         cpu.advance_pc_thumb();
                         cpu.set_next_memory_access(memory_access);
