@@ -19,6 +19,7 @@ pub trait Execute {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction;
 }
 
+#[derive(Debug)]
 pub struct Interpreter {
     arm_lut: [ArmInstructionFactory; 4096],
     thumb_lut: [ThumbInstructionFactory; 1024],
@@ -30,6 +31,12 @@ impl Interpreter {
             arm_lut: generate_arm_lut(),
             thumb_lut: generate_thumb_lut(),
         }
+    }
+}
+
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

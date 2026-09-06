@@ -1526,6 +1526,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ironboyadvance_arm7tdmi_jit"
+version = "0.1.0"
+dependencies = [
+ "getset",
+ "ironboyadvance_arm7tdmi",
+ "ironboyadvance_common",
+ "tracing",
+]
+
+[[package]]
 name = "ironboyadvance_common"
 version = "0.1.0"
 dependencies = [
@@ -1539,6 +1549,8 @@ dependencies = [
  "bitfields",
  "getset",
  "ironboyadvance_arm7tdmi",
+ "ironboyadvance_arm7tdmi_interpreter",
+ "ironboyadvance_arm7tdmi_jit",
  "ironboyadvance_common",
  "thiserror 2.0.20",
  "tracing",
