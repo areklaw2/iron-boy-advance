@@ -123,17 +123,21 @@ impl ExecutionStrategy for JitCompiler {
     }
 }
 
-fn emit_address(assembler: &mut Assembler<Aarch64Relocation>, address: usize) {
+fn emit_call(assembler: &mut Assembler<Aarch64Relocation>, target: *const ()) {
+    let address = target as usize;
+
     let byte_0 = (address & 0xFFFF) as u32;
     let byte_1 = ((address >> 16) & 0xFFFF) as u32;
     let byte_2 = ((address >> 32) & 0xFFFF) as u32;
     let byte_3 = ((address >> 48) & 0xFFFF) as u32;
+    // move address into x9 and then jump
     dynasm! { assembler
         ; .arch aarch64
         ; movz x9, #byte_0
         ; movk x9, #byte_1, lsl #16
         ; movk x9, #byte_2, lsl #32
         ; movk x9, #byte_3, lsl #48
+        ; blr x9 // jump to the address
     }
 }
 

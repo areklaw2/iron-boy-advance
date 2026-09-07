@@ -1,5 +1,5 @@
 use crate::{
-    Compile, emit_address, emit_immediate_32, trampoline_pc, trampoline_pipeline_flush, trampoline_register,
+    Compile, emit_call, emit_immediate_32, trampoline_pc, trampoline_pipeline_flush, trampoline_register,
     trampoline_set_cpsr_state, trampoline_set_pc, trampoline_set_register,
 };
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
@@ -98,10 +98,9 @@ impl Compile for BranchAndBranchWithLink {
             ; str x30, [sp, #16]
             ; mov x19, x0
         }
-        emit_address(assembler, trampoline_pc::<I> as *const () as usize);
+        emit_call(assembler, trampoline_pc::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
-            ; blr x9
             ; mov w20, w0
         }
 
@@ -113,11 +112,7 @@ impl Compile for BranchAndBranchWithLink {
                 ; mov x0, x19
                 ; movz w1, #link_register
             }
-            emit_address(assembler, trampoline_set_register::<I> as *const () as usize);
-            dynasm! { assembler
-                ; .arch aarch64
-                ; blr x9
-            }
+            emit_call(assembler, trampoline_set_register::<I> as *const ());
         }
 
         emit_immediate_32(assembler, 10, offset);
@@ -126,16 +121,14 @@ impl Compile for BranchAndBranchWithLink {
             ; add w1, w20, w10
             ; mov x0, x19
         }
-        emit_address(assembler, trampoline_set_pc::<I> as *const () as usize);
+        emit_call(assembler, trampoline_set_pc::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
-            ; blr x9
             ; mov x0, x19
         }
-        emit_address(assembler, trampoline_pipeline_flush::<I> as *const () as usize);
+        emit_call(assembler, trampoline_pipeline_flush::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
-            ; blr x9
             ; movn w0, #0
             ; ldr x30, [sp, #16]
             ; ldp x20, x19, [sp], #32
@@ -147,6 +140,7 @@ impl Compile for BranchAndBranchWithLink {
 impl Compile for BranchAndExchange {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         let rn = self.rn() as u32;
+
         dynasm! { assembler
             ; .arch aarch64
             ; stp x20, x19, [sp, #-32]!
@@ -154,31 +148,27 @@ impl Compile for BranchAndExchange {
             ; mov x19, x0
             ; movz w1, #rn
         }
-        emit_address(assembler, trampoline_register::<I> as *const () as usize);
+        emit_call(assembler, trampoline_register::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
-            ; blr x9
             ; mov w20, w0
             ; mov x0, x19
             ; mov w1, w20
         }
-        emit_address(assembler, trampoline_set_cpsr_state::<I> as *const () as usize);
+        emit_call(assembler, trampoline_set_cpsr_state::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
-            ; blr x9
             ; and w1, w20, #0xfffffffe
             ; mov x0, x19
         }
-        emit_address(assembler, trampoline_set_pc::<I> as *const () as usize);
+        emit_call(assembler, trampoline_set_pc::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
-            ; blr x9
             ; mov x0, x19
         }
-        emit_address(assembler, trampoline_pipeline_flush::<I> as *const () as usize);
+        emit_call(assembler, trampoline_pipeline_flush::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
-            ; blr x9
             ; movn w0, #0
             ; ldr x30, [sp, #16]
             ; ldp x20, x19, [sp], #32
@@ -186,3 +176,22 @@ impl Compile for BranchAndExchange {
         }
     }
 }
+
+// impl Compile for SoftwareInterrupt {
+//     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
+//         match !cpu.bios_loaded() && cpu.bios_call(self.comment() >> 16) {
+//             true => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
+//             false => {
+//                 cpu.exception(Exception::SoftwareInterrupt);
+//                 CpuAction::PipelineFlush
+//             }
+//         }
+//     }
+// }
+
+// impl Compile for Undefined {
+//     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
+//         cpu.exception(Exception::Undefined);
+//         CpuAction::PipelineFlush
+//     }
+// }
