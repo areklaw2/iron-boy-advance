@@ -1,4 +1,4 @@
-use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
+use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
     Condition, CpuAction, CpuState, Dissasemble, ExecutionStrategy,
     cpu::{Arm7tdmiCpu, LastInstruction},
@@ -33,8 +33,15 @@ impl JitCompiler {
         Ok(Self { assembler })
     }
 
-    pub fn run<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
-        todo!()
+    pub fn run<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>, offset: AssemblyOffset) -> CpuAction {
+        self.assembler.commit().unwrap();
+        let reader = self.assembler.reader();
+        let buffer = reader.lock();
+        let block: extern "C" fn(*mut Arm7tdmiCpu<I>) -> u32 = unsafe { std::mem::transmute(buffer.ptr(offset)) };
+        match block(cpu as *mut _) {
+            0xFFFF_FFFF => CpuAction::PipelineFlush,
+            access => CpuAction::Advance(access as u8),
+        }
     }
 }
 
@@ -76,9 +83,9 @@ impl ExecutionStrategy for JitCompiler {
                     return;
                 }
 
+                let offset = self.assembler.offset();
                 instruction.compile::<I>(&mut self.assembler);
-
-                match self.run(cpu) {
+                match self.run(cpu, offset) {
                     CpuAction::Advance(memory_access) => {
                         cpu.advance_pc_arm();
                         cpu.set_next_memory_access(memory_access);
@@ -102,9 +109,9 @@ impl ExecutionStrategy for JitCompiler {
                     debug!("{}", instruction.disassemble(cpu));
                 }
 
+                let offset = self.assembler.offset();
                 instruction.compile::<I>(&mut self.assembler);
-
-                match self.run(cpu) {
+                match self.run(cpu, offset) {
                     CpuAction::Advance(memory_access) => {
                         cpu.advance_pc_thumb();
                         cpu.set_next_memory_access(memory_access);

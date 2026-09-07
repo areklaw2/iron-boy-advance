@@ -137,8 +137,8 @@ impl Compile for BranchAndBranchWithLink {
             ; .arch aarch64
             ; blr x9
             ; movn w0, #0
-            ; ldr x20, [sp, #16]
-            ; ldp x19, x30, [sp], #32
+            ; ldr x30, [sp, #16]
+            ; ldp x20, x19, [sp], #32
             ; ret
         }
     }
