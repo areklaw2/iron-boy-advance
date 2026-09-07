@@ -161,9 +161,21 @@ pub unsafe extern "C" fn trampoline_set_pc<I: MemoryInterface>(cpu: *mut Arm7tdm
 }
 
 #[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn trampoline_register<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, register: u32) -> u32 {
+    let cpu = unsafe { &*cpu };
+    cpu.register(register as usize)
+}
+
+#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn trampoline_set_register<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, register: u32, value: u32) {
     let cpu = unsafe { &mut *cpu };
     cpu.set_register(register as usize, value);
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn trampoline_set_cpsr_state<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.cpsr_mut().set_state(CpuState::from_bits((value & 0x1) as u8));
 }
 
 #[allow(clippy::missing_safety_doc)]

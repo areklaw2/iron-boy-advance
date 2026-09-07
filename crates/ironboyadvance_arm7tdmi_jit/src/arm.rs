@@ -1,6 +1,6 @@
 use crate::{
-    Compile, emit_address, emit_immediate_32, trampoline_pc, trampoline_pipeline_flush, trampoline_set_pc,
-    trampoline_set_register,
+    Compile, emit_address, emit_immediate_32, trampoline_pc, trampoline_pipeline_flush, trampoline_register,
+    trampoline_set_cpsr_state, trampoline_set_pc, trampoline_set_register,
 };
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
@@ -22,7 +22,7 @@ impl Compile for ArmInstruction {
             Self::Multiply(_i) => todo!(),
             Self::MultiplyLong(_i) => todo!(),
             Self::SingleDataSwap(_i) => todo!(),
-            Self::BranchAndExchange(_i) => todo!(),
+            Self::BranchAndExchange(i) => i.compile::<I>(assembler),
             Self::HalfwordAndSignedDataTransfer(_i) => todo!(),
             Self::SingleDataTransfer(_i) => todo!(),
             Self::Undefined(_i) => todo!(),
@@ -124,6 +124,49 @@ impl Compile for BranchAndBranchWithLink {
         dynasm! { assembler
             ; .arch aarch64
             ; add w1, w20, w10
+            ; mov x0, x19
+        }
+        emit_address(assembler, trampoline_set_pc::<I> as *const () as usize);
+        dynasm! { assembler
+            ; .arch aarch64
+            ; blr x9
+            ; mov x0, x19
+        }
+        emit_address(assembler, trampoline_pipeline_flush::<I> as *const () as usize);
+        dynasm! { assembler
+            ; .arch aarch64
+            ; blr x9
+            ; movn w0, #0
+            ; ldr x30, [sp, #16]
+            ; ldp x20, x19, [sp], #32
+            ; ret
+        }
+    }
+}
+
+impl Compile for BranchAndExchange {
+    fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
+        let rn = self.rn() as u32;
+        dynasm! { assembler
+            ; .arch aarch64
+            ; stp x20, x19, [sp, #-32]!
+            ; str x30, [sp, #16]
+            ; mov x19, x0
+            ; movz w1, #rn
+        }
+        emit_address(assembler, trampoline_register::<I> as *const () as usize);
+        dynasm! { assembler
+            ; .arch aarch64
+            ; blr x9
+            ; mov w20, w0
+            ; mov x0, x19
+            ; mov w1, w20
+        }
+        emit_address(assembler, trampoline_set_cpsr_state::<I> as *const () as usize);
+        dynasm! { assembler
+            ; .arch aarch64
+            ; blr x9
+            ; and w1, w20, #0xfffffffe
             ; mov x0, x19
         }
         emit_address(assembler, trampoline_set_pc::<I> as *const () as usize);

@@ -321,7 +321,7 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
 }
 
 pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
-    let files_to_run = ["arm_b_bl.json.bin"];
+    let files_to_run = ["arm_b_bl.json.bin", "arm_bx.json.bin"];
 
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");
     let directory = fs::read_dir(&directory_path).expect("Unable to access directory");
