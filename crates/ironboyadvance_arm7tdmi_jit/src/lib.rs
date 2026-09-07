@@ -1,6 +1,6 @@
 use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
-    Condition, CpuAction, CpuState, Dissasemble, ExecutionStrategy,
+    Condition, CpuAction, CpuState, Dissasemble, Exception, ExecutionStrategy,
     cpu::{Arm7tdmiCpu, LastInstruction},
     memory::MemoryInterface,
 };
@@ -136,6 +136,22 @@ fn emit_epilogue(assembler: &mut Assembler<Aarch64Relocation>) {
         ; .arch aarch64
         ; ldr x30, [sp, #16]
         ; ldp x20, x19, [sp], #32
+        ; ret
+    }
+}
+
+fn emit_prologue_link_only(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; str x30, [sp, #-16]!
+    }
+}
+
+fn emit_epilogue_link_only(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; ldr x30, [sp], #16
+        ; ret
     }
 }
 
@@ -202,4 +218,16 @@ pub unsafe extern "C" fn trampoline_set_cpsr_state<I: MemoryInterface>(cpu: *mut
 pub unsafe extern "C" fn trampoline_pipeline_flush<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
     let cpu = unsafe { &mut *cpu };
     cpu.pipeline_flush();
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn trampoline_undefined_exception<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.exception(Exception::Undefined);
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn trampoline_software_interrupt_exception<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.exception(Exception::SoftwareInterrupt);
 }

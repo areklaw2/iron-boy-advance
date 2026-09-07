@@ -1,6 +1,7 @@
 use crate::{
-    Compile, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, trampoline_pc, trampoline_pipeline_flush,
-    trampoline_register, trampoline_set_cpsr_state, trampoline_set_pc, trampoline_set_register,
+    Compile, emit_call, emit_epilogue, emit_epilogue_link_only, emit_immediate_32, emit_prologue, emit_prologue_link_only,
+    trampoline_pc, trampoline_pipeline_flush, trampoline_register, trampoline_set_cpsr_state, trampoline_set_pc,
+    trampoline_set_register, trampoline_undefined_exception,
 };
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
@@ -25,13 +26,13 @@ impl Compile for ArmInstruction {
             Self::BranchAndExchange(i) => i.compile::<I>(assembler),
             Self::HalfwordAndSignedDataTransfer(_i) => todo!(),
             Self::SingleDataTransfer(_i) => todo!(),
-            Self::Undefined(_i) => todo!(),
+            Self::Undefined(i) => i.compile::<I>(assembler),
             Self::BlockDataTransfer(_i) => todo!(),
             Self::BranchAndBranchWithLink(i) => i.compile::<I>(assembler),
             Self::SoftwareInterrupt(_i) => todo!(),
-            Self::CoprocessorDataOperation(_i) => todo!(),
-            Self::CoprocessorDataTransfer(_i) => todo!(),
-            Self::CoprocessorRegisterTransfer(_i) => todo!(),
+            Self::CoprocessorDataOperation(i) => i.compile::<I>(assembler),
+            Self::CoprocessorDataTransfer(i) => i.compile::<I>(assembler),
+            Self::CoprocessorRegisterTransfer(i) => i.compile::<I>(assembler),
         }
     }
 }
@@ -131,10 +132,6 @@ impl Compile for BranchAndBranchWithLink {
             ; movn w0, #0
         }
         emit_epilogue(assembler);
-        dynasm! { assembler
-            ; .arch aarch64
-            ; ret
-        }
     }
 }
 
@@ -172,10 +169,6 @@ impl Compile for BranchAndExchange {
             ; movn w0, #0
         }
         emit_epilogue(assembler);
-        dynasm! { assembler
-            ; .arch aarch64
-            ; ret
-        }
     }
 }
 
@@ -191,9 +184,14 @@ impl Compile for BranchAndExchange {
 //     }
 // }
 
-// impl Compile for Undefined {
-//     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
-//         cpu.exception(Exception::Undefined);
-//         CpuAction::PipelineFlush
-//     }
-// }
+impl Compile for Undefined {
+    fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
+        emit_prologue_link_only(assembler);
+        emit_call(assembler, trampoline_undefined_exception::<I> as *const ());
+        dynasm! { assembler
+            ; .arch aarch64
+            ; movn w0, #0
+        }
+        emit_epilogue_link_only(assembler);
+    }
+}
