@@ -1,6 +1,6 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
-use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, cpu::Arm7tdmiCpu};
+use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, ExecutionStrategy, cpu::Arm7tdmiCpu};
 use ironboyadvance_common::{
     emulator::{Emulator, SystemInspection},
     scheduler::Scheduler,
@@ -43,25 +43,29 @@ pub enum GbaError {
     CartridgeError(#[from] CartridgeError),
 }
 
-pub struct GameBoyAdvance {
+pub struct GameBoyAdvance<E: ExecutionStrategy> {
     arm7tdmi: Arm7tdmiCpu<SystemBus>,
+    strategy: E,
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
 }
 
-impl GameBoyAdvance {
+impl<E: ExecutionStrategy> GameBoyAdvance<E> {
     pub fn new(
         rom_path: PathBuf,
         rom_buffer: Vec<u8>,
         bios_buffer: Vec<u8>,
         base_unix_seconds: u64,
         show_logs: bool,
-    ) -> Result<GameBoyAdvance, GbaError> {
+        strategy: E,
+    ) -> Result<GameBoyAdvance<E>, GbaError> {
         let scheduler = Rc::new(RefCell::new(Scheduler::new()));
         let cartridge = Cartridge::load(rom_path, rom_buffer, base_unix_seconds, scheduler.clone())?;
         let bios = Bios::load(bios_buffer)?;
         let bios_loaded = bios.loaded();
+
         let gba = GameBoyAdvance {
             arm7tdmi: Arm7tdmiCpu::new(SystemBus::new(cartridge, bios, scheduler.clone()), show_logs, bios_loaded),
+            strategy,
             scheduler,
         };
         Ok(gba)
@@ -85,13 +89,13 @@ impl GameBoyAdvance {
                 if self.arm7tdmi.bus().interrupt_pending() {
                     self.arm7tdmi.irq();
                 }
-                self.arm7tdmi.cycle();
+                self.strategy.cycle(&mut self.arm7tdmi);
             }
         }
     }
 }
 
-impl Emulator for GameBoyAdvance {
+impl<E: ExecutionStrategy> Emulator for GameBoyAdvance<E> {
     fn run(&mut self, cycles: usize, overshoot: usize) -> usize {
         let start_time = self.scheduler.borrow().timestamp();
         let target = cycles.saturating_sub(overshoot);
@@ -126,4 +130,4 @@ impl Emulator for GameBoyAdvance {
     }
 }
 
-impl SystemInspection for GameBoyAdvance {}
+impl<E: ExecutionStrategy> SystemInspection for GameBoyAdvance<E> {}

@@ -1,0 +1,12 @@
+[package]
+name = "ironboyadvance_arm7tdmi_jit"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ironboyadvance_arm7tdmi = { path = "../ironboyadvance_arm7tdmi" }
+ironboyadvance_common = { path = "../ironboyadvance_common" }
+getset = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+dynasmrt = "5.1.0"

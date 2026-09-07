@@ -1,26 +1,36 @@
 use bitfields::bitflag;
 use std::fmt;
 
-mod alu;
-mod arm;
-mod barrel_shifter;
+use crate::{cpu::Arm7tdmiCpu, memory::MemoryInterface};
+
+pub mod alu;
+pub mod arm;
+pub mod barrel_shifter;
 pub mod cpu;
 pub mod memory;
-mod psr;
-mod test;
-mod thumb;
+pub mod psr;
+pub mod testing;
+pub mod thumb;
 
 pub const CPU_CLOCK_SPEED: u32 = 16777216;
 
+pub trait Dissasemble {
+    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
+}
+
+pub trait ExecutionStrategy {
+    fn cycle<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>);
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum CpuAction {
+pub enum CpuAction {
     Advance(u8),
     PipelineFlush,
 }
 
 #[bitflag(u8)]
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum CpuMode {
+pub enum CpuMode {
     User = 0b10000,
     Fiq = 0b10001,
     Irq = 0b10010,
@@ -65,7 +75,7 @@ impl fmt::Display for CpuState {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum Register {
+pub enum Register {
     R0,
     R1,
     R2,
@@ -131,7 +141,7 @@ impl fmt::Display for Register {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum LoRegister {
+pub enum LoRegister {
     R0,
     R1,
     R2,
@@ -173,7 +183,7 @@ impl fmt::Display for LoRegister {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum HiRegister {
+pub enum HiRegister {
     R8,
     R9,
     R10,
@@ -216,7 +226,7 @@ impl fmt::Display for HiRegister {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) enum Condition {
+pub enum Condition {
     EQ,
     NE,
     CS,
@@ -284,7 +294,7 @@ impl fmt::Display for Condition {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) enum DataProcessingOpcode {
+pub enum DataProcessingOpcode {
     AND,
     EOR,
     SUB,
@@ -353,7 +363,7 @@ impl fmt::Display for DataProcessingOpcode {
 // THUMB
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) enum MovCmpAddSubImmediateOpcode {
+pub enum MovCmpAddSubImmediateOpcode {
     MOV,
     CMP,
     ADD,
@@ -385,7 +395,7 @@ impl fmt::Display for MovCmpAddSubImmediateOpcode {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) enum AluOperationsOpcode {
+pub enum AluOperationsOpcode {
     AND,
     EOR,
     LSL,
@@ -453,7 +463,7 @@ impl fmt::Display for AluOperationsOpcode {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) enum HiRegOpsBxOpcode {
+pub enum HiRegOpsBxOpcode {
     ADD,
     CMP,
     MOV,
@@ -484,7 +494,7 @@ impl fmt::Display for HiRegOpsBxOpcode {
 }
 
 #[allow(unused)]
-pub(crate) enum Exception {
+pub enum Exception {
     Reset = 0x00,
     Undefined = 0x04,
     SoftwareInterrupt = 0x08,

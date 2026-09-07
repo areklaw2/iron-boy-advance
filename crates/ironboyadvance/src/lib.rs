@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use ironboyadvance_arm7tdmi_interpreter::Interpreter;
 use ironboyadvance_gba::{GameBoyAdvance, GbaError};
 use ironboyadvance_gbc::{GameBoyColor, GbcError};
 use thiserror::Error;
@@ -51,6 +52,7 @@ pub fn boot(
             bios,
             unix_seconds,
             show_logs,
+            Interpreter::new(),
         )?)),
         System::Gb | System::Gbc => Ok(Box::new(GameBoyColor::new(
             kind,
