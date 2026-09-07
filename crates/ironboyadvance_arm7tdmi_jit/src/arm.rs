@@ -1,7 +1,6 @@
 use crate::{
     Compile, emit_call, emit_epilogue, emit_epilogue_link_only, emit_immediate_32, emit_prologue, emit_prologue_link_only,
-    trampoline_pc, trampoline_pipeline_flush, trampoline_register, trampoline_set_cpsr_state, trampoline_set_pc,
-    trampoline_set_register, trampoline_undefined_exception,
+    guest,
 };
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
@@ -98,7 +97,7 @@ impl Compile for BranchAndBranchWithLink {
             ; .arch aarch64
             ; mov x19, x0
         }
-        emit_call(assembler, trampoline_pc::<I> as *const ());
+        emit_call(assembler, guest::pc::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
             ; mov w20, w0
@@ -112,7 +111,7 @@ impl Compile for BranchAndBranchWithLink {
                 ; mov x0, x19
                 ; movz w1, #link_register
             }
-            emit_call(assembler, trampoline_set_register::<I> as *const ());
+            emit_call(assembler, guest::set_register::<I> as *const ());
         }
 
         emit_immediate_32(assembler, 10, offset);
@@ -121,12 +120,12 @@ impl Compile for BranchAndBranchWithLink {
             ; add w1, w20, w10
             ; mov x0, x19
         }
-        emit_call(assembler, trampoline_set_pc::<I> as *const ());
+        emit_call(assembler, guest::set_pc::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
             ; mov x0, x19
         }
-        emit_call(assembler, trampoline_pipeline_flush::<I> as *const ());
+        emit_call(assembler, guest::pipeline_flush::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
             ; movn w0, #0
@@ -145,25 +144,25 @@ impl Compile for BranchAndExchange {
             ; mov x19, x0
             ; movz w1, #rn
         }
-        emit_call(assembler, trampoline_register::<I> as *const ());
+        emit_call(assembler, guest::register::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
             ; mov w20, w0
             ; mov x0, x19
             ; mov w1, w20
         }
-        emit_call(assembler, trampoline_set_cpsr_state::<I> as *const ());
+        emit_call(assembler, guest::set_cpsr_state::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
             ; and w1, w20, #0xfffffffe
             ; mov x0, x19
         }
-        emit_call(assembler, trampoline_set_pc::<I> as *const ());
+        emit_call(assembler, guest::set_pc::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
             ; mov x0, x19
         }
-        emit_call(assembler, trampoline_pipeline_flush::<I> as *const ());
+        emit_call(assembler, guest::pipeline_flush::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
             ; movn w0, #0
@@ -187,7 +186,7 @@ impl Compile for BranchAndExchange {
 impl Compile for Undefined {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         emit_prologue_link_only(assembler);
-        emit_call(assembler, trampoline_undefined_exception::<I> as *const ());
+        emit_call(assembler, guest::undefined_exception::<I> as *const ());
         dynasm! { assembler
             ; .arch aarch64
             ; movn w0, #0

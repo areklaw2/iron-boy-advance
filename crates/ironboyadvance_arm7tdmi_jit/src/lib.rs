@@ -1,6 +1,6 @@
 use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
-    Condition, CpuAction, CpuState, Dissasemble, Exception, ExecutionStrategy,
+    Condition, CpuAction, CpuState, Dissasemble, ExecutionStrategy,
     cpu::{Arm7tdmiCpu, LastInstruction},
     memory::MemoryInterface,
 };
@@ -10,8 +10,9 @@ use tracing::debug;
 
 use crate::{arm::decode_arm, thumb::decode_thumb};
 
-pub mod arm;
-pub mod thumb;
+mod arm;
+mod guest;
+mod thumb;
 
 #[derive(Error, Debug)]
 pub enum JitError {
@@ -182,52 +183,4 @@ fn emit_immediate_32(assembler: &mut Assembler<Aarch64Relocation>, register: u8,
         ; movz W(register), #low
         ; movk W(register), #high, lsl #16
     }
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_pc<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
-    let cpu = unsafe { &*cpu };
-    cpu.pc()
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_set_pc<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.set_pc(value);
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_register<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, register: u32) -> u32 {
-    let cpu = unsafe { &*cpu };
-    cpu.register(register as usize)
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_set_register<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, register: u32, value: u32) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.set_register(register as usize, value);
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_set_cpsr_state<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.cpsr_mut().set_state(CpuState::from_bits((value & 0x1) as u8));
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_pipeline_flush<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.pipeline_flush();
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_undefined_exception<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.exception(Exception::Undefined);
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_software_interrupt_exception<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.exception(Exception::SoftwareInterrupt);
 }
