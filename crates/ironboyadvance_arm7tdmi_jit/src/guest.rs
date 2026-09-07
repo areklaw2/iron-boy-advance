@@ -1,4 +1,7 @@
 use ironboyadvance_arm7tdmi::{CpuState, Exception, cpu::Arm7tdmiCpu, memory::MemoryInterface};
+use ironboyadvance_common::memory::MemoryAccess;
+
+use crate::PIPELINE_FLUSH;
 
 pub unsafe extern "C" fn pc<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
     let cpu = unsafe { &*cpu };
@@ -35,19 +38,13 @@ pub unsafe extern "C" fn undefined_exception<I: MemoryInterface>(cpu: *mut Arm7t
     cpu.exception(Exception::Undefined);
 }
 
-pub unsafe extern "C" fn software_interrupt_exception<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
+pub unsafe extern "C" fn software_interrupt<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, function: u32) -> u32 {
     let cpu = unsafe { &mut *cpu };
-    cpu.exception(Exception::SoftwareInterrupt);
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn bios_loaded<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> bool {
-    let cpu = unsafe { &*cpu };
-    cpu.bios_loaded()
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn bios_call<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, function: u32) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.bios_call(function);
+    match !cpu.bios_loaded() && cpu.bios_call(function) {
+        true => (MemoryAccess::Instruction | MemoryAccess::Sequential) as u32,
+        false => {
+            cpu.exception(Exception::SoftwareInterrupt);
+            PIPELINE_FLUSH
+        }
+    }
 }

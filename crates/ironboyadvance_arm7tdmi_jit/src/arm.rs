@@ -1,18 +1,19 @@
-use crate::{
-    Compile, emit_call, emit_epilogue, emit_epilogue_link_only, emit_immediate_32, emit_prologue, emit_prologue_link_only,
-    guest,
-};
-use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
+use crate::Compile;
+use dynasmrt::{Assembler, aarch64::Aarch64Relocation};
 use ironboyadvance_arm7tdmi::{
     arm::{
         ArmInstruction, BlockDataTransfer, BranchAndBranchWithLink, BranchAndExchange, DataProcessing,
         HalfwordAndSignedDataTransfer, Multiply, MultiplyLong, PsrTransfer, SingleDataSwap, SingleDataTransfer,
         SoftwareInterrupt, Undefined,
     },
-    cpu::LR,
     memory::MemoryInterface,
 };
-use ironboyadvance_common::bits::{BitOps, SignExtend};
+use ironboyadvance_common::bits::BitOps;
+
+mod branch_and_branch_with_link;
+mod branch_and_exchange;
+mod software_interrupt;
+mod undefined;
 
 impl Compile for ArmInstruction {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -28,7 +29,7 @@ impl Compile for ArmInstruction {
             Self::Undefined(i) => i.compile::<I>(assembler),
             Self::BlockDataTransfer(_i) => todo!(),
             Self::BranchAndBranchWithLink(i) => i.compile::<I>(assembler),
-            Self::SoftwareInterrupt(_i) => todo!(),
+            Self::SoftwareInterrupt(i) => i.compile::<I>(assembler),
             Self::CoprocessorDataOperation(i) => i.compile::<I>(assembler),
             Self::CoprocessorDataTransfer(i) => i.compile::<I>(assembler),
             Self::CoprocessorRegisterTransfer(i) => i.compile::<I>(assembler),
@@ -85,112 +86,5 @@ pub fn decode_arm(value: u32) -> ArmInstruction {
             false => ArmInstruction::CoprocessorDataTransfer(Undefined::new(value)),
         },
         _ => ArmInstruction::Undefined(Undefined::new(value)),
-    }
-}
-
-impl Compile for BranchAndBranchWithLink {
-    fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
-        let offset = (self.offset().sign_extend(24) << 2) as u32;
-
-        emit_prologue(assembler);
-        dynasm! { assembler
-            ; .arch aarch64
-            ; mov x19, x0
-        }
-        emit_call(assembler, guest::pc::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; mov w20, w0
-        }
-
-        if self.link() {
-            let link_register = LR as u32;
-            dynasm! { assembler
-                ; .arch aarch64
-                ; sub w2, w0, #4
-                ; mov x0, x19
-                ; movz w1, #link_register
-            }
-            emit_call(assembler, guest::set_register::<I> as *const ());
-        }
-
-        emit_immediate_32(assembler, 10, offset);
-        dynasm! { assembler
-            ; .arch aarch64
-            ; add w1, w20, w10
-            ; mov x0, x19
-        }
-        emit_call(assembler, guest::set_pc::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; mov x0, x19
-        }
-        emit_call(assembler, guest::pipeline_flush::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; movn w0, #0
-        }
-        emit_epilogue(assembler);
-    }
-}
-
-impl Compile for BranchAndExchange {
-    fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
-        let rn = self.rn() as u32;
-
-        emit_prologue(assembler);
-        dynasm! { assembler
-            ; .arch aarch64
-            ; mov x19, x0
-            ; movz w1, #rn
-        }
-        emit_call(assembler, guest::register::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; mov w20, w0
-            ; mov x0, x19
-            ; mov w1, w20
-        }
-        emit_call(assembler, guest::set_cpsr_state::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; and w1, w20, #0xfffffffe
-            ; mov x0, x19
-        }
-        emit_call(assembler, guest::set_pc::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; mov x0, x19
-        }
-        emit_call(assembler, guest::pipeline_flush::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; movn w0, #0
-        }
-        emit_epilogue(assembler);
-    }
-}
-
-// impl Compile for SoftwareInterrupt {
-//     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
-//         match !cpu.bios_loaded() && cpu.bios_call(self.comment() >> 16) {
-//             true => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
-//             false => {
-//                 cpu.exception(Exception::SoftwareInterrupt);
-//                 CpuAction::PipelineFlush
-//             }
-//         }
-//     }
-// }
-
-impl Compile for Undefined {
-    fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
-        emit_prologue_link_only(assembler);
-        emit_call(assembler, guest::undefined_exception::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; movn w0, #0
-        }
-        emit_epilogue_link_only(assembler);
     }
 }

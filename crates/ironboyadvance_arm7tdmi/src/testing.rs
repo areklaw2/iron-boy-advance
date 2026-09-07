@@ -327,6 +327,7 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "arm_cdp.json.bin",
         "arm_stc_ldc.json.bin",
         "arm_mcr_mrc.json.bin",
+        "arm_swi.json.bin",
     ];
 
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");

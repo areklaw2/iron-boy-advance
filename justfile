@@ -25,9 +25,9 @@ probe name:
   asm="$(mktemp -d)/probe.s"
   rustc --edition 2024 -O --emit asm -o "$asm" \
     "crates/ironboyadvance_arm7tdmi_jit/probes/{{name}}.rs"
-  # keep only instructions: drop directives (.cfi_, .globl, ...), labels, blanks
+  # drop directives (.cfi_, .globl, ...) and blanks; number instructions,
+  # print labels unnumbered so branch targets stay visible
   grep -v '^[[:space:]]*\.' "$asm" \
-    | grep -v ':$' \
     | grep -v '^[[:space:]]*$' \
     | sed 's/^[[:space:]]*//; s/\t/ /g' \
-    | cat -n
+    | awk '/:$/ { printf "     %s\n", $0; next } { printf "%4d  %s\n", ++n, $0 }'

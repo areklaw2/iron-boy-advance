@@ -20,6 +20,8 @@ pub enum JitError {
     Alloc(#[from] std::io::Error),
 }
 
+const PIPELINE_FLUSH: u32 = 0xFFFF_FFFF;
+
 pub trait Compile {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>);
 }
@@ -40,7 +42,7 @@ impl JitCompiler {
         let buffer = reader.lock();
         let block: extern "C" fn(*mut Arm7tdmiCpu<I>) -> u32 = unsafe { std::mem::transmute(buffer.ptr(offset)) };
         match block(cpu as *mut _) {
-            0xFFFF_FFFF => CpuAction::PipelineFlush,
+            PIPELINE_FLUSH => CpuAction::PipelineFlush,
             access => CpuAction::Advance(access as u8),
         }
     }
