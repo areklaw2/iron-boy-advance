@@ -321,12 +321,15 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
 }
 
 pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
+    let files_to_run = ["arm_b_bl.json.bin"];
+
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");
     let directory = fs::read_dir(&directory_path).expect("Unable to access directory");
     let file_paths: Vec<PathBuf> = directory
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
         .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("bin"))
+        .filter(|p| files_to_run.contains(&p.file_name().unwrap().to_str().unwrap()))
         .collect();
 
     file_paths

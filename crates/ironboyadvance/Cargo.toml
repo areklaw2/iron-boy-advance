@@ -13,6 +13,7 @@ name = "gba"
 path = "tests/gba.rs"
 
 [dependencies]
+ironboyadvance_arm7tdmi_interpreter = { path = "../ironboyadvance_arm7tdmi_interpreter" }
 ironboyadvance_common = { path = "../ironboyadvance_common" }
 ironboyadvance_gba = { path = "../ironboyadvance_gba" }
 ironboyadvance_gbc = { path = "../ironboyadvance_gbc" }

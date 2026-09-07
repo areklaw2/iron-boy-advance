@@ -1,10 +1,11 @@
-use dynasmrt::{VecAssembler, aarch64::Aarch64Relocation};
+use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
     Condition, CpuAction, CpuState, Dissasemble, ExecutionStrategy,
     cpu::{Arm7tdmiCpu, LastInstruction},
     memory::MemoryInterface,
 };
 use ironboyadvance_common::memory::MemoryAccess;
+use thiserror::Error;
 use tracing::debug;
 
 use crate::{arm::decode_arm, thumb::decode_thumb};
@@ -12,29 +13,34 @@ use crate::{arm::decode_arm, thumb::decode_thumb};
 pub mod arm;
 pub mod thumb;
 
+#[derive(Error, Debug)]
+pub enum JitError {
+    #[error("failed to allocate JIT executable memory: {0}")]
+    Alloc(#[from] std::io::Error),
+}
+
 pub trait Compile {
-    fn compile(&self, assembler: &mut VecAssembler<Aarch64Relocation>);
+    fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>);
 }
 
 pub struct JitCompiler {
-    assembler: VecAssembler<Aarch64Relocation>,
+    assembler: Assembler<Aarch64Relocation>,
 }
 
 impl JitCompiler {
-    pub fn new() -> Self {
-        Self {
-            assembler: VecAssembler::<Aarch64Relocation>::new(0),
-        }
+    pub fn new() -> Result<Self, JitError> {
+        let assembler = Assembler::<Aarch64Relocation>::new()?;
+        Ok(Self { assembler })
     }
 
-    pub fn run<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
+    pub fn run<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         todo!()
     }
 }
 
 impl Default for JitCompiler {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("failed to allocate JIT executable memory")
     }
 }
 
@@ -70,7 +76,7 @@ impl ExecutionStrategy for JitCompiler {
                     return;
                 }
 
-                instruction.compile(&mut self.assembler);
+                instruction.compile::<I>(&mut self.assembler);
 
                 match self.run(cpu) {
                     CpuAction::Advance(memory_access) => {
@@ -96,7 +102,7 @@ impl ExecutionStrategy for JitCompiler {
                     debug!("{}", instruction.disassemble(cpu));
                 }
 
-                instruction.compile(&mut self.assembler);
+                instruction.compile::<I>(&mut self.assembler);
 
                 match self.run(cpu) {
                     CpuAction::Advance(memory_access) => {
@@ -108,4 +114,53 @@ impl ExecutionStrategy for JitCompiler {
             }
         }
     }
+}
+
+fn emit_address(assembler: &mut Assembler<Aarch64Relocation>, address: usize) {
+    let byte_0 = (address & 0xFFFF) as u32;
+    let byte_1 = ((address >> 16) & 0xFFFF) as u32;
+    let byte_2 = ((address >> 32) & 0xFFFF) as u32;
+    let byte_3 = ((address >> 48) & 0xFFFF) as u32;
+    dynasm! { assembler
+        ; .arch aarch64
+        ; movz x9, #byte_0
+        ; movk x9, #byte_1, lsl #16
+        ; movk x9, #byte_2, lsl #32
+        ; movk x9, #byte_3, lsl #48
+    }
+}
+
+#[allow(clippy::useless_conversion)]
+fn emit_immediate_32(assembler: &mut Assembler<Aarch64Relocation>, register: u8, value: u32) {
+    let low = value & 0xFFFF;
+    let high = (value >> 16) & 0xFFFF;
+    dynasm! { assembler
+        ; .arch aarch64
+        ; movz W(register), #low
+        ; movk W(register), #high, lsl #16
+    }
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn trampoline_pc<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
+    let cpu = unsafe { &*cpu };
+    cpu.pc()
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn trampoline_set_pc<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.set_pc(value);
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn trampoline_set_register<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, register: u32, value: u32) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.set_register(register as usize, value);
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn trampoline_pipeline_flush<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.pipeline_flush();
 }

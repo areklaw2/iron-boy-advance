@@ -17,3 +17,17 @@ profile bios rom *flags:
 profile-dev bios rom *flags:
   cargo build --profile profiling --bin IronBoyAdvance
   samply record ./target/profiling/IronBoyAdvance --bios {{bios}} --rom "{{rom}}"
+
+# Dump the ARM64 rustc generates for a JIT probe, numbered.
+probe name:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  asm="$(mktemp -d)/probe.s"
+  rustc --edition 2024 -O --emit asm -o "$asm" \
+    "crates/ironboyadvance_arm7tdmi_jit/probes/{{name}}.rs"
+  # keep only instructions: drop directives (.cfi_, .globl, ...), labels, blanks
+  grep -v '^[[:space:]]*\.' "$asm" \
+    | grep -v ':$' \
+    | grep -v '^[[:space:]]*$' \
+    | sed 's/^[[:space:]]*//; s/\t/ /g' \
+    | cat -n

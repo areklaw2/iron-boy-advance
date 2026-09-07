@@ -7,5 +7,6 @@ edition = "2024"
 ironboyadvance_arm7tdmi = { path = "../ironboyadvance_arm7tdmi" }
 ironboyadvance_common = { path = "../ironboyadvance_common" }
 getset = { workspace = true }
+thiserror = { workspace = true }
 tracing = { workspace = true }
 dynasmrt = "5.1.0"

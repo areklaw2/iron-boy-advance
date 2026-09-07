@@ -25,7 +25,6 @@ mod io_registers;
 mod keypad;
 mod memory;
 mod ppu;
-mod strategy;
 mod system_bus;
 mod system_control;
 mod timer_control;
@@ -35,8 +34,6 @@ pub const FPS: f32 = CPU_CLOCK_SPEED as f32 / CYCLES_PER_FRAME as f32;
 pub use apu::APU_SAMPLING_FREQUENCY;
 
 pub use ppu::{CYCLES_PER_FRAME, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
-
-pub use strategy::Strategy;
 
 #[derive(Error, Debug)]
 pub enum GbaError {
