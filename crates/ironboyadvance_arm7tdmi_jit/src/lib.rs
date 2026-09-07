@@ -10,14 +10,17 @@ use tracing::debug;
 
 use crate::{arm::decode_arm, thumb::decode_thumb};
 
-pub mod arm;
-pub mod thumb;
+mod arm;
+mod guest;
+mod thumb;
 
 #[derive(Error, Debug)]
 pub enum JitError {
     #[error("failed to allocate JIT executable memory: {0}")]
     Alloc(#[from] std::io::Error),
 }
+
+const PIPELINE_FLUSH: u32 = 0xFFFF_FFFF;
 
 pub trait Compile {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>);
@@ -39,7 +42,7 @@ impl JitCompiler {
         let buffer = reader.lock();
         let block: extern "C" fn(*mut Arm7tdmiCpu<I>) -> u32 = unsafe { std::mem::transmute(buffer.ptr(offset)) };
         match block(cpu as *mut _) {
-            0xFFFF_FFFF => CpuAction::PipelineFlush,
+            PIPELINE_FLUSH => CpuAction::PipelineFlush,
             access => CpuAction::Advance(access as u8),
         }
     }
@@ -123,17 +126,53 @@ impl ExecutionStrategy for JitCompiler {
     }
 }
 
-fn emit_address(assembler: &mut Assembler<Aarch64Relocation>, address: usize) {
+fn emit_prologue(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; stp x20, x19, [sp, #-32]!
+        ; str x30, [sp, #16]
+    }
+}
+
+fn emit_epilogue(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; ldr x30, [sp, #16]
+        ; ldp x20, x19, [sp], #32
+        ; ret
+    }
+}
+
+fn emit_prologue_link_only(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; str x30, [sp, #-16]!
+    }
+}
+
+fn emit_epilogue_link_only(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; ldr x30, [sp], #16
+        ; ret
+    }
+}
+
+fn emit_call(assembler: &mut Assembler<Aarch64Relocation>, target: *const ()) {
+    let address = target as usize;
+
     let byte_0 = (address & 0xFFFF) as u32;
     let byte_1 = ((address >> 16) & 0xFFFF) as u32;
     let byte_2 = ((address >> 32) & 0xFFFF) as u32;
     let byte_3 = ((address >> 48) & 0xFFFF) as u32;
+    // move address into x9 and then jump
     dynasm! { assembler
         ; .arch aarch64
         ; movz x9, #byte_0
         ; movk x9, #byte_1, lsl #16
         ; movk x9, #byte_2, lsl #32
         ; movk x9, #byte_3, lsl #48
+        ; blr x9 // jump to the address
     }
 }
 
@@ -146,28 +185,4 @@ fn emit_immediate_32(assembler: &mut Assembler<Aarch64Relocation>, register: u8,
         ; movz W(register), #low
         ; movk W(register), #high, lsl #16
     }
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_pc<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
-    let cpu = unsafe { &*cpu };
-    cpu.pc()
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_set_pc<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.set_pc(value);
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_set_register<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, register: u32, value: u32) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.set_register(register as usize, value);
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn trampoline_pipeline_flush<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.pipeline_flush();
 }

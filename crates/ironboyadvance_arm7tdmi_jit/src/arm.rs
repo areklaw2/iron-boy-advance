@@ -1,18 +1,19 @@
-use crate::{
-    Compile, emit_address, emit_immediate_32, trampoline_pc, trampoline_pipeline_flush, trampoline_set_pc,
-    trampoline_set_register,
-};
-use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
+use crate::Compile;
+use dynasmrt::{Assembler, aarch64::Aarch64Relocation};
 use ironboyadvance_arm7tdmi::{
     arm::{
         ArmInstruction, BlockDataTransfer, BranchAndBranchWithLink, BranchAndExchange, DataProcessing,
         HalfwordAndSignedDataTransfer, Multiply, MultiplyLong, PsrTransfer, SingleDataSwap, SingleDataTransfer,
         SoftwareInterrupt, Undefined,
     },
-    cpu::LR,
     memory::MemoryInterface,
 };
-use ironboyadvance_common::bits::{BitOps, SignExtend};
+use ironboyadvance_common::bits::BitOps;
+
+mod branch_and_branch_with_link;
+mod branch_and_exchange;
+mod software_interrupt;
+mod undefined;
 
 impl Compile for ArmInstruction {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -22,16 +23,16 @@ impl Compile for ArmInstruction {
             Self::Multiply(_i) => todo!(),
             Self::MultiplyLong(_i) => todo!(),
             Self::SingleDataSwap(_i) => todo!(),
-            Self::BranchAndExchange(_i) => todo!(),
+            Self::BranchAndExchange(i) => i.compile::<I>(assembler),
             Self::HalfwordAndSignedDataTransfer(_i) => todo!(),
             Self::SingleDataTransfer(_i) => todo!(),
-            Self::Undefined(_i) => todo!(),
+            Self::Undefined(i) => i.compile::<I>(assembler),
             Self::BlockDataTransfer(_i) => todo!(),
             Self::BranchAndBranchWithLink(i) => i.compile::<I>(assembler),
-            Self::SoftwareInterrupt(_i) => todo!(),
-            Self::CoprocessorDataOperation(_i) => todo!(),
-            Self::CoprocessorDataTransfer(_i) => todo!(),
-            Self::CoprocessorRegisterTransfer(_i) => todo!(),
+            Self::SoftwareInterrupt(i) => i.compile::<I>(assembler),
+            Self::CoprocessorDataOperation(i) => i.compile::<I>(assembler),
+            Self::CoprocessorDataTransfer(i) => i.compile::<I>(assembler),
+            Self::CoprocessorRegisterTransfer(i) => i.compile::<I>(assembler),
         }
     }
 }
@@ -85,61 +86,5 @@ pub fn decode_arm(value: u32) -> ArmInstruction {
             false => ArmInstruction::CoprocessorDataTransfer(Undefined::new(value)),
         },
         _ => ArmInstruction::Undefined(Undefined::new(value)),
-    }
-}
-
-impl Compile for BranchAndBranchWithLink {
-    fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
-        let offset = (self.offset().sign_extend(24) << 2) as u32;
-
-        dynasm! { assembler
-            ; .arch aarch64
-            ; stp x20, x19, [sp, #-32]!
-            ; str x30, [sp, #16]
-            ; mov x19, x0
-        }
-        emit_address(assembler, trampoline_pc::<I> as *const () as usize);
-        dynasm! { assembler
-            ; .arch aarch64
-            ; blr x9
-            ; mov w20, w0
-        }
-
-        if self.link() {
-            let link_register = LR as u32;
-            dynasm! { assembler
-                ; .arch aarch64
-                ; sub w2, w0, #4
-                ; mov x0, x19
-                ; movz w1, #link_register
-            }
-            emit_address(assembler, trampoline_set_register::<I> as *const () as usize);
-            dynasm! { assembler
-                ; .arch aarch64
-                ; blr x9
-            }
-        }
-
-        emit_immediate_32(assembler, 10, offset);
-        dynasm! { assembler
-            ; .arch aarch64
-            ; add w1, w20, w10
-            ; mov x0, x19
-        }
-        emit_address(assembler, trampoline_set_pc::<I> as *const () as usize);
-        dynasm! { assembler
-            ; .arch aarch64
-            ; blr x9
-            ; mov x0, x19
-        }
-        emit_address(assembler, trampoline_pipeline_flush::<I> as *const () as usize);
-        dynasm! { assembler
-            ; .arch aarch64
-            ; blr x9
-            ; movn w0, #0
-            ; ldr x30, [sp, #16]
-            ; ldp x20, x19, [sp], #32
-            ; ret
-        }
     }
 }
