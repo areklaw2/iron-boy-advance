@@ -123,6 +123,22 @@ impl ExecutionStrategy for JitCompiler {
     }
 }
 
+fn emit_prologue(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; stp x20, x19, [sp, #-32]!
+        ; str x30, [sp, #16]
+    }
+}
+
+fn emit_epilogue(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; ldr x30, [sp, #16]
+        ; ldp x20, x19, [sp], #32
+    }
+}
+
 fn emit_call(assembler: &mut Assembler<Aarch64Relocation>, target: *const ()) {
     let address = target as usize;
 

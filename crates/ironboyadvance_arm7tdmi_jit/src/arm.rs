@@ -1,6 +1,6 @@
 use crate::{
-    Compile, emit_call, emit_immediate_32, trampoline_pc, trampoline_pipeline_flush, trampoline_register,
-    trampoline_set_cpsr_state, trampoline_set_pc, trampoline_set_register,
+    Compile, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, trampoline_pc, trampoline_pipeline_flush,
+    trampoline_register, trampoline_set_cpsr_state, trampoline_set_pc, trampoline_set_register,
 };
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
@@ -92,10 +92,9 @@ impl Compile for BranchAndBranchWithLink {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         let offset = (self.offset().sign_extend(24) << 2) as u32;
 
+        emit_prologue(assembler);
         dynasm! { assembler
             ; .arch aarch64
-            ; stp x20, x19, [sp, #-32]!
-            ; str x30, [sp, #16]
             ; mov x19, x0
         }
         emit_call(assembler, trampoline_pc::<I> as *const ());
@@ -130,8 +129,10 @@ impl Compile for BranchAndBranchWithLink {
         dynasm! { assembler
             ; .arch aarch64
             ; movn w0, #0
-            ; ldr x30, [sp, #16]
-            ; ldp x20, x19, [sp], #32
+        }
+        emit_epilogue(assembler);
+        dynasm! { assembler
+            ; .arch aarch64
             ; ret
         }
     }
@@ -141,10 +142,9 @@ impl Compile for BranchAndExchange {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         let rn = self.rn() as u32;
 
+        emit_prologue(assembler);
         dynasm! { assembler
             ; .arch aarch64
-            ; stp x20, x19, [sp, #-32]!
-            ; str x30, [sp, #16]
             ; mov x19, x0
             ; movz w1, #rn
         }
@@ -170,8 +170,10 @@ impl Compile for BranchAndExchange {
         dynasm! { assembler
             ; .arch aarch64
             ; movn w0, #0
-            ; ldr x30, [sp, #16]
-            ; ldp x20, x19, [sp], #32
+        }
+        emit_epilogue(assembler);
+        dynasm! { assembler
+            ; .arch aarch64
             ; ret
         }
     }
