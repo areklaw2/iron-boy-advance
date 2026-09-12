@@ -76,8 +76,8 @@ pub fn lsl(value: u32, amount: u32, carry: &mut bool) -> u32 {
     }
 }
 
-pub fn lsr(value: u32, amount: u32, carry: &mut bool, is_immediate: bool) -> u32 {
-    let amount = if is_immediate && amount == 0 { 32 } else { amount };
+pub fn lsr(value: u32, amount: u32, carry: &mut bool, immediate_shift: bool) -> u32 {
+    let amount = if immediate_shift && amount == 0 { 32 } else { amount };
     match amount {
         0 => value,
         1..=31 => {
@@ -95,8 +95,8 @@ pub fn lsr(value: u32, amount: u32, carry: &mut bool, is_immediate: bool) -> u32
     }
 }
 
-pub fn asr(value: u32, amount: u32, carry: &mut bool, is_immediate: bool) -> u32 {
-    let amount = if is_immediate && amount == 0 { 32 } else { amount };
+pub fn asr(value: u32, amount: u32, carry: &mut bool, immediate_shift: bool) -> u32 {
+    let amount = if immediate_shift && amount == 0 { 32 } else { amount };
     match amount {
         0 => value,
         1..=31 => {
@@ -114,8 +114,8 @@ pub fn asr(value: u32, amount: u32, carry: &mut bool, is_immediate: bool) -> u32
     }
 }
 
-pub fn ror(value: u32, amount: u32, carry: &mut bool, is_immediate: bool) -> u32 {
-    if is_immediate && amount == 0 {
+pub fn ror(value: u32, amount: u32, carry: &mut bool, immediate_shift: bool) -> u32 {
+    if immediate_shift && amount == 0 {
         //ror #0 -> rrx #1
         let curr_carry = *carry as u32;
         *carry = value & 0b1 != 0;

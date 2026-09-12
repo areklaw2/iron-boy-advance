@@ -57,10 +57,78 @@ pub unsafe extern "C" fn block_1(cpu: *mut u8) -> u32 {
 // 18  ldp x20, x19, [sp], #32
 // 19  ret
 
-// operand2 — shift by immediate
-//  2. ANDS R0, R1, R2, LSL #3 — normal LSL, carry present (logical+S)
+//  2. ANDS R0, R1, #0xFF — rotate=0, carry unaffected (fetch + pass through)
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn block_2(cpu: *mut u8) -> u32 {
+    unsafe {
+        let operand1 = guest_register(cpu, 1); // rn = 1
+        let carry = guest_cpsr_carry(cpu);
+        let operand2 = 0xFF;
+        let result = guest_and(cpu, 1, operand1, operand2, carry);
+        guest_set_register(cpu, 0, result); // rd = 0
+    }
+    0b11 // Sequential Instruction Access
+}
+
+//    _block_2:
+//  1  stp x20, x19, [sp, #-32]!
+//  2  stp x29, x30, [sp, #16]
+//  3  add x29, sp, #16
+//  4  mov x19, x0
+//  5  mov w1, #1
+//  6  bl _guest_register
+//  7  mov x20, x0
+//  8  mov x0, x19
+//  9  bl _guest_cpsr_carry
+// 10  mov x4, x0
+// 11  mov x0, x19
+// 12  mov w1, #1
+// 13  mov x2, x20
+// 14  mov w3, #255
+// 15  bl _guest_and
+// 16  mov x2, x0
+// 17  mov x0, x19
+// 18  mov w1, #0
+// 19  bl _guest_set_register
+// 20  mov w0, #3
+// 21  ldp x29, x30, [sp, #16]
+// 22  ldp x20, x19, [sp], #32
+// 23  ret
+
+//  3. MOVS R0, #0xF0000000 — rotate=4 (0x0F ror 4), carry fully constant-folded
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn block_3(cpu: *mut u8) -> u32 {
+    unsafe {
+        let operand2 = 0x0Fu32.rotate_right(4);
+        let carry = operand2 >> 31;
+        let result = guest_mov(cpu, 1, operand2, carry);
+        guest_set_register(cpu, 0, result); // rd = 0
+    }
+    0b11 // Sequential Instruction Access
+}
+
+//    _block_3:
+//  1  stp x20, x19, [sp, #-32]!
+//  2  stp x29, x30, [sp, #16]
+//  3  add x29, sp, #16
+//  4  mov x19, x0
+//  5  mov w1, #1
+//  6  mov w2, #-268435456
+//  7  mov w3, #1
+//  8  bl _guest_mov
+//  9  mov x2, x0
+// 10  mov x0, x19
+// 11  mov w1, #0
+// 12  bl _guest_set_register
+// 13  mov w0, #3
+// 14  ldp x29, x30, [sp, #16]
+// 15  ldp x20, x19, [sp], #32
+// 16  ret
+
+// operand2 — shift by immediate
+//  4. ANDS R0, R1, R2, LSL #3 — normal LSL, carry present (logical+S)
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn block_4(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 1); // rn = 1
         let rm = guest_register(cpu, 2); // rm = 2
@@ -72,7 +140,7 @@ pub unsafe extern "C" fn block_2(cpu: *mut u8) -> u32 {
     0b11 // Sequential Instruction Access
 }
 
-//    _block_2:
+//    _block_4:
 //  1  stp x20, x19, [sp, #-32]!
 //  2  stp x29, x30, [sp, #16]
 //  3  add x29, sp, #16
@@ -98,9 +166,9 @@ pub unsafe extern "C" fn block_2(cpu: *mut u8) -> u32 {
 // 23  ldp x20, x19, [sp], #32
 // 24  ret
 
-//  3. ADD R0, R1, R2, LSR #5 — normal LSR, no carry (arithmetic)
+//  5. ADD R0, R1, R2, LSR #5 — normal LSR, no carry (arithmetic)
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_3(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_5(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 1); // rn = 1
         let rm = guest_register(cpu, 2); // rm = 2
@@ -111,7 +179,7 @@ pub unsafe extern "C" fn block_3(cpu: *mut u8) -> u32 {
     0b11 // Sequential Instruction Access
 }
 
-//    _block_3:
+//    _block_5:
 //  1  stp x20, x19, [sp, #-32]!
 //  2  stp x29, x30, [sp, #16]
 //  3  add x29, sp, #16
@@ -136,9 +204,9 @@ pub unsafe extern "C" fn block_3(cpu: *mut u8) -> u32 {
 // 22  ldp x20, x19, [sp], #32
 // 23  ret
 
-//  4. ANDS R0, R1, R2, LSR #32 — LSR quirk (raw 0), carry present
+//  6. ANDS R0, R1, R2, LSR #32 — LSR quirk (raw 0), carry present
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_4(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_6(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 1); // rn = 1
         let rm = guest_register(cpu, 2); // rm = 2
@@ -150,7 +218,7 @@ pub unsafe extern "C" fn block_4(cpu: *mut u8) -> u32 {
     0b11 // Sequential Instruction Access
 }
 
-//    _block_4:
+//    _block_6:
 //  1  stp x20, x19, [sp, #-32]!
 //  2  stp x29, x30, [sp, #16]
 //  3  add x29, sp, #16
@@ -176,9 +244,9 @@ pub unsafe extern "C" fn block_4(cpu: *mut u8) -> u32 {
 // 23  ldp x20, x19, [sp], #32
 // 24  ret
 
-//  5. SUB R0, R1, R2, ASR #7 — normal ASR, no carry
+//  7. SUB R0, R1, R2, ASR #7 — normal ASR, no carry
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_5(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_7(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 1); // rn = 1
         let rm = guest_register(cpu, 2); // rm = 2
@@ -189,7 +257,7 @@ pub unsafe extern "C" fn block_5(cpu: *mut u8) -> u32 {
     0b11 // Sequential Instruction Access
 }
 
-//    _block_5:
+//    _block_7:
 //  1  stp x20, x19, [sp, #-32]!
 //  2  stp x29, x30, [sp, #16]
 //  3  add x29, sp, #16
@@ -214,9 +282,9 @@ pub unsafe extern "C" fn block_5(cpu: *mut u8) -> u32 {
 // 22  ldp x20, x19, [sp], #32
 // 23  ret
 
-//  6. ORRS R0, R1, R2, ASR #32 — ASR quirk, carry present
+//  8. ORRS R0, R1, R2, ASR #32 — ASR quirk, carry present
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_6(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_8(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 1); // rn = 1
         let rm = guest_register(cpu, 2); // rm = 2
@@ -231,7 +299,7 @@ pub unsafe extern "C" fn block_6(cpu: *mut u8) -> u32 {
     0b11 // Sequential Instruction Access
 }
 
-//    _block_6:
+//    _block_8:
 //  1  stp x20, x19, [sp, #-32]!
 //  2  stp x29, x30, [sp, #16]
 //  3  add x29, sp, #16
@@ -257,9 +325,9 @@ pub unsafe extern "C" fn block_6(cpu: *mut u8) -> u32 {
 // 23  ldp x20, x19, [sp], #32
 // 24  ret
 
-//  7. EORS R0, R1, R2, ROR #9 — normal ROR, carry present
+//  9. EORS R0, R1, R2, ROR #9 — normal ROR, carry present
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_7(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_9(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 1); // rn = 1
         let rm = guest_register(cpu, 2); // rm = 2
@@ -271,7 +339,7 @@ pub unsafe extern "C" fn block_7(cpu: *mut u8) -> u32 {
     0b11 // Sequential Instruction Access
 }
 
-//    _block_7:
+//    _block_9:
 //  1  stp x20, x19, [sp, #-32]!
 //  2  stp x29, x30, [sp, #16]
 //  3  add x29, sp, #16
@@ -297,9 +365,9 @@ pub unsafe extern "C" fn block_7(cpu: *mut u8) -> u32 {
 // 23  ldp x20, x19, [sp], #32
 // 24  ret
 
-//  8. MOVS R0, R1, ROR #0 — RRX, carry present
+// 10. MOVS R0, R1, ROR #0 — RRX, carry present
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_8(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_10(cpu: *mut u8) -> u32 {
     unsafe {
         let rm = guest_register(cpu, 1); // rm = 1
         let carry = rm & 0b1;
@@ -310,7 +378,7 @@ pub unsafe extern "C" fn block_8(cpu: *mut u8) -> u32 {
     0b11 // Sequential Instruction Access
 }
 
-//    _block_8:
+//    _block_10:
 //  1  stp x20, x19, [sp, #-32]!
 //  2  stp x29, x30, [sp, #16]
 //  3  add x29, sp, #16
@@ -335,9 +403,9 @@ pub unsafe extern "C" fn block_8(cpu: *mut u8) -> u32 {
 // 22  ret
 
 // operand2 — shift by register
-//  9. ADD R0, R1, R2, LSL R3 — baseline
+// 11. ADD R0, R1, R2, LSL R3 — baseline
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_9(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_11(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 1); // rn = 1
         let rm = guest_register(cpu, 2); // rm = 2
@@ -355,7 +423,7 @@ pub unsafe extern "C" fn block_9(cpu: *mut u8) -> u32 {
     0b10 // Non-Sequential Instruction Access
 }
 
-//    _block_9:
+//    _block_11:
 //  1  stp x22, x21, [sp, #-48]!
 //  2  stp x20, x19, [sp, #16]
 //  3  stp x29, x30, [sp, #32]
@@ -392,9 +460,9 @@ pub unsafe extern "C" fn block_9(cpu: *mut u8) -> u32 {
 // 34  ldp x22, x21, [sp], #48
 // 35  ret
 
-// 10. ANDS R0, R1, R2, LSL R3, carry present
+// 12. ANDS R0, R1, R2, LSL R3, carry present
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_10(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_12(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 1); // rn = 1
         let rm = guest_register(cpu, 2); // rm = 2
@@ -410,7 +478,7 @@ pub unsafe extern "C" fn block_10(cpu: *mut u8) -> u32 {
     0b10 // Non-Sequential Instruction Access
 }
 
-//    _block_10:
+//    _block_12:
 //  1  stp x22, x21, [sp, #-48]!
 //  2  stp x20, x19, [sp, #16]
 //  3  stp x29, x30, [sp, #32]
@@ -451,9 +519,9 @@ pub unsafe extern "C" fn block_10(cpu: *mut u8) -> u32 {
 // 38  ldp x22, x21, [sp], #48
 // 39  ret
 
-//  11. ADD R0, PC, R2, LSL R3 — rn is PC, +4 adjust
+// 13. ADD R0, PC, R2, LSL R3 — rn is PC, +4 adjust
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_11(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_13(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 15) + 4; // rn = PC
         let rm = guest_register(cpu, 2); // rm = 2
@@ -471,7 +539,7 @@ pub unsafe extern "C" fn block_11(cpu: *mut u8) -> u32 {
     0b10 // Non-Sequential Instruction Access
 }
 
-//    _block_11:
+//    _block_13:
 //  1  stp x22, x21, [sp, #-48]!
 //  2  stp x20, x19, [sp, #16]
 //  3  stp x29, x30, [sp, #32]
@@ -508,9 +576,9 @@ pub unsafe extern "C" fn block_11(cpu: *mut u8) -> u32 {
 // 34  ldp x22, x21, [sp], #48
 // 35  ret
 
-//  12. ADD R0, R1, PC, LSL R3 — rm is PC, +4 adjust
+// 14. ADD R0, R1, PC, LSL R3 — rm is PC, +4 adjust
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_12(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_14(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 1); // rn = 1
         let rm = guest_register(cpu, 15) + 4; // rm = PC
@@ -528,7 +596,7 @@ pub unsafe extern "C" fn block_12(cpu: *mut u8) -> u32 {
     0b10 // Non-Sequential Instruction Access
 }
 
-//    _block_12:
+//    _block_14:
 //  1  stp x22, x21, [sp, #-48]!
 //  2  stp x20, x19, [sp, #16]
 //  3  stp x29, x30, [sp, #32]
@@ -567,9 +635,9 @@ pub unsafe extern "C" fn block_12(cpu: *mut u8) -> u32 {
 // 36  ret
 
 // tail
-//  13. MOVS PC, LR — rd is PC, S set: SPSR restore + pipeline flush
+// 15. MOVS PC, LR — rd is PC, S set: SPSR restore + pipeline flush
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_13(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_15(cpu: *mut u8) -> u32 {
     unsafe {
         let rm = guest_register(cpu, 14); // rm = LR
         let carry = guest_cpsr_carry(cpu);
@@ -583,7 +651,7 @@ pub unsafe extern "C" fn block_13(cpu: *mut u8) -> u32 {
     0xFFFF_FFFF // Pipeline flush
 }
 
-//    _block_13:
+//    _block_15:
 //  1  stp x20, x19, [sp, #-32]!
 //  2  stp x29, x30, [sp, #16]
 //  3  add x29, sp, #16
@@ -612,9 +680,9 @@ pub unsafe extern "C" fn block_13(cpu: *mut u8) -> u32 {
 // 26  ldp x20, x19, [sp], #32
 // 27  ret
 
-//  14. CMP R0, R1 — test op, set_register never emitted
+// 16. CMP R0, R1 — test op, set_register never emitted
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn block_14(cpu: *mut u8) -> u32 {
+pub unsafe extern "C" fn block_16(cpu: *mut u8) -> u32 {
     unsafe {
         let operand1 = guest_register(cpu, 0); // rn = 0
         let operand2 = guest_register(cpu, 1); // rm = 1
@@ -623,7 +691,7 @@ pub unsafe extern "C" fn block_14(cpu: *mut u8) -> u32 {
     0b11 // Sequential Instruction Access
 }
 
-//    _block_14:
+//    _block_16:
 //  1  stp x20, x19, [sp, #-32]!
 //  2  stp x29, x30, [sp, #16]
 //  3  add x29, sp, #16
