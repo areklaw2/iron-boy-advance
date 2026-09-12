@@ -10,11 +10,13 @@ use ironboyadvance_arm7tdmi::{
 use crate::{Compile, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
 
 impl Compile for DataProcessing {
+    #[allow(clippy::useless_conversion)]
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         use DataProcessingOpcode::*;
         let rn = self.rn() as u32;
         let rm = self.rm() as u32;
         let rd = self.rd() as u32;
+        let rs = self.rs() as u32;
         let opcode = self.opcode();
         let is_immediate = self.is_immediate();
         let immediate = self.immediate();
@@ -117,7 +119,7 @@ impl Compile for DataProcessing {
                             if needs_carry {
                                 dynasm! { assembler
                                     ; .arch aarch64
-                                    ; str w0, [sp, #24]
+                                    ; str w0, [sp, #40]
                                 }
                                 dynasm! { assembler
                                     ; .arch aarch64
@@ -127,7 +129,7 @@ impl Compile for DataProcessing {
                                 dynasm! { assembler
                                     ; .arch aarch64
                                     ; mov W(carry_arg_register), w0
-                                    ; ldr w0, [sp, #24]
+                                    ; ldr w0, [sp, #40]
                                 }
                             }
                             dynasm! { assembler
@@ -138,9 +140,12 @@ impl Compile for DataProcessing {
                         _ => {
                             if needs_carry {
                                 let lsb = 32 - shift_amount;
-                                dynasm! { assembler
-                                    ; .arch aarch64
-                                    ; ubfx W(carry_arg_register), w0, #lsb, #1
+                                #[allow(clippy::eq_op, clippy::absurd_extreme_comparisons)]
+                                {
+                                    dynasm! { assembler
+                                        ; .arch aarch64
+                                        ; ubfx W(carry_arg_register), w0, #lsb, #1
+                                    }
                                 }
                             }
                             dynasm! { assembler
@@ -162,9 +167,12 @@ impl Compile for DataProcessing {
                         _ => {
                             if needs_carry {
                                 let lsb = shift_amount - 1;
-                                dynasm! { assembler
-                                    ; .arch aarch64
-                                    ; ubfx W(carry_arg_register), w0, #lsb, #1
+                                #[allow(clippy::eq_op, clippy::absurd_extreme_comparisons)]
+                                {
+                                    dynasm! { assembler
+                                        ; .arch aarch64
+                                        ; ubfx W(carry_arg_register), w0, #lsb, #1
+                                    }
                                 }
                             }
                             dynasm! { assembler
@@ -189,9 +197,12 @@ impl Compile for DataProcessing {
                         _ => {
                             if needs_carry {
                                 let lsb = shift_amount - 1;
-                                dynasm! { assembler
-                                    ; .arch aarch64
-                                    ; ubfx W(carry_arg_register), w0, #lsb, #1
+                                #[allow(clippy::eq_op, clippy::absurd_extreme_comparisons)]
+                                {
+                                    dynasm! { assembler
+                                        ; .arch aarch64
+                                        ; ubfx W(carry_arg_register), w0, #lsb, #1
+                                    }
                                 }
                             }
                             dynasm! { assembler
@@ -205,7 +216,7 @@ impl Compile for DataProcessing {
                             // RRX: operand2 = (rm >> 1) | (cpsr_carry << 31), carry = rm & 1
                             dynasm! { assembler
                                 ; .arch aarch64
-                                ; str w0, [sp, #24]
+                                ; str w0, [sp, #40]
                             }
                             dynasm! { assembler
                                 ; .arch aarch64
@@ -214,7 +225,7 @@ impl Compile for DataProcessing {
                             emit_call(assembler, guest::cpsr_carry::<I> as *const ());
                             dynasm! { assembler
                                 ; .arch aarch64
-                                ; ldr w9, [sp, #24]
+                                ; ldr w9, [sp, #40]
                             }
                             if needs_carry {
                                 dynasm! { assembler
@@ -253,7 +264,86 @@ impl Compile for DataProcessing {
                     }
                 }
             }
-            (false, ShiftBy::Register) => todo!(),
+            (false, ShiftBy::Register) => {
+                use ShiftType::*;
+                dynasm! { assembler
+                    ; .arch aarch64
+                    ; mov w20, w0
+                }
+                if rn as usize == PC {
+                    dynasm! { assembler ; .arch aarch64 ; add w20, w20, #4 }
+                }
+                dynasm! { assembler
+                    ; .arch aarch64
+                    ; mov x0, x19
+                    ; movz w1, #rm
+                }
+                emit_call(assembler, guest::register::<I> as *const ());
+                dynasm! { assembler
+                    ; .arch aarch64
+                    ; mov x21, x0
+                    ; mov x0, x19
+                }
+                emit_call(assembler, guest::idle_cycle::<I> as *const ());
+                dynasm! { assembler
+                    ; .arch aarch64
+                    ; mov x0, x19
+                    ; mov w1, #rs
+                }
+                emit_call(assembler, guest::register::<I> as *const ());
+
+                match needs_carry {
+                    true => {
+                        dynasm! { assembler
+                            ; .arch aarch64
+                            ; mov x22, x0
+                            ; mov x0, x19
+                        }
+                        emit_call(assembler, guest::cpsr_carry::<I> as *const ());
+                        dynasm! { assembler
+                            ; .arch aarch64
+                            ; mov x2, x0
+                            ; and w1, w22, #0xff
+                        }
+                    }
+                    false => dynasm! { assembler
+                        ; .arch aarch64
+                        ; and w1, w0, #0xff
+                        ; mov w2, #0
+                    },
+                }
+
+                match rm as usize == PC {
+                    true => dynasm! { assembler ; .arch aarch64 ; add w0, w21, #4 },
+                    false => dynasm! { assembler ; .arch aarch64 ; mov w0, w21 },
+                }
+
+                match shift_type {
+                    LSL => emit_call(assembler, guest::lsl_by_register as *const ()),
+                    LSR => emit_call(assembler, guest::lsr_by_register as *const ()),
+                    ASR => emit_call(assembler, guest::asr_by_register as *const ()),
+                    ROR => emit_call(assembler, guest::ror_by_register as *const ()),
+                }
+
+                dynasm! { assembler
+                    ; .arch aarch64
+                    ; mov W(computed_value_arg_register), w0
+                }
+                if needs_carry {
+                    dynasm! { assembler
+                        ; .arch aarch64
+                        ; lsr X(carry_arg_register), x0, #32
+                    }
+                }
+                dynasm! { assembler
+                    ; .arch aarch64
+                    ; mov x0, x19
+                    ; mov w1, #set_flags as u32
+                }
+                if !no_operand1 {
+                    dynasm! { assembler ; .arch aarch64 ; mov W(operand1_arg_register), w20 }
+                }
+            }
         }
 
         match opcode {

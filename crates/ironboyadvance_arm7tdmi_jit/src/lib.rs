@@ -129,16 +129,18 @@ impl ExecutionStrategy for JitCompiler {
 fn emit_prologue(assembler: &mut Assembler<Aarch64Relocation>) {
     dynasm! { assembler
         ; .arch aarch64
-        ; stp x20, x19, [sp, #-32]!
-        ; str x30, [sp, #16]
+        ; stp x22, x21, [sp, #-48]!
+        ; stp x20, x19, [sp, #16]
+        ; str x30, [sp, #32]
     }
 }
 
 fn emit_epilogue(assembler: &mut Assembler<Aarch64Relocation>) {
     dynasm! { assembler
         ; .arch aarch64
-        ; ldr x30, [sp, #16]
-        ; ldp x20, x19, [sp], #32
+        ; ldr x30, [sp, #32]
+        ; ldp x20, x19, [sp, #16]
+        ; ldp x22, x21, [sp], #48
         ; ret
     }
 }
