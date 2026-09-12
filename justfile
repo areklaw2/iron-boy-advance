@@ -20,14 +20,4 @@ profile-dev bios rom *flags:
 
 # Dump the ARM64 rustc generates for a JIT probe, numbered.
 probe name:
-  #!/usr/bin/env bash
-  set -euo pipefail
-  asm="$(mktemp -d)/probe.s"
-  rustc --edition 2024 -O --emit asm -o "$asm" \
-    "crates/ironboyadvance_arm7tdmi_jit/probes/{{name}}.rs"
-  # drop directives (.cfi_, .globl, ...) and blanks; number instructions,
-  # print labels unnumbered so branch targets stay visible
-  grep -v '^[[:space:]]*\.' "$asm" \
-    | grep -v '^[[:space:]]*$' \
-    | sed 's/^[[:space:]]*//; s/\t/ /g' \
-    | awk '/:$/ { printf "     %s\n", $0; next } { printf "%4d  %s\n", ++n, $0 }'
+  ./scripts/probe.sh {{name}}
