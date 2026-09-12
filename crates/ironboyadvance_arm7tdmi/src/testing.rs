@@ -328,7 +328,7 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "arm_stc_ldc.json.bin",
         "arm_mcr_mrc.json.bin",
         "arm_swi.json.bin",
-        //"arm_data_proc_immediate_shift.json.bin",
+        "arm_data_proc_immediate_shift.json.bin",
         "arm_data_proc_immediate.json.bin",
         //"arm_data_proc_register_shift.json.bin",
     ];

@@ -1,6 +1,10 @@
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
-    DataProcessingOpcode, arm::DataProcessing, barrel_shifter::ShiftBy, cpu::PC, memory::MemoryInterface,
+    DataProcessingOpcode,
+    arm::DataProcessing,
+    barrel_shifter::{ShiftBy, ShiftType},
+    cpu::PC,
+    memory::MemoryInterface,
 };
 
 use crate::{Compile, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
@@ -9,12 +13,15 @@ impl Compile for DataProcessing {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         use DataProcessingOpcode::*;
         let rn = self.rn() as u32;
+        let rm = self.rm() as u32;
         let rd = self.rd() as u32;
         let opcode = self.opcode();
         let is_immediate = self.is_immediate();
         let immediate = self.immediate();
         let rotate = 2 * self.rotate();
         let shift_by = self.shift_by();
+        let shift_type = self.shift_type();
+        let shift_amount = self.shift_amount();
         let set_flags = self.sets_flags();
 
         let needs_carry = set_flags && matches!(opcode, AND | EOR | TST | TEQ | ORR | MOV | BIC | MVN);
@@ -39,7 +46,10 @@ impl Compile for DataProcessing {
             (true, _) => match needs_carry {
                 false => {
                     if !no_operand1 {
-                        dynasm! { assembler ; .arch aarch64 ; mov W(operand1_arg_register), w0 }
+                        dynasm! { assembler
+                            ; .arch aarch64
+                            ; mov W(operand1_arg_register), w0
+                        }
                     }
                     dynasm! { assembler
                         ; .arch aarch64
@@ -50,9 +60,15 @@ impl Compile for DataProcessing {
                 }
                 true if rotate == 0 => {
                     if !no_operand1 {
-                        dynasm! { assembler ; .arch aarch64 ; mov w20, w0 }
+                        dynasm! { assembler
+                            ; .arch aarch64
+                            ; mov w20, w0
+                        }
                     }
-                    dynasm! { assembler ; .arch aarch64 ; mov x0, x19 }
+                    dynasm! { assembler
+                        ; .arch aarch64
+                        ; mov x0, x19
+                    }
                     emit_call(assembler, guest::cpsr_carry::<I> as *const ());
                     dynasm! { assembler
                         ; .arch aarch64
@@ -61,7 +77,10 @@ impl Compile for DataProcessing {
                         ; mov w1, #set_flags as u32
                     }
                     if !no_operand1 {
-                        dynasm! { assembler ; .arch aarch64 ; mov w2, w20 }
+                        dynasm! { assembler
+                            ; .arch aarch64
+                            ; mov w2, w20
+                        }
                     }
                     emit_immediate_32(assembler, operand2_arg_register, immediate);
                 }
@@ -69,7 +88,10 @@ impl Compile for DataProcessing {
                     let value = immediate.rotate_right(rotate);
                     let carry = value >> 31;
                     if !no_operand1 {
-                        dynasm! { assembler ; .arch aarch64 ; mov w2, w0 }
+                        dynasm! { assembler
+                            ; .arch aarch64
+                            ; mov w2, w0
+                        }
                     }
                     dynasm! { assembler
                         ; .arch aarch64
@@ -80,7 +102,157 @@ impl Compile for DataProcessing {
                     emit_immediate_32(assembler, carry_arg_register, carry);
                 }
             },
-            (false, ShiftBy::Immediate) => todo!(),
+            (false, ShiftBy::Immediate) => {
+                use ShiftType::*;
+                dynasm! { assembler
+                    ; .arch aarch64
+                    ; mov w20, w0
+                    ; mov x0, x19
+                    ; movz w1, #rm
+                }
+                emit_call(assembler, guest::register::<I> as *const ());
+                match shift_type {
+                    LSL => match shift_amount {
+                        0 => {
+                            if needs_carry {
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; str w0, [sp, #24]
+                                }
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; mov x0, x19
+                                }
+                                emit_call(assembler, guest::cpsr_carry::<I> as *const ());
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; mov W(carry_arg_register), w0
+                                    ; ldr w0, [sp, #24]
+                                }
+                            }
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; mov W(computed_value_arg_register), w0
+                            }
+                        }
+                        _ => {
+                            if needs_carry {
+                                let lsb = 32 - shift_amount;
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; ubfx W(carry_arg_register), w0, #lsb, #1
+                                }
+                            }
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; lsl W(computed_value_arg_register), w0, #shift_amount
+                            }
+                        }
+                    },
+                    LSR => match shift_amount {
+                        0 => {
+                            if needs_carry {
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; ubfx W(carry_arg_register), w0, #31, #1
+                                }
+                            }
+                            emit_immediate_32(assembler, computed_value_arg_register, 0);
+                        }
+                        _ => {
+                            if needs_carry {
+                                let lsb = shift_amount - 1;
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; ubfx W(carry_arg_register), w0, #lsb, #1
+                                }
+                            }
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; lsr W(computed_value_arg_register), w0, #shift_amount
+                            }
+                        }
+                    },
+                    ASR => match shift_amount {
+                        0 => {
+                            if needs_carry {
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; ubfx W(carry_arg_register), w0, #31, #1
+                                }
+                            }
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; asr W(computed_value_arg_register), w0, #31
+                            }
+                        }
+                        _ => {
+                            if needs_carry {
+                                let lsb = shift_amount - 1;
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; ubfx W(carry_arg_register), w0, #lsb, #1
+                                }
+                            }
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; asr W(computed_value_arg_register), w0, #shift_amount
+                            }
+                        }
+                    },
+                    ROR => match shift_amount {
+                        0 => {
+                            // RRX: operand2 = (rm >> 1) | (cpsr_carry << 31), carry = rm & 1
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; str w0, [sp, #24]
+                            }
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; mov x0, x19
+                            }
+                            emit_call(assembler, guest::cpsr_carry::<I> as *const ());
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; ldr w9, [sp, #24]
+                            }
+                            if needs_carry {
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; ubfx W(carry_arg_register), w9, #0, #1
+                                }
+                            }
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; extr W(computed_value_arg_register), w0, w9, #1
+                            }
+                        }
+                        _ => {
+                            dynasm! { assembler
+                                ; .arch aarch64
+                                ; ror W(computed_value_arg_register), w0, #shift_amount
+                            }
+                            if needs_carry {
+                                dynasm! { assembler
+                                    ; .arch aarch64
+                                    ; lsr W(carry_arg_register), W(computed_value_arg_register), #31
+                                }
+                            }
+                        }
+                    },
+                }
+                dynasm! { assembler
+                    ; .arch aarch64
+                    ; mov x0, x19
+                    ; mov w1, #set_flags as u32
+                }
+                if !no_operand1 {
+                    dynasm! { assembler
+                       ; .arch aarch64
+                       ; mov W(operand1_arg_register), w20
+                    }
+                }
+            }
             (false, ShiftBy::Register) => todo!(),
         }
 
