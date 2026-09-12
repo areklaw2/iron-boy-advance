@@ -298,8 +298,7 @@ impl Execute for DataProcessing {
 
         let rd = self.rd() as usize;
         if set_flags && rd == PC {
-            let spsr = cpu.spsr();
-            cpu.set_cpsr(spsr);
+            cpu.set_cpsr(cpu.spsr());
         }
 
         if !matches!(opcode, TST | TEQ | CMP | CMN) {

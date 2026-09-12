@@ -12,13 +12,14 @@ use ironboyadvance_common::bits::BitOps;
 
 mod branch_and_branch_with_link;
 mod branch_and_exchange;
+mod data_processing;
 mod software_interrupt;
 mod undefined;
 
 impl Compile for ArmInstruction {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         match self {
-            Self::DataProcessing(_i) => todo!(),
+            Self::DataProcessing(i) => i.compile::<I>(assembler),
             Self::PsrTransfer(_i) => todo!(),
             Self::Multiply(_i) => todo!(),
             Self::MultiplyLong(_i) => todo!(),
