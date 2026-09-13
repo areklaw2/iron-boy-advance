@@ -25,14 +25,29 @@ pub unsafe extern "C" fn set_register<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<
     cpu.set_register(register as usize, value);
 }
 
+pub unsafe extern "C" fn spsr<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
+    let cpu = unsafe { &*cpu };
+    cpu.spsr().into_bits()
+}
+
+pub unsafe extern "C" fn set_spsr<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.set_spsr(ProgramStatusRegister::from_bits_with_defaults(value));
+}
+
+pub unsafe extern "C" fn cpsr<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
+    let cpu = unsafe { &*cpu };
+    cpu.cpsr().into_bits()
+}
+
 pub unsafe extern "C" fn cpsr_carry<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
     let cpu = unsafe { &*cpu };
     cpu.cpsr().carry() as u32
 }
 
-pub unsafe extern "C" fn set_cpsr_state<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
-    let cpu = unsafe { &mut *cpu };
-    cpu.cpsr_mut().set_state(CpuState::from_bits((value & 0x1) as u8));
+pub unsafe extern "C" fn cpsr_mode<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
+    let cpu = unsafe { &*cpu };
+    cpu.cpsr().mode() as u32
 }
 
 pub unsafe extern "C" fn set_cpsr<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
@@ -43,6 +58,11 @@ pub unsafe extern "C" fn set_cpsr<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, 
 pub unsafe extern "C" fn set_cpsr_to_spsr<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
     let cpu = unsafe { &mut *cpu };
     cpu.set_cpsr(cpu.spsr());
+}
+
+pub unsafe extern "C" fn set_cpsr_state<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.cpsr_mut().set_state(CpuState::from_bits((value & 0x1) as u8));
 }
 
 pub unsafe extern "C" fn pipeline_flush<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
