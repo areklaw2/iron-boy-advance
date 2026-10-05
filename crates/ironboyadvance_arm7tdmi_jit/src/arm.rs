@@ -13,6 +13,7 @@ use ironboyadvance_common::bits::BitOps;
 mod branch_and_branch_with_link;
 mod branch_and_exchange;
 mod data_processing;
+mod multiply;
 mod psr_transfer;
 mod software_interrupt;
 mod undefined;
@@ -22,7 +23,7 @@ impl Compile for ArmInstruction {
         match self {
             Self::DataProcessing(i) => i.compile::<I>(assembler),
             Self::PsrTransfer(i) => i.compile::<I>(assembler),
-            Self::Multiply(_i) => todo!(),
+            Self::Multiply(i) => i.compile::<I>(assembler),
             Self::MultiplyLong(_i) => todo!(),
             Self::SingleDataSwap(_i) => todo!(),
             Self::BranchAndExchange(i) => i.compile::<I>(assembler),
