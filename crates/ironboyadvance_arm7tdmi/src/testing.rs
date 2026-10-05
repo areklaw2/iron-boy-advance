@@ -331,6 +331,11 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "arm_data_proc_immediate_shift.json.bin",
         "arm_data_proc_immediate.json.bin",
         "arm_data_proc_register_shift.json.bin",
+        "arm_mrs.json.bin",
+        "arm_msr_imm.json.bin",
+        "arm_msr_reg.json.bin",
+        "arm_mul_mla.json.bin",
+        //"arm_mull_mlal.json.bin",
     ];
 
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");

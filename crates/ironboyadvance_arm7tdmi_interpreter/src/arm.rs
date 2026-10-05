@@ -545,10 +545,9 @@ impl Execute for PsrTransfer {
                 let mut operand = match self.is_immediate() {
                     false => cpu.register(self.rm() as usize),
                     true => {
-                        let mut carry = cpu.cpsr().carry();
                         let rotate = 2 * self.rotate();
                         let immediate = self.immediate();
-                        ror(immediate, rotate, &mut carry, false)
+                        immediate.rotate_right(rotate)
                     }
                 };
 
@@ -562,7 +561,6 @@ impl Execute for PsrTransfer {
                             if mask & 0xFF != 0 {
                                 operand |= 0x10;
                             }
-
                             let bits = (cpu.cpsr().into_bits() & !mask) | (operand & mask);
                             cpu.set_cpsr(ProgramStatusRegister::from_bits_with_defaults(bits));
                         }
