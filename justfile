@@ -21,3 +21,12 @@ profile-dev bios rom *flags:
 # Dump the ARM64 rustc generates for a JIT probe, numbered.
 probe name:
   ./scripts/probe.sh {{name}}
+
+# Disassemble a raw block dump (default /tmp/block.bin); --raw adds the hex encodings.
+disasm *args:
+  ./scripts/disasm.sh {{args}}
+
+# Compile one instruction and disassemble it: just dump arm 0xE0234291 [--raw]
+dump mode encoding *flags:
+  cargo run -q -p ironboyadvance_arm7tdmi_jit --bin dump -- {{mode}} {{encoding}}
+  ./scripts/disasm.sh {{flags}}

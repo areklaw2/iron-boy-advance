@@ -8,7 +8,7 @@ use ironboyadvance_common::memory::MemoryAccess;
 use thiserror::Error;
 use tracing::debug;
 
-use crate::{arm::decode_arm, thumb::decode_thumb};
+pub use crate::{arm::decode_arm, thumb::decode_thumb};
 
 mod arm;
 mod guest;
