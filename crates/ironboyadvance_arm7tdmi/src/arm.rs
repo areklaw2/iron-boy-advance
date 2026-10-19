@@ -1,12 +1,9 @@
+use crate::{
+    Condition, DataProcessingOpcode, Register,
+    barrel_shifter::{ShiftBy, ShiftType},
+};
 use getset::CopyGetters;
 use ironboyadvance_common::bits::BitOps;
-
-use crate::{
-    Condition, CpuMode, DataProcessingOpcode, Dissasemble, Register,
-    barrel_shifter::{ShiftBy, ShiftType},
-    cpu::Arm7tdmiCpu,
-    memory::MemoryInterface,
-};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ArmInstruction {
@@ -49,28 +46,6 @@ impl ArmInstruction {
     }
 }
 
-impl Dissasemble for ArmInstruction {
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
-        match self {
-            Self::DataProcessing(i) => i.disassemble(cpu),
-            Self::PsrTransfer(i) => i.disassemble(cpu),
-            Self::Multiply(i) => i.disassemble(cpu),
-            Self::MultiplyLong(i) => i.disassemble(cpu),
-            Self::SingleDataSwap(i) => i.disassemble(cpu),
-            Self::BranchAndExchange(i) => i.disassemble(cpu),
-            Self::HalfwordAndSignedDataTransfer(i) => i.disassemble(cpu),
-            Self::SingleDataTransfer(i) => i.disassemble(cpu),
-            Self::Undefined(i) => i.disassemble(cpu),
-            Self::BlockDataTransfer(i) => i.disassemble(cpu),
-            Self::BranchAndBranchWithLink(i) => i.disassemble(cpu),
-            Self::SoftwareInterrupt(i) => i.disassemble(cpu),
-            Self::CoprocessorDataOperation(i) => i.disassemble(cpu),
-            Self::CoprocessorDataTransfer(i) => i.disassemble(cpu),
-            Self::CoprocessorRegisterTransfer(i) => i.disassemble(cpu),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct BlockDataTransfer {
@@ -100,60 +75,6 @@ impl BlockDataTransfer {
     }
 }
 
-impl Dissasemble for BlockDataTransfer {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond;
-        let pre_index = self.pre_index;
-        let add = self.add;
-        let load_psr_force_user = if self.load_psr_force_user { "^" } else { "" };
-        let write_back = if self.write_back { "!" } else { "" };
-        let load = self.load;
-        let rn = self.rn;
-        let register_list = (0..16u32)
-            .filter(|&i| (self.register_list >> i) & 1 == 1)
-            .map(|i| Register::from(i).to_string())
-            .collect::<Vec<_>>()
-            .join(",");
-
-        let mnemonic = match (load, pre_index, add) {
-            (true, true, true) => match rn == Register::R13 {
-                true => format!("LDM{}ED", cond),
-                false => format!("LDM{}IB", cond),
-            },
-            (true, false, true) => match rn == Register::R13 {
-                true => format!("LDM{}FD", cond),
-                false => format!("LDM{}IA", cond),
-            },
-            (true, true, false) => match rn == Register::R13 {
-                true => format!("LDM{}EA", cond),
-                false => format!("LDM{}DB", cond),
-            },
-            (true, false, false) => match rn == Register::R13 {
-                true => format!("LDM{}FA", cond),
-                false => format!("LDM{}DA", cond),
-            },
-            (false, true, true) => match rn == Register::R13 {
-                true => format!("STM{}FA", cond),
-                false => format!("STM{}IB", cond),
-            },
-            (false, false, true) => match rn == Register::R13 {
-                true => format!("STM{}EA", cond),
-                false => format!("STM{}IA", cond),
-            },
-            (false, true, false) => match rn == Register::R13 {
-                true => format!("STM{}FD", cond),
-                false => format!("STM{}DB", cond),
-            },
-            (false, false, false) => match rn == Register::R13 {
-                true => format!("STM{}ED", cond),
-                false => format!("STM{}DA", cond),
-            },
-        };
-
-        format!("{} {}{},({}){}", mnemonic, rn, write_back, register_list, load_psr_force_user)
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct BranchAndBranchWithLink {
@@ -173,15 +94,6 @@ impl BranchAndBranchWithLink {
     }
 }
 
-impl Dissasemble for BranchAndBranchWithLink {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond();
-        let link = if self.link { "L" } else { "" };
-        let expression = self.offset;
-        format!("B{link}{cond} 0x{expression:08X}")
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct BranchAndExchange {
@@ -196,14 +108,6 @@ impl BranchAndExchange {
             cond: value.bits(28..=31).into(),
             rn: value.bits(0..=3).into(),
         }
-    }
-}
-
-impl Dissasemble for BranchAndExchange {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond();
-        let rn = self.rn;
-        format!("BX{cond} {rn}")
     }
 }
 
@@ -249,43 +153,6 @@ impl DataProcessing {
     }
 }
 
-impl Dissasemble for DataProcessing {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        use DataProcessingOpcode::*;
-
-        let cond = self.cond;
-        let opcode = self.opcode;
-        let s = if self.sets_flags { "S" } else { "" };
-        let rd = self.rd;
-        let rn = self.rn;
-        let operand_2 = match self.is_immediate {
-            true => {
-                let rotate = 2 * self.rotate;
-                let immediate = self.immediate;
-                format!("0x{:08X}", immediate.rotate_right(rotate))
-            }
-            false => {
-                let rm = self.rm;
-                let shift_type = self.shift_type;
-                match self.shift_by {
-                    ShiftBy::Register => {
-                        format!("{},{} {}", rm, shift_type, self.rs)
-                    }
-                    ShiftBy::Immediate => {
-                        format!("{},{} #{}", rm, shift_type, self.shift_amount)
-                    }
-                }
-            }
-        };
-
-        match opcode {
-            MOV | MVN => format!("{opcode}{cond}{s} {rd},{operand_2}"),
-            CMP | CMN | TEQ | TST => format!("{opcode}{cond} {rn},{operand_2}"),
-            _ => format!("{opcode}{cond}{s} {rd},{rn},{operand_2}"),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct HalfwordAndSignedDataTransfer {
@@ -325,50 +192,6 @@ impl HalfwordAndSignedDataTransfer {
     }
 }
 
-impl Dissasemble for HalfwordAndSignedDataTransfer {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond;
-        let pre_index = self.pre_index;
-        let add = if self.add { "+" } else { "-" };
-        let rn = self.rn;
-        let rd = self.rd;
-        let immediate = self.immediate_hi << 4 | self.immediate_lo;
-        let address = match rd as usize == 15 {
-            true => format!("#{:08X}", immediate),
-            false => {
-                let rm = self.rm;
-                let offset = match self.is_immediate {
-                    true => match immediate {
-                        0 => "".into(),
-                        _ => format!(",#{}{}", add, immediate),
-                    },
-                    false => format!(",{}{}", add, rm),
-                };
-
-                let write_back = if self.write_back && !offset.is_empty() { "!" } else { "" };
-                match pre_index {
-                    true => format!("[{}{}]{}", rn, offset, write_back),
-                    false => format!("[{}]{}", rn, offset),
-                }
-            }
-        };
-
-        let s = self.signed;
-        let h = self.halfword;
-        let sh = match (s, h) {
-            (false, false) => "",
-            (false, true) => "H",
-            (true, false) => "SB",
-            (true, true) => "SH",
-        };
-
-        match self.load {
-            true => format!("LDR{}{} {},{}", cond, sh, rd, address),
-            false => format!("STR{}{} {},{}", cond, sh, rd, address),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct MultiplyLong {
@@ -398,25 +221,6 @@ impl MultiplyLong {
     }
 }
 
-impl Dissasemble for MultiplyLong {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond;
-        let s = if self.sets_flags { "S" } else { "" };
-        let rd_hi = self.rd_hi;
-        let rd_lo = self.rd_lo;
-        let rm = self.rm;
-        let rs = self.rs;
-        let unsigned = self.unsigned;
-        let accumulate = self.accumulate;
-        match (unsigned, accumulate) {
-            (true, false) => format!("UMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
-            (true, true) => format!("UMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
-            (false, false) => format!("SMULL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
-            (false, true) => format!("SMLAL{}{} {},{},{},{}", cond, s, rd_lo, rd_hi, rm, rs),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct Multiply {
@@ -440,21 +244,6 @@ impl Multiply {
             rs: value.bits(8..=11).into(),
             sets_flags: value.bit(20),
             accumulate: value.bit(21),
-        }
-    }
-}
-
-impl Dissasemble for Multiply {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond;
-        let s = if self.sets_flags { "S" } else { "" };
-        let rd = self.rd;
-        let rm = self.rm;
-        let rs = self.rs;
-        let rn = self.rn;
-        match self.accumulate {
-            true => format!("MLA{}{} {},{},{},{}", cond, s, rd, rm, rs, rn),
-            false => format!("MUL{}{} {},{},{}", cond, s, rd, rm, rs),
         }
     }
 }
@@ -505,53 +294,6 @@ impl PsrTransfer {
     }
 }
 
-impl Dissasemble for PsrTransfer {
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond;
-        let is_spsr = self.is_spsr;
-        let psr = match is_spsr {
-            false => "CPSR",
-            true => match cpu.cpsr().mode() {
-                CpuMode::User | CpuMode::System => "CPSR",
-                CpuMode::Fiq => "SPSR_fiq",
-                CpuMode::Supervisor => "SPSR_svc",
-                CpuMode::Abort => "SPSR_abt",
-                CpuMode::Irq => "SPSR_irq",
-                CpuMode::Undefined => "SPSR_und",
-                CpuMode::Invalid => panic!("invalid mode"),
-            },
-        };
-
-        match self.is_mrs {
-            true => {
-                let rd = self.rd as usize;
-                format!("MRS{} {},{}", cond, rd, psr)
-            }
-            false => {
-                let operand = match self.is_immediate {
-                    false => format!("{}", self.rm),
-                    true => {
-                        let rotate = 2 * self.rotate;
-                        let immediate = self.immediate;
-                        let expression = immediate.rotate_right(rotate);
-                        format!("0x{:08X}", expression)
-                    }
-                };
-
-                match is_spsr {
-                    false => {
-                        if cpu.cpsr().mode() == CpuMode::User {
-                            return format!("MSR{} {}_flg,{}", cond, psr, operand);
-                        }
-                        format!("MSR{} {}_all,{}", cond, psr, operand)
-                    }
-                    true => format!("MSR{} {},{}", cond, psr, operand),
-                }
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct SingleDataSwap {
@@ -572,17 +314,6 @@ impl SingleDataSwap {
             rm: value.bits(0..=3).into(),
             byte: value.bit(22),
         }
-    }
-}
-
-impl Dissasemble for SingleDataSwap {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond;
-        let byte = if self.byte { "B" } else { "" };
-        let rd = self.rd;
-        let rm = self.rm;
-        let rn = self.rn;
-        format!("SWP{}{} {},{},[{}]", cond, byte, rd, rm, rn)
     }
 }
 
@@ -625,46 +356,6 @@ impl SingleDataTransfer {
     }
 }
 
-impl Dissasemble for SingleDataTransfer {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond;
-        let pre_index = self.pre_index;
-        let t = if pre_index { "" } else { "T" };
-        let add = if self.add { "+" } else { "-" };
-        let byte = if self.byte { "B" } else { "" };
-        let rn = self.rn;
-        let rd = self.rd;
-        let immediate = self.immediate;
-        let address = match rd as usize == 15 {
-            true => format!("#{:08X}", immediate),
-            false => {
-                let offset = match self.is_immediate {
-                    true => match immediate {
-                        0 => "".into(),
-                        _ => format!(",#{}{}", add, immediate),
-                    },
-                    false => {
-                        let rm = self.rm;
-                        let shift_type = self.shift_type;
-                        format!(",{}{},{} #{}", add, rm, shift_type, self.shift_amount)
-                    }
-                };
-
-                let write_back = if self.write_back && !offset.is_empty() { "!" } else { "" };
-                match pre_index {
-                    true => format!("[{}{}]{}", rn, offset, write_back),
-                    false => format!("[{}]{}", rn, offset),
-                }
-            }
-        };
-
-        match self.load {
-            true => format!("LDR{}{}{} {},{}", cond, byte, t, rd, address),
-            false => format!("STR{}{}{} {},{}", cond, byte, t, rd, address),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct SoftwareInterrupt {
@@ -682,14 +373,6 @@ impl SoftwareInterrupt {
     }
 }
 
-impl Dissasemble for SoftwareInterrupt {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond;
-        let comment = self.comment;
-        format!("SWI{} 0x{:08X}", cond, comment)
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct Undefined {
@@ -702,11 +385,5 @@ impl Undefined {
         Self {
             cond: value.bits(28..=31).into(),
         }
-    }
-}
-
-impl Dissasemble for Undefined {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        "Undefined".into()
     }
 }

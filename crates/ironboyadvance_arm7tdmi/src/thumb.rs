@@ -1,10 +1,6 @@
+use crate::{Condition, HiRegister, LoRegister};
 use getset::CopyGetters;
 use ironboyadvance_common::bits::BitOps;
-
-use crate::{
-    AluOperationsOpcode, Condition, Dissasemble, HiRegOpsBxOpcode, HiRegister, LoRegister, MovCmpAddSubImmediateOpcode,
-    barrel_shifter::ShiftType, cpu::Arm7tdmiCpu, memory::MemoryInterface,
-};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ThumbInstruction {
@@ -30,34 +26,6 @@ pub enum ThumbInstruction {
     Undefined(Undefined),
 }
 
-impl Dissasemble for ThumbInstruction {
-    #[inline]
-    fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String {
-        match self {
-            Self::MoveShiftedRegister(i) => i.disassemble(cpu),
-            Self::AddSubtract(i) => i.disassemble(cpu),
-            Self::MoveCompareAddSubtractImmediate(i) => i.disassemble(cpu),
-            Self::AluOperations(i) => i.disassemble(cpu),
-            Self::HiRegisterOperationsBranchExchange(i) => i.disassemble(cpu),
-            Self::PcRelativeLoad(i) => i.disassemble(cpu),
-            Self::LoadStoreRegisterOffset(i) => i.disassemble(cpu),
-            Self::LoadStoreSignExtendedByteHalfword(i) => i.disassemble(cpu),
-            Self::LoadStoreImmediateOffset(i) => i.disassemble(cpu),
-            Self::LoadStoreHalfword(i) => i.disassemble(cpu),
-            Self::SpRelativeLoadStore(i) => i.disassemble(cpu),
-            Self::LoadAddress(i) => i.disassemble(cpu),
-            Self::AddOffsetToSp(i) => i.disassemble(cpu),
-            Self::PushPopRegisters(i) => i.disassemble(cpu),
-            Self::MultipleLoadStore(i) => i.disassemble(cpu),
-            Self::ConditionalBranch(i) => i.disassemble(cpu),
-            Self::SoftwareInterrupt(i) => i.disassemble(cpu),
-            Self::UnconditionalBranch(i) => i.disassemble(cpu),
-            Self::LongBranchWithLink(i) => i.disassemble(cpu),
-            Self::Undefined(i) => i.disassemble(cpu),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct MoveShiftedRegister {
@@ -76,16 +44,6 @@ impl MoveShiftedRegister {
             offset: value.bits(6..=10),
             opcode: value.bits(11..=12),
         }
-    }
-}
-
-impl Dissasemble for MoveShiftedRegister {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let shift_type = ShiftType::from(self.opcode);
-        let offset5 = self.offset;
-        let rs = self.rs;
-        let rd = self.rd;
-        format!("{} {},{},#{}", shift_type, rd, rs, offset5)
     }
 }
 
@@ -114,23 +72,6 @@ impl AddSubtract {
     }
 }
 
-impl Dissasemble for AddSubtract {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let rs = self.rs;
-        let rd = self.rd;
-        let is_immediate = self.is_immediate;
-        let operand = match is_immediate {
-            true => format!("#{}", self.offset),
-            false => format!("{}", self.rn),
-        };
-        let opcode = match self.opcode != 0 {
-            true => "SUB",
-            false => "ADD",
-        };
-        format!("{} {},{},{}", opcode, rd, rs, operand)
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct MoveCompareAddSubtractImmediate {
@@ -150,15 +91,6 @@ impl MoveCompareAddSubtractImmediate {
     }
 }
 
-impl Dissasemble for MoveCompareAddSubtractImmediate {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let rd = self.rd;
-        let offset = self.offset;
-        let opcode = MovCmpAddSubImmediateOpcode::from(self.opcode);
-        format!("{} {},#{}", opcode, rd, offset)
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct AluOperations {
@@ -175,15 +107,6 @@ impl AluOperations {
             rs: value.bits(3..=5).into(),
             opcode: value.bits(6..=9),
         }
-    }
-}
-
-impl Dissasemble for AluOperations {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let rd = self.rd;
-        let rs = self.rs;
-        let opcode = AluOperationsOpcode::from(self.opcode);
-        format!("{} {},{}", opcode, rd, rs)
     }
 }
 
@@ -214,23 +137,6 @@ impl HiRegisterOperationsBranchExchange {
     }
 }
 
-impl Dissasemble for HiRegisterOperationsBranchExchange {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let destination = match self.h1 {
-            true => self.hd.to_string(),
-            false => self.rd.to_string(),
-        };
-
-        let source = match self.h2 {
-            true => self.hs.to_string(),
-            false => self.rs.to_string(),
-        };
-
-        let opcode = HiRegOpsBxOpcode::from(self.opcode);
-        format!("{} {},{}", opcode, destination, source)
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct PcRelativeLoad {
@@ -245,14 +151,6 @@ impl PcRelativeLoad {
             rd: value.bits(8..=10).into(),
             offset: value.bits(0..=7),
         }
-    }
-}
-
-impl Dissasemble for PcRelativeLoad {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let rd = self.rd;
-        let offset = self.offset;
-        format!("LDR {},[PC, #{}]", rd, offset)
     }
 }
 
@@ -275,20 +173,6 @@ impl LoadStoreRegisterOffset {
             ro: value.bits(6..=8).into(),
             byte: value.bit(10),
             load: value.bit(11),
-        }
-    }
-}
-
-impl Dissasemble for LoadStoreRegisterOffset {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let byte = if self.byte { "B" } else { "" };
-        let ro = self.ro;
-        let rb = self.rb;
-        let rd = self.rd;
-
-        match self.load {
-            true => format!("LDR{} {}, [{},{}]", byte, rd, rb, ro),
-            false => format!("STR{} {}, [{},{}]", byte, rd, rb, ro),
         }
     }
 }
@@ -316,22 +200,6 @@ impl LoadStoreSignExtendedByteHalfword {
     }
 }
 
-impl Dissasemble for LoadStoreSignExtendedByteHalfword {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let ro = self.ro;
-        let rb = self.rb;
-        let rd = self.rd;
-        let signed = self.signed;
-        let halfword = self.halfword;
-        match (signed, halfword) {
-            (false, false) => format!("STRH {}, [{},{}]", rd, rb, ro),
-            (false, true) => format!("LDRH {}, [{},{}]", rd, rb, ro),
-            (true, false) => format!("LDSB {}, [{},{}]", rd, rb, ro),
-            (true, true) => format!("LDSH {}, [{},{}]", rd, rb, ro),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct LoadStoreImmediateOffset {
@@ -351,20 +219,6 @@ impl LoadStoreImmediateOffset {
             offset: value.bits(6..=10),
             load: value.bit(11),
             byte: value.bit(12),
-        }
-    }
-}
-
-impl Dissasemble for LoadStoreImmediateOffset {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let byte = if self.byte { "B" } else { "" };
-        let offset = self.offset;
-        let rb = self.rb;
-        let rd = self.rd;
-
-        match self.load {
-            true => format!("LDR{} {}, [{},#{}]", byte, rd, rb, offset),
-            false => format!("STR{} {}, [{},#{}]", byte, rd, rb, offset),
         }
     }
 }
@@ -390,18 +244,6 @@ impl LoadStoreHalfword {
     }
 }
 
-impl Dissasemble for LoadStoreHalfword {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset;
-        let rb = self.rb;
-        let rd = self.rd;
-        match self.load {
-            true => format!("LDRH {}, [{},#{}]", rd, rb, offset),
-            false => format!("STRH {}, [{},#{}]", rd, rb, offset),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct SpRelativeLoadStore {
@@ -417,17 +259,6 @@ impl SpRelativeLoadStore {
             rd: value.bits(8..=10).into(),
             offset: value.bits(0..=7),
             load: value.bit(11),
-        }
-    }
-}
-
-impl Dissasemble for SpRelativeLoadStore {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset;
-        let rd = self.rd;
-        match self.load {
-            true => format!("LDR {}, [sp,#{}]", rd, offset),
-            false => format!("STRH {}, [sp,#{}]", rd, offset),
         }
     }
 }
@@ -451,15 +282,6 @@ impl LoadAddress {
     }
 }
 
-impl Dissasemble for LoadAddress {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset;
-        let rd = self.rd;
-        let sp = if self.sp { "sp" } else { "pc" };
-        format!("ADD {},{},{}", rd, sp, offset)
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct AddOffsetToSp {
@@ -474,14 +296,6 @@ impl AddOffsetToSp {
             offset: value.bits(0..=6),
             signed: value.bit(7),
         }
-    }
-}
-
-impl Dissasemble for AddOffsetToSp {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset;
-        let signed = if self.signed { "-" } else { "" };
-        format!("ADD sp, {}{}", signed, offset)
     }
 }
 
@@ -500,26 +314,6 @@ impl PushPopRegisters {
             register_list_bits: value as u8,
             store_lr_load_pc: value.bit(8),
             load: value.bit(11),
-        }
-    }
-}
-
-impl Dissasemble for PushPopRegisters {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let load = self.load;
-        let store_lr_load_pc = self.store_lr_load_pc;
-        let register_list: Vec<usize> = (0..8).filter(|&i| (self.register_list_bits >> i) & 1 == 1).collect();
-        let register_list_str = register_list
-            .iter()
-            .map(|register| LoRegister::from(*register as u16).to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-
-        match (load, store_lr_load_pc) {
-            (false, false) => format!("PUSH {{{}}}", register_list_str),
-            (false, true) => format!("PUSH {{{},lr}}", register_list_str),
-            (true, false) => format!("POP {{{}}}", register_list_str),
-            (true, true) => format!("POP {{{},pc}}", register_list_str),
         }
     }
 }
@@ -543,24 +337,6 @@ impl MultipleLoadStore {
     }
 }
 
-impl Dissasemble for MultipleLoadStore {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let rb = self.rb;
-        let load = self.load;
-        let register_list: Vec<usize> = (0..8).filter(|&i| (self.register_list_bits >> i) & 1 == 1).collect();
-        let register_list_str = register_list
-            .iter()
-            .map(|register| LoRegister::from(*register as u16).to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-
-        match load {
-            true => format!("LDMIA {}!,{{{}}}", rb, register_list_str),
-            false => format!("STMIA {}!,{{{}}}", rb, register_list_str),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct ConditionalBranch {
@@ -575,14 +351,6 @@ impl ConditionalBranch {
             cond: (value.bits(8..=11) as u32).into(),
             offset: value.bits(0..=7),
         }
-    }
-}
-
-impl Dissasemble for ConditionalBranch {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let cond = self.cond;
-        let offset = self.offset;
-        format!("B{} #{}", cond, offset)
     }
 }
 
@@ -601,13 +369,6 @@ impl SoftwareInterrupt {
     }
 }
 
-impl Dissasemble for SoftwareInterrupt {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset;
-        format!("SWI #{}", offset)
-    }
-}
-
 #[derive(Debug, Clone, Copy, CopyGetters)]
 #[getset(get_copy = "pub")]
 pub struct UnconditionalBranch {
@@ -620,13 +381,6 @@ impl UnconditionalBranch {
         Self {
             offset: value.bits(0..=10),
         }
-    }
-}
-
-impl Dissasemble for UnconditionalBranch {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset;
-        format!("B #{}", offset)
     }
 }
 
@@ -647,25 +401,11 @@ impl LongBranchWithLink {
     }
 }
 
-impl Dissasemble for LongBranchWithLink {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        let offset = self.offset;
-        let high = if self.high { "hi" } else { "lo" };
-        format!("BL #{}({})", offset, high)
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct Undefined {}
 
 impl Undefined {
     pub fn new(_value: u16) -> Self {
         Self {}
-    }
-}
-
-impl Dissasemble for Undefined {
-    fn disassemble<I: MemoryInterface>(&self, _cpu: &mut Arm7tdmiCpu<I>) -> String {
-        "Undefined".into()
     }
 }
