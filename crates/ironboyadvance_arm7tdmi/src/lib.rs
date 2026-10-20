@@ -7,6 +7,7 @@ pub mod alu;
 pub mod arm;
 pub mod barrel_shifter;
 pub mod cpu;
+mod disassembler;
 pub mod memory;
 pub mod psr;
 pub mod testing;
