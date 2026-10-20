@@ -101,7 +101,7 @@ Iron Boy Advance a Game Boy Advance emulator, written in rust.
 
 ### Libraries
 
-- [bitfields-rs](https://github.com/gregorygaines/bitfields-rs) - a crate created by Gregory Gaines (a really awesome dude) that help me streamline my code.
+- [bitfields-rs](https://github.com/gregorygaines/bitfields-rs) - a crate created by Gregory Gaines (a really awesome dude) that helped me streamline my code.
 
 ### GB/GBC Sources
 
