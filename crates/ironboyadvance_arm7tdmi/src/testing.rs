@@ -339,8 +339,8 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "arm_swp.json.bin",
         // "arm_ldr_str_immediate_offset.json.bin",
         // "arm_ldr_str_register_offset.json.bin",
-        // "arm_ldrh_strh.json.bin",
-        // "arm_ldrsb_ldrsh.json.bin",
+        "arm_ldrh_strh.json.bin",
+        "arm_ldrsb_ldrsh.json.bin",
         // "arm_ldm_stm.json.bin",
     ];
 
