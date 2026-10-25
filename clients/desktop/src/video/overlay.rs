@@ -35,7 +35,7 @@ pub enum OverlayKind {
 impl OverlayKind {
     pub fn draw(&self, ctx: &egui::Context) {
         let (anchor, offset) = self.anchor();
-        Area::new(Id::new(self.id()))
+        Area::new(Id::unique(self.id()))
             .anchor(anchor, offset)
             .interactable(false)
             .show(ctx, |ui| {

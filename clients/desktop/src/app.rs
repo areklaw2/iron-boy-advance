@@ -233,10 +233,10 @@ impl Application {
             state.gui.paint(&mut rpass, &prepared, &screen);
         }
 
-        state.gui.cleanup(&prepared);
+        state.gui.cleanup(prepared);
 
         gpu.queue().submit(std::iter::once(encoder.finish()));
-        output.present();
+        gpu.queue().present(output);
     }
 
     fn save_screenshot(&self) -> Result<(), DesktopError> {

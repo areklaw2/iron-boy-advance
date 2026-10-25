@@ -70,7 +70,7 @@ impl Gui {
         let raw_input = self.state.take_egui_input(window);
         let fps_overlay = &self.fps_overlay;
         let paused_overlay = &self.paused_overlay;
-        let full_output = self.context.run_ui(raw_input, |ui| {
+        let mut full_output = self.context.run_ui(raw_input, |ui| {
             content(ui);
             if fps_overlay.show() {
                 OverlayKind::Fps(fps_overlay.fps()).draw(ui.ctx());
@@ -84,8 +84,10 @@ impl Gui {
 
         let paint_jobs = self.context.tessellate(full_output.shapes, full_output.pixels_per_point);
 
-        for (id, delta) in &full_output.textures_delta.set {
-            self.renderer.update_texture(device, queue, *id, delta);
+        for (id, deltas) in full_output.textures_delta.set.drain() {
+            for delta in deltas {
+                self.renderer.update_texture(device, queue, id, &delta);
+            }
         }
         self.renderer.update_buffers(device, queue, encoder, &paint_jobs, screen);
 
@@ -101,9 +103,9 @@ impl Gui {
     }
 
     /// Step 3: free textures egui is done with. Call after the pass has ended.
-    pub fn cleanup(&mut self, prepared: &PreparedFrame) {
-        for id in &prepared.textures_delta.free {
-            self.renderer.free_texture(id);
+    pub fn cleanup(&mut self, mut prepared: PreparedFrame) {
+        for id in prepared.textures_delta.free.drain() {
+            self.renderer.free_texture(&id);
         }
     }
 }
