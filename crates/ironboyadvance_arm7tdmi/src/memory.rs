@@ -44,23 +44,19 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
 
     pub fn load_signed_16(&mut self, address: u32, access_pattern: u8) -> u32 {
         let value = self.load_16(address, access_pattern);
-        match address & 0x1 != 0 {
-            true => (value >> 8).sign_extend(8) as u32,
-            false => value.sign_extend(16) as u32,
-        }
+        let shift = (address & 0x1) << 3;
+        (value >> shift).sign_extend(16 - shift) as u32
     }
 
     pub fn load_rotated_16(&mut self, address: u32, access_pattern: u8) -> u32 {
         let value = self.load_16(address, access_pattern);
-        match address & 0x1 != 0 {
-            true => value.rotate_right(8),
-            false => value,
-        }
+        let rotation = (address & 0x1) << 3;
+        value.rotate_right(rotation)
     }
 
     pub fn load_rotated_32(&mut self, address: u32, access_pattern: u8) -> u32 {
         let value = self.load_32(address, access_pattern);
         let rotation = (address & 0x3) << 3;
-        value >> rotation | value.wrapping_shl(32 - rotation)
+        value.rotate_right(rotation)
     }
 }
