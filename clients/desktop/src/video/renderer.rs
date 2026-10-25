@@ -1,7 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
-use crate::gpu::GpuContext;
+use crate::video::gpu::GpuContext;
 
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use getset::{CopyGetters, Getters};
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::gpu::GpuContext;
+use crate::video::gpu::GpuContext;
 
 #[derive(Getters, CopyGetters)]
 pub struct WindowSurface {

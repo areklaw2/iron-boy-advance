@@ -16,9 +16,8 @@ use crate::{
     controller::Controller,
     emulator::{self, EmulatorCommand, EmulatorHandle},
     frame::FrameTimer,
-    gpu::GpuContext,
     input::{HotKey, KeypadTracker, keycode_to_button, keycode_to_hotkey},
-    windows::{GbaRenderer, Gui, WindowSurface, draw_splash},
+    video::{GbaRenderer, GpuContext, Gui, WindowSurface, draw_splash},
 };
 
 struct RunningContent {

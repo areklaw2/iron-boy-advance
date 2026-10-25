@@ -8,10 +8,9 @@ mod config;
 mod controller;
 mod emulator;
 mod frame;
-mod gpu;
 mod input;
 mod logger;
-mod windows;
+mod video;
 
 use crate::{app::Application, config::Config, logger::initialize_logger};
 use ironboyadvance::{System, detect_system};

@@ -3,7 +3,7 @@ use egui_wgpu::{RendererOptions, ScreenDescriptor};
 use getset::MutGetters;
 use winit::{event::WindowEvent, window::Window};
 
-use crate::windows::overlay::{FpsOverlay, OverlayKind, PausedOverlay};
+use crate::video::overlay::{FpsOverlay, OverlayKind, PausedOverlay};
 
 #[derive(MutGetters)]
 pub struct Gui {
