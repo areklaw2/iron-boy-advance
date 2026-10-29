@@ -10,7 +10,7 @@ struct Uniforms {
     offset: [f32; 2],
 }
 
-pub struct GbaRenderer {
+pub struct FrameRenderer {
     viewport_width: usize,
     viewport_height: usize,
     window_width: u32,
@@ -24,7 +24,7 @@ pub struct GbaRenderer {
     pipeline: wgpu::RenderPipeline,
 }
 
-impl GbaRenderer {
+impl FrameRenderer {
     pub fn new(
         gpu: &GpuContext,
         surface_format: wgpu::TextureFormat,
@@ -218,14 +218,21 @@ impl GbaRenderer {
     }
 }
 
-fn compute_uniforms(window_w: u32, window_h: u32, viewport_width: usize, viewport_height: usize) -> Uniforms {
-    let w = window_w.max(1) as f32;
-    let h = window_h.max(1) as f32;
-    let s = (w / viewport_width as f32).min(h / viewport_height as f32);
-    let rendered_w = viewport_width as f32 * s;
-    let rendered_h = viewport_height as f32 * s;
+pub fn fit_scale(window_width: u32, window_height: u32, viewport_width: usize, viewport_height: usize) -> f32 {
+    let window_width = window_width.max(1) as f32;
+    let window_height = window_height.max(1) as f32;
+    (window_width / viewport_width as f32).min(window_height / viewport_height as f32)
+}
+
+fn compute_uniforms(window_width: u32, window_height: u32, viewport_width: usize, viewport_height: usize) -> Uniforms {
+    let scale = fit_scale(window_width, window_height, viewport_width, viewport_height);
+    let rendered_width = viewport_width as f32 * scale;
+    let rendered_height = viewport_height as f32 * scale;
     Uniforms {
-        scale: [rendered_w / w, rendered_h / h],
+        scale: [
+            rendered_width / window_width.max(1) as f32,
+            rendered_height / window_height.max(1) as f32,
+        ],
         offset: [0.0, 0.0],
     }
 }

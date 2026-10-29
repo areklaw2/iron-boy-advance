@@ -10,7 +10,10 @@ mod emulator;
 mod frame;
 mod input;
 mod logger;
+mod menu;
+mod screenshot;
 mod video;
+mod window;
 
 use crate::{
     app::{Application, UserEvent},

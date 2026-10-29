@@ -15,36 +15,37 @@ use winit::{
 };
 
 use crate::{
-    BASE_TITLE, DesktopError,
+    BASE_TITLE,
     config::Config,
     controller::Controller,
     emulator::{self, EmulatorCommand, EmulatorHandle},
     frame::FrameTimer,
     input::{HotKey, KeypadTracker, keycode_to_button, keycode_to_hotkey},
-    video::{GbaRenderer, GpuContext, Gui, WindowSurface, draw_splash},
+    screenshot::save_screenshot,
+    video::{FrameRenderer, GpuContext, Gui, WindowSurface, draw_splash},
 };
 
-struct RunningContent {
-    emulator: EmulatorHandle,
-    renderer: GbaRenderer,
-    last_frame: Option<Vec<u32>>,
-    fps_timer: FrameTimer,
+pub struct RunningContent {
+    pub emulator: EmulatorHandle,
+    pub renderer: FrameRenderer,
+    pub last_frame: Option<Vec<u32>>,
+    pub fps_timer: FrameTimer,
 }
 
-enum ScreenContent {
+pub enum ScreenContent {
     Splash,
     Running(Box<RunningContent>),
 }
 
 impl ScreenContent {
-    fn running(&self) -> Option<&RunningContent> {
+    pub fn running(&self) -> Option<&RunningContent> {
         match self {
             ScreenContent::Running(running) => Some(running),
             ScreenContent::Splash => None,
         }
     }
 
-    fn running_mut(&mut self) -> Option<&mut RunningContent> {
+    pub fn running_mut(&mut self) -> Option<&mut RunningContent> {
         match self {
             ScreenContent::Running(running) => Some(running),
             ScreenContent::Splash => None,
@@ -52,11 +53,11 @@ impl ScreenContent {
     }
 }
 
-struct WindowState {
-    window: Arc<Window>,
-    surface: WindowSurface,
-    gui: Gui,
-    content: ScreenContent,
+pub(crate) struct WindowState {
+    pub(crate) window: Arc<Window>,
+    pub(crate) surface: WindowSurface,
+    pub(crate) gui: Gui,
+    pub(crate) content: ScreenContent,
 }
 
 #[derive(Debug)]
@@ -71,6 +72,7 @@ pub struct Application {
     modifiers: ModifiersState,
     gpu: Option<GpuContext>,
     windows: HashMap<WindowId, WindowState>,
+    main_window: Option<WindowId>,
     controller: Option<Controller>,
     menu: Option<Menu>,
     initial_emulator: Option<EmulatorHandle>,
@@ -85,6 +87,7 @@ impl Application {
             modifiers: ModifiersState::empty(),
             gpu: None,
             windows: HashMap::new(),
+            main_window: None,
             controller: None,
             menu: None,
             initial_emulator,
@@ -92,13 +95,11 @@ impl Application {
     }
 
     fn build_running_content(&self, gpu: &GpuContext, surface: &WindowSurface, emulator: EmulatorHandle) -> ScreenContent {
-        let window_size = self.windows.values().next().map(|s| s.window.inner_size());
-        let (window_width, window_height) = window_size.map(|s| (s.width, s.height)).unwrap_or((1, 1));
-        let renderer = GbaRenderer::new(
+        let renderer = FrameRenderer::new(
             gpu,
             surface.surface_format(),
-            window_width,
-            window_height,
+            surface.config().width,
+            surface.config().height,
             emulator.viewport_width,
             emulator.viewport_height,
         );
@@ -127,7 +128,7 @@ impl Application {
                 };
 
                 let window_size = state.window.inner_size();
-                let renderer = GbaRenderer::new(
+                let renderer = FrameRenderer::new(
                     gpu,
                     state.surface.surface_format(),
                     window_size.width,
@@ -248,60 +249,21 @@ impl Application {
         gpu.queue().present(output);
     }
 
-    fn save_screenshot(&self) -> Result<(), DesktopError> {
-        //TODO: when a screenshot is taken we need to give some type of overlay or visual notification that it happened
-        let Some(state) = self.windows.values().next() else {
-            return Ok(());
-        };
-        let Some(running) = state.content.running() else {
-            return Ok(());
-        };
-        let Some(frame_buffer) = &running.last_frame else {
-            tracing::warn!("screenshot requested before any frame has arrived");
-            return Ok(());
-        };
+    fn main_window_state(&self) -> Option<&WindowState> {
+        self.main_window.and_then(|window_id| self.windows.get(&window_id))
+    }
 
-        let viewport_width = running.emulator.viewport_width as f32;
-        let viewport_height = running.emulator.viewport_height as f32;
-
-        let win_w = state.surface.config().width as f32;
-        let win_h = state.surface.config().height as f32;
-        let scale = (win_w / viewport_width).min(win_h / viewport_height);
-        let out_w = (viewport_width * scale).round().max(1.0) as u32;
-        let out_h = (viewport_height * scale).round().max(1.0) as u32;
-
-        let src_w = viewport_width as u32;
-        let src_h = viewport_height as u32;
-
-        let mut rgba_buffer = Vec::with_capacity((out_w as usize) * (out_h as usize) * 4);
-        for y in 0..out_h {
-            let src_y = (((y as f32) / scale) as u32).min(src_h - 1);
-            for x in 0..out_w {
-                let src_x = (((x as f32) / scale) as u32).min(src_w - 1);
-                let pixel = frame_buffer[(src_y * src_w + src_x) as usize];
-                rgba_buffer.push(((pixel >> 16) & 0xFF) as u8);
-                rgba_buffer.push(((pixel >> 8) & 0xFF) as u8);
-                rgba_buffer.push((pixel & 0xFF) as u8);
-                rgba_buffer.push(0xFF);
-            }
-        }
-
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
-        let name = format!("screenshot-{timestamp}.png");
-
-        image::save_buffer(&name, &rgba_buffer, out_w, out_h, image::ColorType::Rgba8)?;
-        tracing::info!("wrote {name} ({out_w}x{out_h})");
-        Ok(())
+    fn main_window_state_mut(&mut self) -> Option<&mut WindowState> {
+        self.main_window.and_then(|window_id| self.windows.get_mut(&window_id))
     }
 
     fn send_emulator_command(&self, command: EmulatorCommand) {
-        let Some(state) = self.windows.values().next() else { return };
-        let Some(running) = state.content.running() else { return };
-        if let Err(e) = running.emulator.commands.send(command) {
-            tracing::error!("emulator command dropped (thread gone?): {e}");
+        if let Some(window_state) = self.main_window_state()
+            && let Some(running) = window_state.content.running()
+        {
+            if let Err(e) = running.emulator.commands.send(command) {
+                tracing::error!("emulator command dropped (thread gone?): {e}");
+            }
         }
     }
 
@@ -316,32 +278,37 @@ impl Application {
 
         match hotkey {
             HotKey::ToggleFps => {
-                if self.windows.values().any(|w| w.content.running().is_some()) {
-                    for window_state in self.windows.values_mut() {
-                        *window_state.gui.fps_overlay_mut().show_mut() ^= true;
-                    }
+                if let Some(window_state) = self.main_window_state_mut()
+                    && window_state.content.running().is_some()
+                {
+                    *window_state.gui.fps_overlay_mut().show_mut() ^= true;
                 }
             }
 
             HotKey::Screenshot => {
-                if let Err(e) = self.save_screenshot() {
-                    tracing::error!("screenshot failed: {e}");
+                if let Some(window_state) = self.main_window_state()
+                    && let Some(running) = window_state.content.running()
+                {
+                    let surface_config = window_state.surface.config();
+                    if let Err(e) = save_screenshot(running, surface_config.width, surface_config.height) {
+                        tracing::error!("screenshot failed: {e}");
+                    }
                 }
             }
             HotKey::TogglePause => {
-                if self.windows.values().any(|w| w.content.running().is_some()) {
-                    self.send_emulator_command(EmulatorCommand::TogglePause);
-                    for window_state in self.windows.values_mut() {
-                        *window_state.gui.paused_overlay_mut().show_mut() ^= true;
-                    }
+                self.send_emulator_command(EmulatorCommand::TogglePause);
+                if let Some(window_state) = self.main_window_state_mut()
+                    && window_state.content.running().is_some()
+                {
+                    *window_state.gui.paused_overlay_mut().show_mut() ^= true;
                 }
             }
             //TODO: add opt-in pause-on-minimize/unfocus config
             HotKey::ToggleMaxSpeed => self.send_emulator_command(EmulatorCommand::ToggleMaxSpeed),
             HotKey::Reset => {
                 self.send_emulator_command(EmulatorCommand::Reset);
-                if let Some(state) = self.windows.values_mut().next()
-                    && let Some(running) = state.content.running_mut()
+                if let Some(window_state) = self.main_window_state_mut()
+                    && let Some(running) = window_state.content.running_mut()
                 {
                     running.last_frame = None;
                     running.fps_timer = FrameTimer::new(running.emulator.fps);
@@ -383,8 +350,9 @@ impl ApplicationHandler<UserEvent> for Application {
             None => ScreenContent::Splash,
         };
 
+        let window_id = window.id();
         self.windows.insert(
-            window.id(),
+            window_id,
             WindowState {
                 window,
                 surface,
@@ -392,6 +360,7 @@ impl ApplicationHandler<UserEvent> for Application {
                 content,
             },
         );
+        self.main_window = Some(window_id);
         self.controller = Controller::new();
 
         let menu = Menu::new();
@@ -442,10 +411,11 @@ impl ApplicationHandler<UserEvent> for Application {
         match event {
             WindowEvent::CloseRequested => {
                 self.windows.remove(&window_id);
-                if self.windows.is_empty() {
+                if self.main_window == Some(window_id) {
                     event_loop.exit();
                 }
             }
+
             WindowEvent::ModifiersChanged(modifiers) => {
                 self.modifiers = modifiers.state();
             }
@@ -503,16 +473,14 @@ impl ApplicationHandler<UserEvent> for Application {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if let Some(controller) = self.controller.as_mut() {
-            let keypad = self
-                .windows
-                .values()
-                .find_map(|s| s.content.running().map(|r| r.emulator.keypad.clone()));
+        let keypad = self
+            .main_window_state()
+            .and_then(|state| state.content.running())
+            .map(|running| running.emulator.keypad.clone());
 
-            if let Some(keypad) = keypad {
-                for (button, pressed) in controller.poll() {
-                    self.keypad_tracker.handle_controller_button(button, pressed, &keypad);
-                }
+        if let (Some(controller), Some(keypad)) = (self.controller.as_mut(), keypad) {
+            for (button, pressed) in controller.poll() {
+                self.keypad_tracker.handle_controller_button(button, pressed, &keypad);
             }
         }
 

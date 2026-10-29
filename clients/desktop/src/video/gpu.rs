@@ -1,14 +1,11 @@
 use getset::Getters;
 
 #[derive(Getters)]
+#[getset(get = "pub")]
 pub struct GpuContext {
-    #[getset(get = "pub")]
     instance: wgpu::Instance,
-    #[getset(get = "pub")]
     adapter: wgpu::Adapter,
-    #[getset(get = "pub")]
     device: wgpu::Device,
-    #[getset(get = "pub")]
     queue: wgpu::Queue,
 }
 
