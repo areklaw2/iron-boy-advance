@@ -22,45 +22,9 @@ use crate::{
     frame::FrameTimer,
     input::{HotKey, KeypadTracker, keycode_to_button, keycode_to_hotkey},
     screenshot::save_screenshot,
-    video::{FrameRenderer, GpuContext, Gui, WindowSurface, draw_splash},
+    video::{GpuContext, draw_splash},
+    window::{ScreenContent, WindowState},
 };
-
-pub struct RunningContent {
-    pub emulator: EmulatorHandle,
-    pub renderer: FrameRenderer,
-    pub last_frame: Option<Vec<u32>>,
-    pub fps_timer: FrameTimer,
-    pub paused: bool,
-    pub max_speed: bool,
-}
-
-pub enum ScreenContent {
-    Splash,
-    Running(Box<RunningContent>),
-}
-
-impl ScreenContent {
-    pub fn running(&self) -> Option<&RunningContent> {
-        match self {
-            ScreenContent::Running(running) => Some(running),
-            ScreenContent::Splash => None,
-        }
-    }
-
-    pub fn running_mut(&mut self) -> Option<&mut RunningContent> {
-        match self {
-            ScreenContent::Running(running) => Some(running),
-            ScreenContent::Splash => None,
-        }
-    }
-}
-
-pub(crate) struct WindowState {
-    pub(crate) window: Arc<Window>,
-    pub(crate) surface: WindowSurface,
-    pub(crate) gui: Gui,
-    pub(crate) content: ScreenContent,
-}
 
 #[derive(Debug)]
 pub enum UserEvent {
@@ -96,26 +60,6 @@ impl Application {
         }
     }
 
-    fn build_running_content(&self, gpu: &GpuContext, surface: &WindowSurface, emulator: EmulatorHandle) -> ScreenContent {
-        let renderer = FrameRenderer::new(
-            gpu,
-            surface.surface_format(),
-            surface.config().width,
-            surface.config().height,
-            emulator.viewport_width,
-            emulator.viewport_height,
-        );
-        let fps_timer = FrameTimer::new(emulator.fps);
-        ScreenContent::Running(Box::new(RunningContent {
-            emulator,
-            renderer,
-            last_frame: None,
-            fps_timer,
-            paused: false,
-            max_speed: false,
-        }))
-    }
-
     fn load_rom(&mut self, window_id: WindowId, rom_path: String) {
         let rom_buffer = match emulator::read_rom(&rom_path) {
             Ok(bytes) => bytes,
@@ -131,31 +75,11 @@ impl Application {
                     return;
                 };
 
-                let window_size = state.window.inner_size();
-                let renderer = FrameRenderer::new(
-                    gpu,
-                    state.surface.surface_format(),
-                    window_size.width,
-                    window_size.height,
-                    handle.viewport_width,
-                    handle.viewport_height,
-                );
-                let fps_timer = FrameTimer::new(handle.fps);
-                state.content = ScreenContent::Running(Box::new(RunningContent {
-                    emulator: handle,
-                    renderer,
-                    last_frame: None,
-                    fps_timer,
-                    paused: false,
-                    max_speed: false,
-                }));
-
                 let rom_name = std::path::Path::new(&rom_path)
                     .file_name()
                     .and_then(|n| n.to_str())
-                    .unwrap_or(&rom_path)
-                    .to_string();
-                state.window.set_title(&format!("{BASE_TITLE} - {rom_name}"));
+                    .unwrap_or(&rom_path);
+                state.start_running(gpu, handle, rom_name);
             }
             Err(e) => tracing::error!("failed to load rom {rom_path}: {e}"),
         }
@@ -166,23 +90,13 @@ impl Application {
             return;
         };
 
-        if let Some(running) = state.content.running_mut() {
-            while let Ok(frame) = running.emulator.frames.try_recv() {
-                running.last_frame = Some(frame);
-                running.fps_timer.count_frame();
-            }
-            state.gui.fps_overlay_mut().set_fps(running.fps_timer.fps());
-            state.gui.paused_overlay_mut().set_show(running.paused);
-        }
+        state.drain_frames();
 
         let output = match state.surface.acquire() {
             wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 let size = state.window.inner_size();
-                state.surface.resize(gpu, size);
-                if let Some(running) = state.content.running_mut() {
-                    running.renderer.resize(gpu, size.width, size.height);
-                }
+                state.resize(gpu, size);
                 return;
             }
             wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => return,
@@ -350,24 +264,9 @@ impl ApplicationHandler<UserEvent> for Application {
         }
         let gpu = self.gpu.as_ref().unwrap();
 
-        let surface = WindowSurface::new(gpu, window.clone());
-        let gui = Gui::new(gpu.device(), surface.surface_format(), &window);
-
-        let content = match self.initial_emulator.take() {
-            Some(emulator) => self.build_running_content(gpu, &surface, emulator),
-            None => ScreenContent::Splash,
-        };
-
         let window_id = window.id();
-        self.windows.insert(
-            window_id,
-            WindowState {
-                window,
-                surface,
-                gui,
-                content,
-            },
-        );
+        self.windows
+            .insert(window_id, WindowState::new(gpu, window, self.initial_emulator.take()));
         self.main_window = Some(window_id);
         self.controller = Controller::new();
 
@@ -429,10 +328,7 @@ impl ApplicationHandler<UserEvent> for Application {
             }
             WindowEvent::Resized(size) => {
                 if let (Some(gpu), Some(state)) = (self.gpu.as_ref(), self.windows.get_mut(&window_id)) {
-                    state.surface.resize(gpu, size);
-                    if let Some(running) = state.content.running_mut() {
-                        running.renderer.resize(gpu, size.width, size.height);
-                    }
+                    state.resize(gpu, size);
                 }
                 window.request_redraw();
             }

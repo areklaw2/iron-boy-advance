@@ -1,4 +1,4 @@
-use crate::{DesktopError, app::RunningContent, video::fit_scale};
+use crate::{DesktopError, video::fit_scale, window::RunningContent};
 
 const SCREENSHOT_DIRECTORY: &str = "screenshots";
 
