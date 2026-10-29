@@ -20,8 +20,8 @@ fn current_unix_seconds() -> u64 {
 
 pub enum EmulatorCommand {
     Reset,
-    TogglePause,
-    ToggleMaxSpeed,
+    SetPaused(bool),
+    SetMaxSpeed(bool),
 }
 
 pub struct EmulatorHandle {
@@ -32,6 +32,14 @@ pub struct EmulatorHandle {
     pub viewport_height: usize,
     pub fps: f32,
     _audio_stream: Option<cpal::Stream>,
+}
+
+impl EmulatorHandle {
+    pub fn send(&self, command: EmulatorCommand) {
+        if let Err(e) = self.commands.send(command) {
+            tracing::error!("emulator command dropped (thread gone?): {e}");
+        }
+    }
 }
 
 pub(crate) fn read_rom(path: &str) -> io::Result<Vec<u8>> {
@@ -80,12 +88,13 @@ pub fn spawn(
         'frame: loop {
             'commands: loop {
                 match command_rx.try_recv() {
-                    Ok(EmulatorCommand::TogglePause) => {
-                        paused = !paused;
+                    Ok(EmulatorCommand::SetPaused(value)) => {
+                        paused = value;
                         tracing::info!("emulator {}", if paused { "paused" } else { "resumed" });
                     }
-                    Ok(EmulatorCommand::ToggleMaxSpeed) => {
-                        turbo = !turbo;
+                    Ok(EmulatorCommand::SetMaxSpeed(value)) => {
+                        turbo = value;
+                        frame_timer = FrameTimer::new(fps);
                         tracing::info!("max_speed {}", if turbo { "on" } else { "off" });
                     }
                     Ok(EmulatorCommand::Reset) => {

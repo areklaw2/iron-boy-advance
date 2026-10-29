@@ -17,7 +17,7 @@ impl FpsOverlay {
 
 #[derive(Setters, MutGetters, CopyGetters)]
 pub struct PausedOverlay {
-    #[getset(get_copy = "pub", get_mut = "pub")]
+    #[getset(get_copy = "pub", set = "pub")]
     show: bool,
 }
 

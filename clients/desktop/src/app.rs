@@ -30,6 +30,8 @@ pub struct RunningContent {
     pub renderer: FrameRenderer,
     pub last_frame: Option<Vec<u32>>,
     pub fps_timer: FrameTimer,
+    pub paused: bool,
+    pub max_speed: bool,
 }
 
 pub enum ScreenContent {
@@ -109,6 +111,8 @@ impl Application {
             renderer,
             last_frame: None,
             fps_timer,
+            paused: false,
+            max_speed: false,
         }))
     }
 
@@ -142,6 +146,8 @@ impl Application {
                     renderer,
                     last_frame: None,
                     fps_timer,
+                    paused: false,
+                    max_speed: false,
                 }));
 
                 let rom_name = std::path::Path::new(&rom_path)
@@ -166,6 +172,7 @@ impl Application {
                 running.fps_timer.count_frame();
             }
             state.gui.fps_overlay_mut().set_fps(running.fps_timer.fps());
+            state.gui.paused_overlay_mut().set_show(running.paused);
         }
 
         let output = match state.surface.acquire() {
@@ -261,9 +268,7 @@ impl Application {
         if let Some(window_state) = self.main_window_state()
             && let Some(running) = window_state.content.running()
         {
-            if let Err(e) = running.emulator.commands.send(command) {
-                tracing::error!("emulator command dropped (thread gone?): {e}");
-            }
+            running.emulator.send(command);
         }
     }
 
@@ -296,15 +301,18 @@ impl Application {
                 }
             }
             HotKey::TogglePause => {
-                self.send_emulator_command(EmulatorCommand::TogglePause);
-                if let Some(window_state) = self.main_window_state_mut()
-                    && window_state.content.running().is_some()
-                {
-                    *window_state.gui.paused_overlay_mut().show_mut() ^= true;
+                if let Some(running) = self.main_window_state_mut().and_then(|state| state.content.running_mut()) {
+                    running.paused = !running.paused;
+                    running.emulator.send(EmulatorCommand::SetPaused(running.paused));
                 }
             }
             //TODO: add opt-in pause-on-minimize/unfocus config
-            HotKey::ToggleMaxSpeed => self.send_emulator_command(EmulatorCommand::ToggleMaxSpeed),
+            HotKey::ToggleMaxSpeed => {
+                if let Some(running) = self.main_window_state_mut().and_then(|state| state.content.running_mut()) {
+                    running.max_speed = !running.max_speed;
+                    running.emulator.send(EmulatorCommand::SetMaxSpeed(running.max_speed));
+                }
+            }
             HotKey::Reset => {
                 self.send_emulator_command(EmulatorCommand::Reset);
                 if let Some(window_state) = self.main_window_state_mut()
