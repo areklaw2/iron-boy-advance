@@ -1,6 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use egui_wgpu::ScreenDescriptor;
+use muda::{
+    Menu, MenuItem, PredefinedMenuItem, Submenu,
+    accelerator::{Accelerator, Code, Modifiers},
+};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
@@ -55,16 +59,20 @@ struct WindowState {
     content: ScreenContent,
 }
 
+#[derive(Debug)]
+pub enum UserEvent {
+    MenuEvent(muda::MenuEvent),
+}
+
 pub struct Application {
     show_logs: bool,
     config: Config,
     keypad_tracker: KeypadTracker,
     modifiers: ModifiersState,
-
     gpu: Option<GpuContext>,
     windows: HashMap<WindowId, WindowState>,
     controller: Option<Controller>,
-
+    menu: Option<Menu>,
     initial_emulator: Option<EmulatorHandle>,
 }
 
@@ -78,6 +86,7 @@ impl Application {
             gpu: None,
             windows: HashMap::new(),
             controller: None,
+            menu: None,
             initial_emulator,
         }
     }
@@ -344,7 +353,7 @@ impl Application {
     }
 }
 
-impl ApplicationHandler for Application {
+impl ApplicationHandler<UserEvent> for Application {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if !self.windows.is_empty() {
             return;
@@ -384,6 +393,41 @@ impl ApplicationHandler for Application {
             },
         );
         self.controller = Controller::new();
+
+        let menu = Menu::new();
+        let menu_item2 = MenuItem::new("Menu item #2", false, None);
+        let submenu = Submenu::with_items(
+            "Submenu Outer",
+            true,
+            &[
+                &MenuItem::new("Menu item #1", true, Some(Accelerator::new(Modifiers::ALT, Code::KeyD))),
+                &PredefinedMenuItem::separator(),
+                &menu_item2,
+                &MenuItem::new("Menu item #3", true, None),
+                &PredefinedMenuItem::separator(),
+                &Submenu::with_items(
+                    "Submenu Inner",
+                    true,
+                    &[
+                        &MenuItem::new("Submenu item #1", true, None),
+                        &PredefinedMenuItem::separator(),
+                        &menu_item2,
+                    ],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        menu.append(&submenu);
+
+        #[cfg(target_os = "windows")]
+        tracing::warn!("TODO: support windows menu");
+        #[cfg(target_os = "linux")]
+        tracing::warn!("TODO: support linux menu");
+        #[cfg(target_os = "macos")]
+        menu.init_for_nsapp();
+
+        self.menu = Some(menu);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
@@ -454,12 +498,17 @@ impl ApplicationHandler for Application {
         }
     }
 
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UserEvent) {
+        println!("{:?}", event);
+    }
+
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         if let Some(controller) = self.controller.as_mut() {
             let keypad = self
                 .windows
                 .values()
                 .find_map(|s| s.content.running().map(|r| r.emulator.keypad.clone()));
+
             if let Some(keypad) = keypad {
                 for (button, pressed) in controller.poll() {
                     self.keypad_tracker.handle_controller_button(button, pressed, &keypad);

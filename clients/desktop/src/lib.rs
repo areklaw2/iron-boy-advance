@@ -12,7 +12,11 @@ mod input;
 mod logger;
 mod video;
 
-use crate::{app::Application, config::Config, logger::initialize_logger};
+use crate::{
+    app::{Application, UserEvent},
+    config::Config,
+    logger::initialize_logger,
+};
 use ironboyadvance::{System, detect_system};
 
 const BASE_TITLE: &str = "Iron Boy Advance";
@@ -61,7 +65,11 @@ pub fn run(rom_path: Option<String>, bios_path: Option<String>, show_logs: bool)
 
     let mut app = Application::new(title, initial_emulator, config, show_logs);
 
-    let event_loop = EventLoop::new()?;
+    let event_loop = EventLoop::<UserEvent>::with_user_event().build()?;
+    let proxy = event_loop.create_proxy();
+    muda::MenuEvent::set_event_handler(Some(move |event| {
+        let _ = proxy.send_event(UserEvent::MenuEvent(event));
+    }));
     event_loop.run_app(&mut app)?;
 
     std::process::exit(0);
