@@ -7,6 +7,9 @@ edition = "2024"
 name = "IronBoyAdvance"
 path = "src/main.rs"
 
+[lints.rust]
+unreachable_pub = "warn"
+
 [dependencies]
 ironboyadvance = { path = "../../crates/ironboyadvance" }
 clap = { version = "4.5.23", features = ["derive"] }

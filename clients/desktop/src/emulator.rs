@@ -9,7 +9,7 @@ use std::{
 };
 
 use chrono::Local;
-use ironboyadvance::{BootError, boot, detect_system, system_info};
+use ironboyadvance::{BootError, boot, detect_console, system_info};
 use ringbuf::traits::Producer;
 
 use crate::{DesktopError, audio, config::Config, frame::FrameTimer, input::KEYPAD_IDLE};
@@ -59,7 +59,7 @@ pub fn spawn(
     config: Config,
     show_logs: bool,
 ) -> Result<EmulatorHandle, DesktopError> {
-    let kind = detect_system(&rom_buffer).ok_or(BootError::UnknownFormat)?;
+    let kind = detect_console(&rom_buffer).ok_or(BootError::UnknownFormat)?;
     let bios_buffer = read_bios(config.bios(kind))?;
 
     let (viewport_width, viewport_height, fps, sample_rate, cycles_per_frame) = system_info(kind);
@@ -105,7 +105,7 @@ pub fn spawn(
                                 continue 'commands;
                             }
                         };
-                        let Some(reset_kind) = detect_system(&rom) else {
+                        let Some(reset_kind) = detect_console(&rom) else {
                             tracing::error!("reset failed: unrecognized rom format");
                             continue 'commands;
                         };

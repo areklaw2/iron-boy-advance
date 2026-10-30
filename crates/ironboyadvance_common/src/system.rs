@@ -8,7 +8,7 @@ pub trait SystemInspection {
     }
 }
 
-pub trait Emulator: SystemInspection {
+pub trait System: SystemInspection {
     fn run(&mut self, cycles: usize, overshoot: usize) -> usize;
     fn frame_buffer(&self) -> &[u32];
     fn audio_buffer(&self) -> &[(f32, f32)];
@@ -17,21 +17,21 @@ pub trait Emulator: SystemInspection {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum System {
+pub enum Console {
     Gba,
     Gbc,
     Gb,
 }
 
-pub fn detect_system(rom: &[u8]) -> Option<System> {
+pub fn detect_console(rom: &[u8]) -> Option<Console> {
     if is_gba_rom(rom) {
-        return Some(System::Gba);
+        return Some(Console::Gba);
     }
 
     if is_gb_rom(rom) {
         return Some(match rom[0x143] {
-            0x80 | 0xC0 => System::Gbc,
-            _ => System::Gb,
+            0x80 | 0xC0 => Console::Gbc,
+            _ => Console::Gb,
         });
     }
 

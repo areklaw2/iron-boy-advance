@@ -2,7 +2,7 @@
 
 use std::{env, fs, path::PathBuf};
 
-use ironboyadvance::{Emulator, boot, detect_system, system_info};
+use ironboyadvance::{System, boot, detect_console, system_info};
 
 const FNV_OFFSET_BASIS: u64 = 14695981039346656037;
 const FNV_PRIME: u64 = 1099511628211;
@@ -28,7 +28,7 @@ fn staged_rom_path(relative_path: &str) -> PathBuf {
 }
 
 pub struct Headless {
-    system: Box<dyn Emulator>,
+    system: Box<dyn System>,
     viewport_width: usize,
     viewport_height: usize,
     cycles_per_frame: usize,
@@ -39,7 +39,7 @@ impl Headless {
     pub fn load(relative_path: &str) -> Headless {
         let path = staged_rom_path(relative_path);
         let rom = fs::read(&path).unwrap_or_else(|error| panic!("failed to read {path:?}: {error}"));
-        let kind = detect_system(&rom).unwrap_or_else(|| panic!("unrecognized rom format: {path:?}"));
+        let kind = detect_console(&rom).unwrap_or_else(|| panic!("unrecognized rom format: {path:?}"));
         let (viewport_width, viewport_height, _, _, cycles_per_frame) = system_info(kind);
 
         let system = boot(kind, &path.to_string_lossy(), rom, Vec::new(), TEST_UNIX_SECONDS, false)

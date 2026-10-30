@@ -1,7 +1,7 @@
 use std::{fs, io, path::PathBuf};
 
 use etcetera::{BaseStrategy, choose_base_strategy};
-use ironboyadvance::System;
+use ironboyadvance::Console;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -46,20 +46,20 @@ impl Config {
         Ok(())
     }
 
-    pub fn set_bios(&mut self, kind: System, path: &str) {
+    pub fn set_bios(&mut self, kind: Console, path: &str) {
         let slot = match kind {
-            System::Gba => &mut self.bios_path,
-            System::Gb => &mut self.gb_boot_rom,
-            System::Gbc => &mut self.gbc_boot_rom,
+            Console::Gba => &mut self.bios_path,
+            Console::Gb => &mut self.gb_boot_rom,
+            Console::Gbc => &mut self.gbc_boot_rom,
         };
         *slot = Some(path.to_string());
     }
 
-    pub fn bios(&self, kind: System) -> Option<&str> {
+    pub fn bios(&self, kind: Console) -> Option<&str> {
         match kind {
-            System::Gba => self.bios_path.as_deref(),
-            System::Gb => self.gb_boot_rom.as_deref(),
-            System::Gbc => self.gbc_boot_rom.as_deref(),
+            Console::Gba => self.bios_path.as_deref(),
+            Console::Gb => self.gb_boot_rom.as_deref(),
+            Console::Gbc => self.gbc_boot_rom.as_deref(),
         }
     }
 }

@@ -20,7 +20,7 @@ use crate::{
     config::Config,
     logger::initialize_logger,
 };
-use ironboyadvance::{System, detect_system};
+use ironboyadvance::{Console, detect_console};
 
 const BASE_TITLE: &str = "Iron Boy Advance";
 
@@ -44,10 +44,10 @@ pub fn run(rom_path: Option<String>, bios_path: Option<String>, show_logs: bool)
     let mut config = Config::load().unwrap_or_default();
 
     let rom_buffer = rom_path.as_deref().map(emulator::read_rom).transpose()?;
-    let kind = rom_buffer.as_deref().and_then(detect_system);
+    let kind = rom_buffer.as_deref().and_then(detect_console);
 
     if let Some(ref boot_rom_arg) = bios_path {
-        config.set_bios(kind.unwrap_or(System::Gba), boot_rom_arg);
+        config.set_bios(kind.unwrap_or(Console::Gba), boot_rom_arg);
         if let Err(e) = config.save() {
             tracing::warn!("failed to persist boot rom path to config: {e}");
         }

@@ -5,8 +5,8 @@ use ironboyadvance_gba::{GameBoyAdvance, GbaError};
 use ironboyadvance_gbc::{GameBoyColor, GbcError};
 use thiserror::Error;
 
-pub use ironboyadvance_common::emulator::{Emulator, System, detect_system};
 pub use ironboyadvance_common::keypad::KeypadButton;
+pub use ironboyadvance_common::system::{Console, System, detect_console};
 
 #[derive(Error, Debug)]
 pub enum BootError {
@@ -18,16 +18,16 @@ pub enum BootError {
     UnknownFormat,
 }
 
-pub fn system_info(kind: System) -> (usize, usize, f32, u32, usize) {
+pub fn system_info(kind: Console) -> (usize, usize, f32, u32, usize) {
     match kind {
-        System::Gba => (
+        Console::Gba => (
             ironboyadvance_gba::VIEWPORT_WIDTH,
             ironboyadvance_gba::VIEWPORT_HEIGHT,
             ironboyadvance_gba::FPS,
             ironboyadvance_gba::APU_SAMPLING_FREQUENCY as u32,
             ironboyadvance_gba::CYCLES_PER_FRAME,
         ),
-        System::Gb | System::Gbc => (
+        Console::Gb | Console::Gbc => (
             ironboyadvance_gbc::VIEWPORT_WIDTH,
             ironboyadvance_gbc::VIEWPORT_HEIGHT,
             ironboyadvance_gbc::FPS,
@@ -38,15 +38,15 @@ pub fn system_info(kind: System) -> (usize, usize, f32, u32, usize) {
 }
 
 pub fn boot(
-    kind: System,
+    kind: Console,
     rom_path: &str,
     rom: Vec<u8>,
     bios: Vec<u8>,
     unix_seconds: u64,
     show_logs: bool,
-) -> Result<Box<dyn Emulator>, BootError> {
+) -> Result<Box<dyn System>, BootError> {
     match kind {
-        System::Gba => Ok(Box::new(GameBoyAdvance::new(
+        Console::Gba => Ok(Box::new(GameBoyAdvance::new(
             PathBuf::from(rom_path),
             rom,
             bios,
@@ -54,7 +54,7 @@ pub fn boot(
             show_logs,
             Interpreter::new(),
         )?)),
-        System::Gb | System::Gbc => Ok(Box::new(GameBoyColor::new(
+        Console::Gb | Console::Gbc => Ok(Box::new(GameBoyColor::new(
             kind,
             PathBuf::from(rom_path),
             rom,

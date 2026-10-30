@@ -1,7 +1,7 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use ironboyadvance_common::{
-    emulator::{Emulator, System, SystemInspection},
+    system::{Console, System, SystemInspection},
     memory::SystemMemoryAccess,
     scheduler::Scheduler,
 };
@@ -51,7 +51,7 @@ pub struct GameBoyColor {
 
 impl GameBoyColor {
     pub fn new(
-        kind: System,
+        kind: Console,
         rom_path: PathBuf,
         rom_buffer: Vec<u8>,
         boot_rom_buffer: Vec<u8>,
@@ -62,7 +62,7 @@ impl GameBoyColor {
         let boot_rom = BootRom::load(boot_rom_buffer)?;
         let skip_boot = !boot_rom.loaded();
         let mode = match kind {
-            System::Gb => GbMode::ColorAsMonochrome,
+            Console::Gb => GbMode::ColorAsMonochrome,
             _ => cartridge.mode(),
         };
 
@@ -98,7 +98,7 @@ impl GameBoyColor {
     }
 }
 
-impl Emulator for GameBoyColor {
+impl System for GameBoyColor {
     fn run(&mut self, cycles: usize, overshoot: usize) -> usize {
         let start_time = self.scheduler.borrow().timestamp();
         let target = cycles.saturating_sub(overshoot);
