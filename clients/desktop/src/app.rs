@@ -18,8 +18,7 @@ use crate::{
     BASE_TITLE,
     config::Config,
     controller::Controller,
-    emulator::{self, EmulatorCommand, EmulatorHandle},
-    frame::FrameTimer,
+    emulator::{self, EmulatorCommand, EmulatorHandle, FpsCounter},
     input::{HotKey, KeypadTracker, keycode_to_button, keycode_to_hotkey},
     screenshot::save_screenshot,
     video::{GpuContext, draw_splash},
@@ -233,7 +232,7 @@ impl Application {
                     && let Some(running) = window_state.content.running_mut()
                 {
                     running.last_frame = None;
-                    running.fps_timer = FrameTimer::new(running.emulator.fps);
+                    running.fps_counter = FpsCounter::new();
                 }
             }
         }

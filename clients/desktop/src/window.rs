@@ -4,8 +4,7 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     BASE_TITLE,
-    emulator::EmulatorHandle,
-    frame::FrameTimer,
+    emulator::{EmulatorHandle, FpsCounter},
     video::{FrameRenderer, GpuContext, Gui, WindowSurface},
 };
 
@@ -13,7 +12,7 @@ pub(crate) struct RunningContent {
     pub emulator: EmulatorHandle,
     pub renderer: FrameRenderer,
     pub last_frame: Option<Vec<u32>>,
-    pub fps_timer: FrameTimer,
+    pub fps_counter: FpsCounter,
     pub paused: bool,
     pub max_speed: bool,
 }
@@ -28,12 +27,12 @@ impl RunningContent {
             emulator.viewport_width,
             emulator.viewport_height,
         );
-        let fps_timer = FrameTimer::new(emulator.fps);
+        let fps_counter = FpsCounter::new();
         Self {
             emulator,
             renderer,
             last_frame: None,
-            fps_timer,
+            fps_counter,
             paused: false,
             max_speed: false,
         }
@@ -100,9 +99,9 @@ impl WindowState {
         if let Some(running) = self.content.running_mut() {
             while let Ok(frame) = running.emulator.frames.try_recv() {
                 running.last_frame = Some(frame);
-                running.fps_timer.count_frame();
+                running.fps_counter.count_frame();
             }
-            self.gui.fps_overlay_mut().set_fps(running.fps_timer.fps());
+            self.gui.fps_overlay_mut().set_fps(running.fps_counter.fps());
             self.gui.paused_overlay_mut().set_show(running.paused);
         }
     }

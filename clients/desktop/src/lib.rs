@@ -7,7 +7,6 @@ mod audio;
 mod config;
 mod controller;
 mod emulator;
-mod frame;
 mod input;
 mod logger;
 mod menu;
