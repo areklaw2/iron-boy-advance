@@ -6,7 +6,7 @@ use winit::{event::WindowEvent, window::Window};
 use crate::video::overlay::{FpsOverlay, OverlayKind, PausedOverlay};
 
 #[derive(MutGetters)]
-pub struct Gui {
+pub(crate) struct Gui {
     context: egui::Context,
     state: egui_winit::State,
     renderer: egui_wgpu::Renderer,
@@ -16,13 +16,13 @@ pub struct Gui {
     paused_overlay: PausedOverlay,
 }
 
-pub struct PreparedFrame {
+pub(crate) struct PreparedFrame {
     pub paint_jobs: Vec<ClippedPrimitive>,
     pub textures_delta: TexturesDelta,
 }
 
 impl Gui {
-    pub fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat, window: &Window) -> Self {
+    pub(crate) fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat, window: &Window) -> Self {
         let context = egui::Context::default();
         install_gbboot_font(&context);
         let state = egui_winit::State::new(
@@ -52,13 +52,13 @@ impl Gui {
         }
     }
 
-    pub fn on_window_event(&mut self, window: &Window, event: &WindowEvent) -> bool {
+    pub(crate) fn on_window_event(&mut self, window: &Window, event: &WindowEvent) -> bool {
         self.state.on_window_event(window, event).consumed
     }
 
     /// Step 1: build the egui frame and upload textures + vertex/index buffers.
     /// Must be called BEFORE `begin_render_pass` on the encoder.
-    pub fn prepare(
+    pub(crate) fn prepare(
         &mut self,
         window: &Window,
         device: &wgpu::Device,
@@ -98,12 +98,12 @@ impl Gui {
     }
 
     /// Step 2: paint egui into a render pass (detached from the encoder).
-    pub fn paint(&self, rpass: &mut wgpu::RenderPass<'static>, prepared: &PreparedFrame, screen: &ScreenDescriptor) {
+    pub(crate) fn paint(&self, rpass: &mut wgpu::RenderPass<'static>, prepared: &PreparedFrame, screen: &ScreenDescriptor) {
         self.renderer.render(rpass, &prepared.paint_jobs, screen);
     }
 
     /// Step 3: free textures egui is done with. Call after the pass has ended.
-    pub fn cleanup(&mut self, mut prepared: PreparedFrame) {
+    pub(crate) fn cleanup(&mut self, mut prepared: PreparedFrame) {
         for id in prepared.textures_delta.free.drain() {
             self.renderer.free_texture(&id);
         }

@@ -1,7 +1,7 @@
 use getset::CopyGetters;
 
 #[derive(CopyGetters)]
-pub struct FrameTimer {
+pub(crate) struct FrameTimer {
     frame_duration: std::time::Duration,
     frame_count: u16,
     frame_clock: std::time::Instant,
@@ -11,7 +11,7 @@ pub struct FrameTimer {
 }
 
 impl FrameTimer {
-    pub fn new(target_fps: f32) -> Self {
+    pub(crate) fn new(target_fps: f32) -> Self {
         let frame_duration_nanos = 1_000_000_000.0 / target_fps;
         Self {
             frame_duration: std::time::Duration::from_nanos(frame_duration_nanos as u64),
@@ -22,7 +22,7 @@ impl FrameTimer {
         }
     }
 
-    pub fn slow_frame(&mut self) {
+    pub(crate) fn slow_frame(&mut self) {
         let target = self.frame_clock + self.frame_duration;
         if let Some(remaining) = target.checked_duration_since(std::time::Instant::now()) {
             std::thread::sleep(remaining);
@@ -30,7 +30,7 @@ impl FrameTimer {
         self.frame_clock = target;
     }
 
-    pub fn count_frame(&mut self) {
+    pub(crate) fn count_frame(&mut self) {
         self.frame_count += 1;
         let time_elapsed = self.fps_clock.elapsed();
         if time_elapsed.as_secs() >= 1 {

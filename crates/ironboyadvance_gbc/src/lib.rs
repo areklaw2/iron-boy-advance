@@ -1,9 +1,9 @@
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use ironboyadvance_common::{
-    system::{Console, System, SystemInspection},
     memory::SystemMemoryAccess,
     scheduler::Scheduler,
+    system::{Console, System, SystemInspection},
 };
 use ironboyadvance_sm83::{CPU_CLOCK_SPEED, GbMode, HaltMode, cpu::Sm83, memory::MemoryInterface};
 use thiserror::Error;

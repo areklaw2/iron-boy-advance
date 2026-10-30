@@ -27,11 +27,11 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum UserEvent {
+pub(crate) enum UserEvent {
     MenuEvent(muda::MenuEvent),
 }
 
-pub struct Application {
+pub(crate) struct Application {
     show_logs: bool,
     config: Config,
     keypad_tracker: KeypadTracker,
@@ -45,7 +45,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new(_title: String, initial_emulator: Option<EmulatorHandle>, config: Config, show_logs: bool) -> Self {
+    pub(crate) fn new(_title: String, initial_emulator: Option<EmulatorHandle>, config: Config, show_logs: bool) -> Self {
         Self {
             show_logs,
             config,
@@ -372,7 +372,7 @@ impl ApplicationHandler<UserEvent> for Application {
         }
     }
 
-    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UserEvent) {
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
         println!("{:?}", event);
     }
 

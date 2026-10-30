@@ -2,7 +2,7 @@ use crate::{DesktopError, video::fit_scale, window::RunningContent};
 
 const SCREENSHOT_DIRECTORY: &str = "screenshots";
 
-pub fn save_screenshot(running: &RunningContent, window_width: u32, window_height: u32) -> Result<(), DesktopError> {
+pub(crate) fn save_screenshot(running: &RunningContent, window_width: u32, window_height: u32) -> Result<(), DesktopError> {
     //TODO: when a screenshot is taken we need to give some type of overlay or visual notification that it happened
 
     let Some(frame_buffer) = &running.last_frame else {

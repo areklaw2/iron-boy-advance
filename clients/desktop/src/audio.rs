@@ -4,15 +4,15 @@ use ringbuf::{
     traits::{Consumer, Split},
 };
 
-pub type AudioProducer = HeapProd<f32>;
+pub(crate) type AudioProducer = HeapProd<f32>;
 
-pub struct AudioOutput {
+pub(crate) struct AudioOutput {
     pub stream: cpal::Stream,
     pub producer: AudioProducer,
     pub output_sample_rate: u32,
 }
 
-pub fn start() -> Option<AudioOutput> {
+pub(crate) fn start() -> Option<AudioOutput> {
     let host = cpal::default_host();
     let device = host.default_output_device()?;
 
@@ -52,14 +52,14 @@ pub fn start() -> Option<AudioOutput> {
     })
 }
 
-pub struct Resampler {
+pub(crate) struct Resampler {
     step: f64,
     next_output_position: f64,
     previous_sample: (f32, f32),
 }
 
 impl Resampler {
-    pub fn new(input_rate: u32, output_rate: u32) -> Self {
+    pub(crate) fn new(input_rate: u32, output_rate: u32) -> Self {
         Resampler {
             step: input_rate as f64 / output_rate as f64,
             next_output_position: 0.0,
@@ -67,7 +67,7 @@ impl Resampler {
         }
     }
 
-    pub fn push_sample(&mut self, sample: (f32, f32), mut emit: impl FnMut(f32, f32)) {
+    pub(crate) fn push_sample(&mut self, sample: (f32, f32), mut emit: impl FnMut(f32, f32)) {
         let (previous_left, previous_right) = self.previous_sample;
         let (current_left, current_right) = sample;
 

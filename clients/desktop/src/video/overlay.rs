@@ -2,7 +2,7 @@ use egui::{Align2, Area, Color32, FontFamily, Id, Label, RichText, TextWrapMode,
 use getset::{CopyGetters, MutGetters, Setters};
 
 #[derive(Setters, MutGetters, CopyGetters)]
-pub struct FpsOverlay {
+pub(crate) struct FpsOverlay {
     #[getset(get_copy = "pub", set = "pub")]
     fps: f64,
     #[getset(get_copy = "pub", get_mut = "pub")]
@@ -10,30 +10,30 @@ pub struct FpsOverlay {
 }
 
 impl FpsOverlay {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { fps: 0.0, show: false }
     }
 }
 
 #[derive(Setters, MutGetters, CopyGetters)]
-pub struct PausedOverlay {
+pub(crate) struct PausedOverlay {
     #[getset(get_copy = "pub", set = "pub")]
     show: bool,
 }
 
 impl PausedOverlay {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { show: false }
     }
 }
 
-pub enum OverlayKind {
+pub(super) enum OverlayKind {
     Fps(f64),
     Paused,
 }
 
 impl OverlayKind {
-    pub fn draw(&self, ctx: &egui::Context) {
+    pub(super) fn draw(&self, ctx: &egui::Context) {
         let (anchor, offset) = self.anchor();
         Area::new(Id::unique(self.id()))
             .anchor(anchor, offset)

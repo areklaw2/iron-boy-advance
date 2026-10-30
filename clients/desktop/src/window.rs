@@ -9,7 +9,7 @@ use crate::{
     video::{FrameRenderer, GpuContext, Gui, WindowSurface},
 };
 
-pub struct RunningContent {
+pub(crate) struct RunningContent {
     pub emulator: EmulatorHandle,
     pub renderer: FrameRenderer,
     pub last_frame: Option<Vec<u32>>,
@@ -19,7 +19,7 @@ pub struct RunningContent {
 }
 
 impl RunningContent {
-    pub fn new(gpu: &GpuContext, surface: &WindowSurface, emulator: EmulatorHandle) -> Self {
+    pub(crate) fn new(gpu: &GpuContext, surface: &WindowSurface, emulator: EmulatorHandle) -> Self {
         let renderer = FrameRenderer::new(
             gpu,
             surface.surface_format(),
@@ -40,20 +40,20 @@ impl RunningContent {
     }
 }
 
-pub enum ScreenContent {
+pub(crate) enum ScreenContent {
     Splash,
     Running(Box<RunningContent>),
 }
 
 impl ScreenContent {
-    pub fn running(&self) -> Option<&RunningContent> {
+    pub(crate) fn running(&self) -> Option<&RunningContent> {
         match self {
             ScreenContent::Running(running) => Some(running),
             ScreenContent::Splash => None,
         }
     }
 
-    pub fn running_mut(&mut self) -> Option<&mut RunningContent> {
+    pub(crate) fn running_mut(&mut self) -> Option<&mut RunningContent> {
         match self {
             ScreenContent::Running(running) => Some(running),
             ScreenContent::Splash => None,
@@ -69,7 +69,7 @@ pub(crate) struct WindowState {
 }
 
 impl WindowState {
-    pub fn new(gpu: &GpuContext, window: Arc<Window>, emulator: Option<EmulatorHandle>) -> Self {
+    pub(crate) fn new(gpu: &GpuContext, window: Arc<Window>, emulator: Option<EmulatorHandle>) -> Self {
         let surface = WindowSurface::new(gpu, window.clone());
         let gui = Gui::new(gpu.device(), surface.surface_format(), &window);
         let content = match emulator {
@@ -84,19 +84,19 @@ impl WindowState {
         }
     }
 
-    pub fn start_running(&mut self, gpu: &GpuContext, emulator: EmulatorHandle, rom_name: &str) {
+    pub(crate) fn start_running(&mut self, gpu: &GpuContext, emulator: EmulatorHandle, rom_name: &str) {
         self.content = ScreenContent::Running(Box::new(RunningContent::new(gpu, &self.surface, emulator)));
         self.window.set_title(&format!("{BASE_TITLE} - {rom_name}"));
     }
 
-    pub fn resize(&mut self, gpu: &GpuContext, size: PhysicalSize<u32>) {
+    pub(crate) fn resize(&mut self, gpu: &GpuContext, size: PhysicalSize<u32>) {
         self.surface.resize(gpu, size);
         if let Some(running) = self.content.running_mut() {
             running.renderer.resize(gpu, size.width, size.height);
         }
     }
 
-    pub fn drain_frames(&mut self) {
+    pub(crate) fn drain_frames(&mut self) {
         if let Some(running) = self.content.running_mut() {
             while let Ok(frame) = running.emulator.frames.try_recv() {
                 running.last_frame = Some(frame);

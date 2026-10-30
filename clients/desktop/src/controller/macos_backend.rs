@@ -3,10 +3,10 @@ use objc2_game_controller::{GCController, GCExtendedGamepad};
 
 use super::ControllerBackend;
 
-pub struct MacosControllerBackend;
+pub(super) struct MacosControllerBackend;
 
 impl MacosControllerBackend {
-    pub fn new() -> Option<Self> {
+    pub(super) fn new() -> Option<Self> {
         unsafe { GCController::setShouldMonitorBackgroundEvents(true) };
         Some(Self)
     }

@@ -1,8 +1,8 @@
 use getset::Getters;
 
 #[derive(Getters)]
-#[getset(get = "pub")]
-pub struct GpuContext {
+#[getset(get = "pub(crate)")]
+pub(crate) struct GpuContext {
     instance: wgpu::Instance,
     adapter: wgpu::Adapter,
     device: wgpu::Device,
@@ -10,7 +10,7 @@ pub struct GpuContext {
 }
 
 impl GpuContext {
-    pub async fn new() -> Self {
+    pub(crate) async fn new() -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             flags: wgpu::InstanceFlags::default(),

@@ -18,13 +18,13 @@ fn current_unix_seconds() -> u64 {
     Local::now().naive_local().and_utc().timestamp().max(0) as u64
 }
 
-pub enum EmulatorCommand {
+pub(crate) enum EmulatorCommand {
     Reset,
     SetPaused(bool),
     SetMaxSpeed(bool),
 }
 
-pub struct EmulatorHandle {
+pub(crate) struct EmulatorHandle {
     pub keypad: Arc<AtomicU16>,
     pub frames: Receiver<Vec<u32>>,
     pub commands: Sender<EmulatorCommand>,
@@ -35,7 +35,7 @@ pub struct EmulatorHandle {
 }
 
 impl EmulatorHandle {
-    pub fn send(&self, command: EmulatorCommand) {
+    pub(crate) fn send(&self, command: EmulatorCommand) {
         if let Err(e) = self.commands.send(command) {
             tracing::error!("emulator command dropped (thread gone?): {e}");
         }
@@ -53,7 +53,7 @@ fn read_bios(path: Option<&str>) -> io::Result<Vec<u8>> {
     }
 }
 
-pub fn spawn(
+pub(crate) fn spawn(
     rom_path: String,
     rom_buffer: Vec<u8>,
     config: Config,

@@ -1,6 +1,6 @@
 use egui::{Color32, FontFamily, RichText};
 
-pub fn draw_splash(ui: &mut egui::Ui) {
+pub(crate) fn draw_splash(ui: &mut egui::Ui) {
     egui::CentralPanel::default().show(ui, |ui| {
         ui.vertical_centered(|ui| {
             ui.add_space(ui.available_height() / 2.0 - 40.0);

@@ -10,7 +10,7 @@ struct Uniforms {
     offset: [f32; 2],
 }
 
-pub struct FrameRenderer {
+pub(crate) struct FrameRenderer {
     viewport_width: usize,
     viewport_height: usize,
     window_width: u32,
@@ -25,7 +25,7 @@ pub struct FrameRenderer {
 }
 
 impl FrameRenderer {
-    pub fn new(
+    pub(crate) fn new(
         gpu: &GpuContext,
         surface_format: wgpu::TextureFormat,
         window_width: u32,
@@ -177,7 +177,7 @@ impl FrameRenderer {
         }
     }
 
-    pub fn resize(&mut self, gpu: &GpuContext, window_width: u32, window_height: u32) {
+    pub(crate) fn resize(&mut self, gpu: &GpuContext, window_width: u32, window_height: u32) {
         if window_width == 0 || window_height == 0 {
             return;
         }
@@ -188,7 +188,7 @@ impl FrameRenderer {
             .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
 
-    pub fn upload_frame(&self, gpu: &GpuContext, frame: &[u32]) {
+    pub(crate) fn upload_frame(&self, gpu: &GpuContext, frame: &[u32]) {
         debug_assert_eq!(frame.len(), self.viewport_width * self.viewport_height);
         gpu.queue().write_texture(
             wgpu::TexelCopyTextureInfo {
@@ -211,14 +211,14 @@ impl FrameRenderer {
         );
     }
 
-    pub fn draw_frame(&self, rpass: &mut wgpu::RenderPass<'static>) {
+    pub(crate) fn draw_frame(&self, rpass: &mut wgpu::RenderPass<'static>) {
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(0, &self.bind_group, &[]);
         rpass.draw(0..4, 0..1);
     }
 }
 
-pub fn fit_scale(window_width: u32, window_height: u32, viewport_width: usize, viewport_height: usize) -> f32 {
+pub(crate) fn fit_scale(window_width: u32, window_height: u32, viewport_width: usize, viewport_height: usize) -> f32 {
     let window_width = window_width.max(1) as f32;
     let window_height = window_height.max(1) as f32;
     (window_width / viewport_width as f32).min(window_height / viewport_height as f32)

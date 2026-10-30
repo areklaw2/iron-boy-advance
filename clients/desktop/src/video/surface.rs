@@ -6,17 +6,17 @@ use winit::{dpi::PhysicalSize, window::Window};
 use crate::video::gpu::GpuContext;
 
 #[derive(Getters, CopyGetters)]
-pub struct WindowSurface {
+pub(crate) struct WindowSurface {
     _window: Arc<Window>,
     surface: wgpu::Surface<'static>,
-    #[getset(get = "pub")]
+    #[getset(get = "pub(crate)")]
     config: wgpu::SurfaceConfiguration,
-    #[getset(get_copy = "pub")]
+    #[getset(get_copy = "pub(crate)")]
     surface_format: wgpu::TextureFormat,
 }
 
 impl WindowSurface {
-    pub fn new(gpu: &GpuContext, window: Arc<Window>) -> Self {
+    pub(crate) fn new(gpu: &GpuContext, window: Arc<Window>) -> Self {
         let size = window.inner_size();
 
         let surface = gpu
@@ -54,7 +54,7 @@ impl WindowSurface {
         }
     }
 
-    pub fn resize(&mut self, gpu: &GpuContext, size: PhysicalSize<u32>) {
+    pub(crate) fn resize(&mut self, gpu: &GpuContext, size: PhysicalSize<u32>) {
         if size.width == 0 || size.height == 0 {
             return;
         }
@@ -65,7 +65,7 @@ impl WindowSurface {
         self.surface.configure(gpu.device(), &self.config);
     }
 
-    pub fn acquire(&self) -> wgpu::CurrentSurfaceTexture {
+    pub(crate) fn acquire(&self) -> wgpu::CurrentSurfaceTexture {
         self.surface.get_current_texture()
     }
 }

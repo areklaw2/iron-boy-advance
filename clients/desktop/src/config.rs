@@ -8,7 +8,7 @@ use thiserror::Error;
 const CONFIG_FILE_NAME: &str = "ironboyadvance.toml";
 
 #[derive(Error, Debug)]
-pub enum ConfigError {
+pub(crate) enum ConfigError {
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
     #[error("could not resolve platform config directory: {0}")]
@@ -20,14 +20,14 @@ pub enum ConfigError {
 }
 
 #[derive(Default, Clone, Serialize, Deserialize)]
-pub struct Config {
+pub(crate) struct Config {
     pub bios_path: Option<String>,
     pub gb_boot_rom: Option<String>,
     pub gbc_boot_rom: Option<String>,
 }
 
 impl Config {
-    pub fn load() -> Result<Self, ConfigError> {
+    pub(crate) fn load() -> Result<Self, ConfigError> {
         let path = config_path()?;
         let contents = match fs::read_to_string(&path) {
             Ok(contents) => contents,
@@ -37,7 +37,7 @@ impl Config {
         Ok(toml::from_str(&contents)?)
     }
 
-    pub fn save(&self) -> Result<(), ConfigError> {
+    pub(crate) fn save(&self) -> Result<(), ConfigError> {
         let path = config_path()?;
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
@@ -46,7 +46,7 @@ impl Config {
         Ok(())
     }
 
-    pub fn set_bios(&mut self, kind: Console, path: &str) {
+    pub(crate) fn set_bios(&mut self, kind: Console, path: &str) {
         let slot = match kind {
             Console::Gba => &mut self.bios_path,
             Console::Gb => &mut self.gb_boot_rom,
@@ -55,7 +55,7 @@ impl Config {
         *slot = Some(path.to_string());
     }
 
-    pub fn bios(&self, kind: Console) -> Option<&str> {
+    pub(crate) fn bios(&self, kind: Console) -> Option<&str> {
         match kind {
             Console::Gba => self.bios_path.as_deref(),
             Console::Gb => self.gb_boot_rom.as_deref(),
