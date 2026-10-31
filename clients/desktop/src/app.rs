@@ -1,10 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use egui_wgpu::ScreenDescriptor;
-use muda::{
-    Menu, MenuItem, PredefinedMenuItem, Submenu,
-    accelerator::{Accelerator, Code, Modifiers},
-};
+use muda::Menu;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
@@ -17,9 +14,8 @@ use winit::{
 use crate::{
     BASE_TITLE,
     config::Config,
-    controller::Controller,
     emulator::{self, EmulatorCommand, EmulatorHandle, FpsCounter},
-    input::{HotKey, KeypadTracker, keycode_to_button, keycode_to_hotkey},
+    input::{Controller, HotKey, KeypadTracker, build_menu, keycode_to_button, keycode_to_hotkey},
     screenshot::save_screenshot,
     video::{GpuContext, draw_splash},
     window::{ScreenContent, WindowState},
@@ -268,41 +264,7 @@ impl ApplicationHandler<UserEvent> for Application {
             .insert(window_id, WindowState::new(gpu, window, self.initial_emulator.take()));
         self.main_window = Some(window_id);
         self.controller = Controller::new();
-
-        let menu = Menu::new();
-        let menu_item2 = MenuItem::new("Menu item #2", false, None);
-        let submenu = Submenu::with_items(
-            "Submenu Outer",
-            true,
-            &[
-                &MenuItem::new("Menu item #1", true, Some(Accelerator::new(Modifiers::ALT, Code::KeyD))),
-                &PredefinedMenuItem::separator(),
-                &menu_item2,
-                &MenuItem::new("Menu item #3", true, None),
-                &PredefinedMenuItem::separator(),
-                &Submenu::with_items(
-                    "Submenu Inner",
-                    true,
-                    &[
-                        &MenuItem::new("Submenu item #1", true, None),
-                        &PredefinedMenuItem::separator(),
-                        &menu_item2,
-                    ],
-                )
-                .unwrap(),
-            ],
-        )
-        .unwrap();
-        menu.append(&submenu);
-
-        #[cfg(target_os = "windows")]
-        tracing::warn!("TODO: support windows menu");
-        #[cfg(target_os = "linux")]
-        tracing::warn!("TODO: support linux menu");
-        #[cfg(target_os = "macos")]
-        menu.init_for_nsapp();
-
-        self.menu = Some(menu);
+        self.menu = Some(build_menu());
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
@@ -372,7 +334,8 @@ impl ApplicationHandler<UserEvent> for Application {
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
-        println!("{:?}", event);
+        let UserEvent::MenuEvent(menu_event) = event;
+        tracing::debug!("menu event {:?}", menu_event.id());
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {

@@ -5,7 +5,6 @@ use winit::event_loop::EventLoop;
 mod app;
 mod audio;
 mod config;
-mod controller;
 mod emulator;
 mod input;
 mod logger;
