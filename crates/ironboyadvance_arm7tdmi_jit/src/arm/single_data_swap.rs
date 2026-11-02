@@ -90,6 +90,10 @@ impl Compile for SingleDataSwap {
 
         match rd as usize == PC {
             true => {
+                dynasm! { assembler
+                    ; .arch aarch64
+                    ; mov x0, x19
+                }
                 emit_call(assembler, guest::pipeline_flush::<I> as *const ());
                 dynasm! { assembler
                     ; .arch aarch64
