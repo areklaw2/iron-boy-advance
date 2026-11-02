@@ -10,8 +10,8 @@ use std::{
 };
 
 use chrono::Local;
-use getset::CopyGetters;
-use ironboyadvance::{BootError, boot, detect_console, system_info};
+use getset::{CopyGetters, Getters};
+use ironboyadvance::{BootError, SystemInfo, Viewport, boot, detect_console, system_info};
 use ringbuf::traits::Producer;
 
 use crate::{DesktopError, audio, config::Config, input::KEYPAD_IDLE};
@@ -43,7 +43,6 @@ impl FrameLimiter {
 pub(crate) struct FpsCounter {
     frame_count: u16,
     clock: Instant,
-    #[getset(get_copy = "pub(crate)")]
     fps: f64,
 }
 
@@ -77,17 +76,176 @@ pub(crate) enum EmulatorCommand {
     SetMaxSpeed(bool),
 }
 
-pub(crate) struct EmulatorHandle {
-    pub keypad: Arc<AtomicU16>,
-    pub frames: Receiver<Vec<u32>>,
-    pub commands: Sender<EmulatorCommand>,
-    pub viewport_width: usize,
-    pub viewport_height: usize,
+#[derive(Getters, CopyGetters)]
+pub(crate) struct Emulator {
+    #[getset(get = "pub(crate)")]
+    keypad: Arc<AtomicU16>,
+    frames: Receiver<Vec<u32>>,
+    commands: Sender<EmulatorCommand>,
+    #[getset(get_copy = "pub(crate)")]
+    viewport: Viewport,
+    last_frame: Option<Vec<u32>>,
+    fps_counter: FpsCounter,
+    #[getset(get_copy = "pub(crate)")]
+    paused: bool,
+    max_speed: bool,
     _audio_stream: Option<cpal::Stream>,
 }
 
-impl EmulatorHandle {
-    pub(crate) fn send(&self, command: EmulatorCommand) {
+impl Emulator {
+    pub(crate) fn spawn(
+        rom_path: String,
+        rom_buffer: Vec<u8>,
+        config: Config,
+        show_logs: bool,
+    ) -> Result<Emulator, DesktopError> {
+        let kind = detect_console(&rom_buffer).ok_or(BootError::UnknownFormat)?;
+        let bios_buffer = read_bios(config.bios(kind))?;
+
+        let SystemInfo {
+            viewport,
+            fps,
+            sample_rate,
+            cycles_per_frame,
+        } = system_info(kind);
+
+        let keypad = Arc::new(AtomicU16::new(KEYPAD_IDLE));
+        let (frame_tx, frame_rx) = mpsc::channel::<Vec<u32>>();
+        let (command_tx, command_rx) = mpsc::channel::<EmulatorCommand>();
+
+        let (audio_stream, mut audio_producer, mut resampler) = match audio::start() {
+            Some(output) => {
+                let resampler = audio::Resampler::new(sample_rate, output.output_sample_rate);
+                (Some(output.stream), Some(output.producer), Some(resampler))
+            }
+            None => (None, None, None),
+        };
+
+        let emu_keypad = keypad.clone();
+        thread::spawn(move || {
+            let mut system = boot(kind, &rom_path, rom_buffer, bios_buffer, current_unix_seconds(), show_logs)
+                .unwrap_or_else(|e| panic!("failed to initialize emulator: {e}"));
+            let mut overshoot = 0;
+            let mut frame_limiter = FrameLimiter::new(fps);
+            let mut paused = false;
+            let mut turbo = false;
+
+            'frame: loop {
+                'commands: loop {
+                    match command_rx.try_recv() {
+                        Ok(EmulatorCommand::SetPaused(value)) => {
+                            paused = value;
+                            tracing::info!("emulator {}", if paused { "paused" } else { "resumed" });
+                        }
+                        Ok(EmulatorCommand::SetMaxSpeed(value)) => {
+                            turbo = value;
+                            frame_limiter = FrameLimiter::new(fps);
+                            tracing::info!("max_speed {}", if turbo { "on" } else { "off" });
+                        }
+                        Ok(EmulatorCommand::Reset) => {
+                            let rom = match read_rom(&rom_path) {
+                                Ok(bytes) => bytes,
+                                Err(e) => {
+                                    tracing::error!("reset failed reading rom {rom_path}: {e}");
+                                    continue 'commands;
+                                }
+                            };
+                            let Some(reset_kind) = detect_console(&rom) else {
+                                tracing::error!("reset failed: unrecognized rom format");
+                                continue 'commands;
+                            };
+                            let bios = match read_bios(config.bios(reset_kind)) {
+                                Ok(bytes) => bytes,
+                                Err(e) => {
+                                    tracing::error!("reset failed reading boot rom: {e}");
+                                    continue 'commands;
+                                }
+                            };
+                            match boot(reset_kind, &rom_path, rom, bios, current_unix_seconds(), show_logs) {
+                                Ok(new_system) => {
+                                    system = new_system;
+                                    overshoot = 0;
+                                    frame_limiter = FrameLimiter::new(fps);
+                                    tracing::info!("emulator reset");
+                                }
+                                Err(e) => tracing::error!("reset failed building emulator: {e}"),
+                            }
+                        }
+                        Err(TryRecvError::Empty) => break 'commands,
+                        Err(TryRecvError::Disconnected) => return,
+                    }
+                }
+
+                if !paused {
+                    system.handle_pressed_buttons(emu_keypad.load(Ordering::Relaxed));
+                    overshoot = system.run(cycles_per_frame, overshoot);
+
+                    if let (Some(producer), Some(resampler)) = (audio_producer.as_mut(), resampler.as_mut()) {
+                        for &sample in system.audio_buffer() {
+                            resampler.push_sample(sample, |left, right| {
+                                let _ = producer.try_push(left);
+                                let _ = producer.try_push(right);
+                            });
+                        }
+                    }
+                    system.clear_audio_buffer();
+
+                    if frame_tx.send(system.frame_buffer().to_vec()).is_err() {
+                        break 'frame;
+                    }
+                }
+
+                if !turbo || paused {
+                    frame_limiter.wait();
+                }
+            }
+        });
+
+        Ok(Emulator {
+            keypad,
+            frames: frame_rx,
+            commands: command_tx,
+            viewport,
+            _audio_stream: audio_stream,
+            last_frame: None,
+            fps_counter: FpsCounter::new(),
+            paused: false,
+            max_speed: false,
+        })
+    }
+
+    pub(crate) fn toggle_pause(&mut self) {
+        self.paused ^= true;
+        self.send(EmulatorCommand::SetPaused(self.paused));
+    }
+
+    pub(crate) fn toggle_max_speed(&mut self) {
+        self.max_speed ^= true;
+        self.send(EmulatorCommand::SetMaxSpeed(self.max_speed));
+    }
+
+    pub(crate) fn reset(&mut self) {
+        self.send(EmulatorCommand::Reset);
+        self.last_frame = None;
+        self.fps_counter = FpsCounter::new();
+    }
+
+    pub(crate) fn drain_frames(&mut self) {
+        while let Ok(frame) = self.frames.try_recv() {
+            self.last_frame = Some(frame);
+            self.fps_counter.count_frame();
+        }
+    }
+
+    pub(crate) fn last_frame(&self) -> Option<&[u32]> {
+        self.last_frame.as_deref()
+    }
+
+    pub(crate) fn fps(&self) -> f64 {
+        self.fps_counter.fps
+    }
+
+    fn send(&self, command: EmulatorCommand) {
         if let Err(e) = self.commands.send(command) {
             tracing::error!("emulator command dropped (thread gone?): {e}");
         }
@@ -103,117 +261,4 @@ fn read_bios(path: Option<&str>) -> io::Result<Vec<u8>> {
         Some(p) => fs::read(p),
         None => Ok(Vec::new()),
     }
-}
-
-pub(crate) fn spawn(
-    rom_path: String,
-    rom_buffer: Vec<u8>,
-    config: Config,
-    show_logs: bool,
-) -> Result<EmulatorHandle, DesktopError> {
-    let kind = detect_console(&rom_buffer).ok_or(BootError::UnknownFormat)?;
-    let bios_buffer = read_bios(config.bios(kind))?;
-
-    let (viewport_width, viewport_height, fps, sample_rate, cycles_per_frame) = system_info(kind);
-
-    let keypad = Arc::new(AtomicU16::new(KEYPAD_IDLE));
-    let (frame_tx, frame_rx) = mpsc::channel::<Vec<u32>>();
-    let (command_tx, command_rx) = mpsc::channel::<EmulatorCommand>();
-
-    let (audio_stream, mut audio_producer, mut resampler) = match audio::start() {
-        Some(output) => {
-            let resampler = audio::Resampler::new(sample_rate, output.output_sample_rate);
-            (Some(output.stream), Some(output.producer), Some(resampler))
-        }
-        None => (None, None, None),
-    };
-
-    let emu_keypad = keypad.clone();
-    thread::spawn(move || {
-        let mut system = boot(kind, &rom_path, rom_buffer, bios_buffer, current_unix_seconds(), show_logs)
-            .unwrap_or_else(|e| panic!("failed to initialize emulator: {e}"));
-        let mut overshoot = 0;
-        let mut frame_limiter = FrameLimiter::new(fps);
-        let mut paused = false;
-        let mut turbo = false;
-
-        'frame: loop {
-            'commands: loop {
-                match command_rx.try_recv() {
-                    Ok(EmulatorCommand::SetPaused(value)) => {
-                        paused = value;
-                        tracing::info!("emulator {}", if paused { "paused" } else { "resumed" });
-                    }
-                    Ok(EmulatorCommand::SetMaxSpeed(value)) => {
-                        turbo = value;
-                        frame_limiter = FrameLimiter::new(fps);
-                        tracing::info!("max_speed {}", if turbo { "on" } else { "off" });
-                    }
-                    Ok(EmulatorCommand::Reset) => {
-                        let rom = match read_rom(&rom_path) {
-                            Ok(bytes) => bytes,
-                            Err(e) => {
-                                tracing::error!("reset failed reading rom {rom_path}: {e}");
-                                continue 'commands;
-                            }
-                        };
-                        let Some(reset_kind) = detect_console(&rom) else {
-                            tracing::error!("reset failed: unrecognized rom format");
-                            continue 'commands;
-                        };
-                        let bios = match read_bios(config.bios(reset_kind)) {
-                            Ok(bytes) => bytes,
-                            Err(e) => {
-                                tracing::error!("reset failed reading boot rom: {e}");
-                                continue 'commands;
-                            }
-                        };
-                        match boot(reset_kind, &rom_path, rom, bios, current_unix_seconds(), show_logs) {
-                            Ok(new_system) => {
-                                system = new_system;
-                                overshoot = 0;
-                                frame_limiter = FrameLimiter::new(fps);
-                                tracing::info!("emulator reset");
-                            }
-                            Err(e) => tracing::error!("reset failed building emulator: {e}"),
-                        }
-                    }
-                    Err(TryRecvError::Empty) => break 'commands,
-                    Err(TryRecvError::Disconnected) => return,
-                }
-            }
-
-            if !paused {
-                system.handle_pressed_buttons(emu_keypad.load(Ordering::Relaxed));
-                overshoot = system.run(cycles_per_frame, overshoot);
-
-                if let (Some(producer), Some(resampler)) = (audio_producer.as_mut(), resampler.as_mut()) {
-                    for &sample in system.audio_buffer() {
-                        resampler.push_sample(sample, |left, right| {
-                            let _ = producer.try_push(left);
-                            let _ = producer.try_push(right);
-                        });
-                    }
-                }
-                system.clear_audio_buffer();
-
-                if frame_tx.send(system.frame_buffer().to_vec()).is_err() {
-                    break 'frame;
-                }
-            }
-
-            if !turbo || paused {
-                frame_limiter.wait();
-            }
-        }
-    });
-
-    Ok(EmulatorHandle {
-        keypad,
-        frames: frame_rx,
-        commands: command_tx,
-        viewport_width,
-        viewport_height,
-        _audio_stream: audio_stream,
-    })
 }

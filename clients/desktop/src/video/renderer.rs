@@ -1,4 +1,5 @@
 use bytemuck::{Pod, Zeroable};
+use ironboyadvance::Viewport;
 use wgpu::util::DeviceExt;
 
 use crate::video::gpu::GpuContext;
@@ -11,8 +12,7 @@ struct Uniforms {
 }
 
 pub(crate) struct FrameRenderer {
-    viewport_width: usize,
-    viewport_height: usize,
+    viewport: Viewport,
     window_width: u32,
     window_height: u32,
 
@@ -30,14 +30,13 @@ impl FrameRenderer {
         surface_format: wgpu::TextureFormat,
         window_width: u32,
         window_height: u32,
-        viewport_width: usize,
-        viewport_height: usize,
+        viewport: Viewport,
     ) -> Self {
         let frame_texture = gpu.device().create_texture(&wgpu::TextureDescriptor {
             label: Some("gba-frame-texture"),
             size: wgpu::Extent3d {
-                width: viewport_width as u32,
-                height: viewport_height as u32,
+                width: viewport.width as u32,
+                height: viewport.height as u32,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -62,12 +61,7 @@ impl FrameRenderer {
 
         let uniform_buffer = gpu.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("gba-frame-uniforms"),
-            contents: bytemuck::bytes_of(&compute_uniforms(
-                window_width,
-                window_height,
-                viewport_width,
-                viewport_height,
-            )),
+            contents: bytemuck::bytes_of(&compute_uniforms(window_width, window_height, viewport)),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -164,8 +158,7 @@ impl FrameRenderer {
         });
 
         Self {
-            viewport_width,
-            viewport_height,
+            viewport,
             window_width,
             window_height,
             frame_texture,
@@ -183,13 +176,13 @@ impl FrameRenderer {
         }
         self.window_width = window_width;
         self.window_height = window_height;
-        let uniforms = compute_uniforms(window_width, window_height, self.viewport_width, self.viewport_height);
+        let uniforms = compute_uniforms(window_width, window_height, self.viewport);
         gpu.queue()
             .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
 
     pub(crate) fn upload_frame(&self, gpu: &GpuContext, frame: &[u32]) {
-        debug_assert_eq!(frame.len(), self.viewport_width * self.viewport_height);
+        debug_assert_eq!(frame.len(), self.viewport.width * self.viewport.height);
         gpu.queue().write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.frame_texture,
@@ -200,12 +193,12 @@ impl FrameRenderer {
             bytemuck::cast_slice(frame),
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some((self.viewport_width * 4) as u32),
-                rows_per_image: Some(self.viewport_height as u32),
+                bytes_per_row: Some((self.viewport.width * 4) as u32),
+                rows_per_image: Some(self.viewport.height as u32),
             },
             wgpu::Extent3d {
-                width: self.viewport_width as u32,
-                height: self.viewport_height as u32,
+                width: self.viewport.width as u32,
+                height: self.viewport.height as u32,
                 depth_or_array_layers: 1,
             },
         );
@@ -218,16 +211,16 @@ impl FrameRenderer {
     }
 }
 
-pub(crate) fn fit_scale(window_width: u32, window_height: u32, viewport_width: usize, viewport_height: usize) -> f32 {
+pub(crate) fn fit_scale(window_width: u32, window_height: u32, viewport: Viewport) -> f32 {
     let window_width = window_width.max(1) as f32;
     let window_height = window_height.max(1) as f32;
-    (window_width / viewport_width as f32).min(window_height / viewport_height as f32)
+    (window_width / viewport.width as f32).min(window_height / viewport.height as f32)
 }
 
-fn compute_uniforms(window_width: u32, window_height: u32, viewport_width: usize, viewport_height: usize) -> Uniforms {
-    let scale = fit_scale(window_width, window_height, viewport_width, viewport_height);
-    let rendered_width = viewport_width as f32 * scale;
-    let rendered_height = viewport_height as f32 * scale;
+fn compute_uniforms(window_width: u32, window_height: u32, viewport: Viewport) -> Uniforms {
+    let scale = fit_scale(window_width, window_height, viewport);
+    let rendered_width = viewport.width as f32 * scale;
+    let rendered_height = viewport.height as f32 * scale;
     Uniforms {
         scale: [
             rendered_width / window_width.max(1) as f32,

@@ -16,6 +16,7 @@ mod window;
 use crate::{
     app::{Application, UserEvent},
     config::Config,
+    emulator::Emulator,
     logger::initialize_logger,
 };
 use ironboyadvance::{Console, detect_console};
@@ -58,13 +59,13 @@ pub fn run(rom_path: Option<String>, bios_path: Option<String>, show_logs: bool)
                 .and_then(|name| name.to_str())
                 .map(|s| s.to_string())
                 .ok_or(DesktopError::InvalidRomPath)?;
-            let emu = emulator::spawn(rom_path, rom_buffer, config.clone(), show_logs)?;
+            let emu = Emulator::spawn(rom_path, rom_buffer, config.clone(), show_logs)?;
             (format!("{BASE_TITLE} - {rom_name}"), Some(emu))
         }
         None => (BASE_TITLE.to_string(), None),
     };
 
-    let mut app = Application::new(title, initial_emulator, config, show_logs);
+    let mut app = Application::new(title, config, show_logs, initial_emulator);
 
     let event_loop = EventLoop::<UserEvent>::with_user_event().build()?;
     let proxy = event_loop.create_proxy();

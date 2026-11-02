@@ -6,7 +6,7 @@ use ironboyadvance_gbc::{GameBoyColor, GbcError};
 use thiserror::Error;
 
 pub use ironboyadvance_common::keypad::KeypadButton;
-pub use ironboyadvance_common::system::{Console, System, detect_console};
+pub use ironboyadvance_common::system::{Console, System, Viewport, detect_console};
 
 #[derive(Error, Debug)]
 pub enum BootError {
@@ -18,22 +18,36 @@ pub enum BootError {
     UnknownFormat,
 }
 
-pub fn system_info(kind: Console) -> (usize, usize, f32, u32, usize) {
+pub const GBA_VIEWPORT: Viewport = Viewport {
+    width: ironboyadvance_gba::VIEWPORT_WIDTH,
+    height: ironboyadvance_gba::VIEWPORT_HEIGHT,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SystemInfo {
+    pub viewport: Viewport,
+    pub fps: f32,
+    pub sample_rate: u32,
+    pub cycles_per_frame: usize,
+}
+
+pub fn system_info(kind: Console) -> SystemInfo {
     match kind {
-        Console::Gba => (
-            ironboyadvance_gba::VIEWPORT_WIDTH,
-            ironboyadvance_gba::VIEWPORT_HEIGHT,
-            ironboyadvance_gba::FPS,
-            ironboyadvance_gba::APU_SAMPLING_FREQUENCY as u32,
-            ironboyadvance_gba::CYCLES_PER_FRAME,
-        ),
-        Console::Gb | Console::Gbc => (
-            ironboyadvance_gbc::VIEWPORT_WIDTH,
-            ironboyadvance_gbc::VIEWPORT_HEIGHT,
-            ironboyadvance_gbc::FPS,
-            ironboyadvance_gbc::SAMPLE_RATE,
-            ironboyadvance_gbc::CYCLES_PER_FRAME,
-        ),
+        Console::Gba => SystemInfo {
+            viewport: GBA_VIEWPORT,
+            fps: ironboyadvance_gba::FPS,
+            sample_rate: ironboyadvance_gba::APU_SAMPLING_FREQUENCY as u32,
+            cycles_per_frame: ironboyadvance_gba::CYCLES_PER_FRAME,
+        },
+        Console::Gb | Console::Gbc => SystemInfo {
+            viewport: Viewport {
+                width: ironboyadvance_gbc::VIEWPORT_WIDTH,
+                height: ironboyadvance_gbc::VIEWPORT_HEIGHT,
+            },
+            fps: ironboyadvance_gbc::FPS,
+            sample_rate: ironboyadvance_gbc::SAMPLE_RATE,
+            cycles_per_frame: ironboyadvance_gbc::CYCLES_PER_FRAME,
+        },
     }
 }
 

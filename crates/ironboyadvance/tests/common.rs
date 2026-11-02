@@ -2,7 +2,7 @@
 
 use std::{env, fs, path::PathBuf};
 
-use ironboyadvance::{System, boot, detect_console, system_info};
+use ironboyadvance::{System, SystemInfo, boot, detect_console, system_info};
 
 const FNV_OFFSET_BASIS: u64 = 14695981039346656037;
 const FNV_PRIME: u64 = 1099511628211;
@@ -29,9 +29,7 @@ fn staged_rom_path(relative_path: &str) -> PathBuf {
 
 pub struct Headless {
     system: Box<dyn System>,
-    viewport_width: usize,
-    viewport_height: usize,
-    cycles_per_frame: usize,
+    info: SystemInfo,
     overshoot: usize,
 }
 
@@ -40,22 +38,19 @@ impl Headless {
         let path = staged_rom_path(relative_path);
         let rom = fs::read(&path).unwrap_or_else(|error| panic!("failed to read {path:?}: {error}"));
         let kind = detect_console(&rom).unwrap_or_else(|| panic!("unrecognized rom format: {path:?}"));
-        let (viewport_width, viewport_height, _, _, cycles_per_frame) = system_info(kind);
 
         let system = boot(kind, &path.to_string_lossy(), rom, Vec::new(), TEST_UNIX_SECONDS, false)
             .unwrap_or_else(|error| panic!("failed to boot {path:?}: {error}"));
 
         Headless {
             system,
-            viewport_width,
-            viewport_height,
-            cycles_per_frame,
+            info: system_info(kind),
             overshoot: 0,
         }
     }
 
     pub fn run_frame(&mut self) {
-        self.overshoot = self.system.run(self.cycles_per_frame, self.overshoot);
+        self.overshoot = self.system.run(self.info.cycles_per_frame, self.overshoot);
         self.system.clear_audio_buffer();
     }
 
@@ -92,9 +87,11 @@ impl Headless {
         let frame_buffer = self.system.frame_buffer();
         let mut rendered = String::new();
 
-        for y in (0..self.viewport_height).step_by(2) {
-            for x in 0..self.viewport_width {
-                let pixel = frame_buffer[y * self.viewport_width + x];
+        let viewport = self.info.viewport;
+
+        for y in (0..viewport.height).step_by(2) {
+            for x in 0..viewport.width {
+                let pixel = frame_buffer[y * viewport.width + x];
                 let red = (pixel >> 16) & 0xFF;
                 let green = (pixel >> 8) & 0xFF;
                 let blue = pixel & 0xFF;

@@ -17,6 +17,12 @@ pub trait System: SystemInspection {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Viewport {
+    pub width: usize,
+    pub height: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Console {
     Gba,
     Gbc,

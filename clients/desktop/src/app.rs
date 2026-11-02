@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use egui_wgpu::ScreenDescriptor;
+use ironboyadvance::GBA_VIEWPORT;
 use muda::Menu;
 use winit::{
     application::ApplicationHandler,
@@ -14,12 +15,14 @@ use winit::{
 use crate::{
     BASE_TITLE,
     config::Config,
-    emulator::{self, EmulatorCommand, EmulatorHandle, FpsCounter},
+    emulator::{self, Emulator},
     input::{Controller, HotKey, KeypadTracker, build_menu, keycode_to_button, keycode_to_hotkey},
     screenshot::save_screenshot,
     video::{GpuContext, draw_splash},
-    window::{ScreenContent, WindowState},
+    window::WindowState,
 };
+
+const INITIAL_WINDOW_SCALE: u32 = 6;
 
 #[derive(Debug)]
 pub(crate) enum UserEvent {
@@ -27,8 +30,10 @@ pub(crate) enum UserEvent {
 }
 
 pub(crate) struct Application {
-    show_logs: bool,
     config: Config,
+    show_logs: bool,
+    show_fps: bool,
+    emulator: Option<Emulator>,
     keypad_tracker: KeypadTracker,
     modifiers: ModifiersState,
     gpu: Option<GpuContext>,
@@ -36,14 +41,15 @@ pub(crate) struct Application {
     main_window: Option<WindowId>,
     controller: Option<Controller>,
     menu: Option<Menu>,
-    initial_emulator: Option<EmulatorHandle>,
 }
 
 impl Application {
-    pub(crate) fn new(_title: String, initial_emulator: Option<EmulatorHandle>, config: Config, show_logs: bool) -> Self {
+    pub(crate) fn new(_title: String, config: Config, show_logs: bool, emulator: Option<Emulator>) -> Self {
         Self {
-            show_logs,
             config,
+            show_logs,
+            show_fps: false,
+            emulator,
             keypad_tracker: KeypadTracker::new(),
             modifiers: ModifiersState::empty(),
             gpu: None,
@@ -51,11 +57,10 @@ impl Application {
             main_window: None,
             controller: None,
             menu: None,
-            initial_emulator,
         }
     }
 
-    fn load_rom(&mut self, window_id: WindowId, rom_path: String) {
+    fn load_rom(&mut self, rom_path: String) {
         let rom_buffer = match emulator::read_rom(&rom_path) {
             Ok(bytes) => bytes,
             Err(e) => {
@@ -63,9 +68,11 @@ impl Application {
                 return;
             }
         };
-        match emulator::spawn(rom_path.clone(), rom_buffer, self.config.clone(), self.show_logs) {
-            Ok(handle) => {
+
+        match Emulator::spawn(rom_path.clone(), rom_buffer, self.config.clone(), self.show_logs) {
+            Ok(emulator) => {
                 let Some(gpu) = self.gpu.as_ref() else { return };
+                let Some(window_id) = self.main_window else { return };
                 let Some(state) = self.windows.get_mut(&window_id) else {
                     return;
                 };
@@ -74,7 +81,9 @@ impl Application {
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or(&rom_path);
-                state.start_running(gpu, handle, rom_name);
+                state.attach_renderer(gpu, emulator.viewport());
+                state.window.set_title(&format!("{BASE_TITLE} - {rom_name}"));
+                self.emulator = Some(emulator);
             }
             Err(e) => tracing::error!("failed to load rom {rom_path}: {e}"),
         }
@@ -85,7 +94,9 @@ impl Application {
             return;
         };
 
-        state.drain_frames();
+        if let Some(emulator) = self.emulator.as_mut() {
+            emulator.drain_frames();
+        }
 
         let output = match state.surface.acquire() {
             wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
@@ -101,10 +112,9 @@ impl Application {
             }
         };
 
-        if let Some(running) = state.content.running()
-            && let Some(fb) = &running.last_frame
-        {
-            running.renderer.upload_frame(gpu, fb);
+        let frame = self.emulator.as_ref().and_then(Emulator::last_frame);
+        if let (Some(renderer), Some(frame)) = (state.renderer.as_ref(), frame) {
+            renderer.upload_frame(gpu, frame);
         }
 
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -118,7 +128,13 @@ impl Application {
             pixels_per_point: state.window.scale_factor() as f32,
         };
 
-        let is_splash = matches!(state.content, ScreenContent::Splash);
+        let is_splash = self.emulator.is_none();
+
+        let fps = self.emulator.as_ref().map_or(0.0, Emulator::fps);
+        let paused = self.emulator.as_ref().is_some_and(Emulator::paused);
+        state.gui.fps_overlay_mut().set_fps(fps);
+        state.gui.fps_overlay_mut().set_show(self.show_fps);
+        state.gui.paused_overlay_mut().set_show(paused);
 
         // Egui must upload its textures and vertex/index buffers BEFORE the render pass
         // begins, because begin_render_pass borrows the encoder.
@@ -150,10 +166,8 @@ impl Application {
                 })
                 .forget_lifetime();
 
-            if let Some(running) = state.content.running()
-                && running.last_frame.is_some()
-            {
-                running.renderer.draw_frame(&mut rpass);
+            if let (Some(renderer), Some(_)) = (state.renderer.as_ref(), frame) {
+                renderer.draw_frame(&mut rpass);
             }
 
             state.gui.paint(&mut rpass, &prepared, &screen);
@@ -169,18 +183,6 @@ impl Application {
         self.main_window.and_then(|window_id| self.windows.get(&window_id))
     }
 
-    fn main_window_state_mut(&mut self) -> Option<&mut WindowState> {
-        self.main_window.and_then(|window_id| self.windows.get_mut(&window_id))
-    }
-
-    fn send_emulator_command(&self, command: EmulatorCommand) {
-        if let Some(window_state) = self.main_window_state()
-            && let Some(running) = window_state.content.running()
-        {
-            running.emulator.send(command);
-        }
-    }
-
     fn handle_hotkey(&mut self, code: KeyCode, state: ElementState) -> bool {
         if state != ElementState::Pressed {
             return false;
@@ -191,44 +193,37 @@ impl Application {
         };
 
         match hotkey {
-            HotKey::ToggleFps => {
-                if let Some(window_state) = self.main_window_state_mut()
-                    && window_state.content.running().is_some()
-                {
-                    *window_state.gui.fps_overlay_mut().show_mut() ^= true;
-                }
-            }
-
             HotKey::Screenshot => {
-                if let Some(window_state) = self.main_window_state()
-                    && let Some(running) = window_state.content.running()
-                {
-                    let surface_config = window_state.surface.config();
-                    if let Err(e) = save_screenshot(running, surface_config.width, surface_config.height) {
-                        tracing::error!("screenshot failed: {e}");
+                if let (Some(emulator), Some(window_state)) = (self.emulator.as_ref(), self.main_window_state()) {
+                    match emulator.last_frame() {
+                        Some(frame) => {
+                            let window_size = window_state.window.inner_size();
+                            if let Err(e) = save_screenshot(frame, emulator.viewport(), window_size) {
+                                tracing::error!("screenshot failed: {e}");
+                            }
+                        }
+                        None => tracing::warn!("screenshot requested before any frame has arrived"),
                     }
                 }
             }
-            HotKey::TogglePause => {
-                if let Some(running) = self.main_window_state_mut().and_then(|state| state.content.running_mut()) {
-                    running.paused = !running.paused;
-                    running.emulator.send(EmulatorCommand::SetPaused(running.paused));
+            HotKey::ToggleFps => {
+                if self.emulator.is_some() {
+                    self.show_fps ^= true;
                 }
             }
-            //TODO: add opt-in pause-on-minimize/unfocus config
+            HotKey::TogglePause => {
+                if let Some(emulator) = self.emulator.as_mut() {
+                    emulator.toggle_pause();
+                }
+            }
             HotKey::ToggleMaxSpeed => {
-                if let Some(running) = self.main_window_state_mut().and_then(|state| state.content.running_mut()) {
-                    running.max_speed = !running.max_speed;
-                    running.emulator.send(EmulatorCommand::SetMaxSpeed(running.max_speed));
+                if let Some(emulator) = self.emulator.as_mut() {
+                    emulator.toggle_max_speed();
                 }
             }
             HotKey::Reset => {
-                self.send_emulator_command(EmulatorCommand::Reset);
-                if let Some(window_state) = self.main_window_state_mut()
-                    && let Some(running) = window_state.content.running_mut()
-                {
-                    running.last_frame = None;
-                    running.fps_counter = FpsCounter::new();
+                if let Some(emulator) = self.emulator.as_mut() {
+                    emulator.reset();
                 }
             }
         }
@@ -243,15 +238,15 @@ impl ApplicationHandler<UserEvent> for Application {
             return;
         }
 
-        let initial_viewport = self
-            .initial_emulator
-            .as_ref()
-            .map(|e| (e.viewport_width, e.viewport_height))
-            .unwrap_or((240, 160));
+        let loaded_viewport = self.emulator.as_ref().map(Emulator::viewport);
+        let window_viewport = loaded_viewport.unwrap_or(GBA_VIEWPORT);
 
         let attrs = Window::default_attributes()
             .with_title(BASE_TITLE)
-            .with_inner_size(LogicalSize::new(initial_viewport.0 as u32 * 6, initial_viewport.1 as u32 * 6));
+            .with_inner_size(LogicalSize::new(
+                window_viewport.width as u32 * INITIAL_WINDOW_SCALE,
+                window_viewport.height as u32 * INITIAL_WINDOW_SCALE,
+            ));
         let window = Arc::new(event_loop.create_window(attrs).expect("failed to create window"));
 
         if self.gpu.is_none() {
@@ -260,8 +255,12 @@ impl ApplicationHandler<UserEvent> for Application {
         let gpu = self.gpu.as_ref().unwrap();
 
         let window_id = window.id();
-        self.windows
-            .insert(window_id, WindowState::new(gpu, window, self.initial_emulator.take()));
+        let mut window_state = WindowState::new(gpu, window);
+        if let Some(viewport) = loaded_viewport {
+            window_state.attach_renderer(gpu, viewport);
+        }
+
+        self.windows.insert(window_id, window_state);
         self.main_window = Some(window_id);
         self.controller = Controller::new();
         self.menu = Some(build_menu());
@@ -272,7 +271,11 @@ impl ApplicationHandler<UserEvent> for Application {
             return;
         };
         let window = state.window.clone();
-        let keypad = state.content.running().map(|r| r.emulator.keypad.clone());
+        let keypad = self
+            .emulator
+            .as_ref()
+            .filter(|_| self.main_window == Some(window_id))
+            .map(|emulator| emulator.keypad().clone());
 
         let egui_consumed = state.gui.on_window_event(&window, &event);
 
@@ -295,7 +298,7 @@ impl ApplicationHandler<UserEvent> for Application {
             }
             WindowEvent::DroppedFile(path) => {
                 if let Some(rom_path) = path.to_str() {
-                    self.load_rom(window_id, rom_path.to_string());
+                    self.load_rom(rom_path.to_string());
                 } else {
                     tracing::error!("dropped file path was not valid UTF-8: {}", path.display());
                 }
@@ -339,14 +342,10 @@ impl ApplicationHandler<UserEvent> for Application {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        let keypad = self
-            .main_window_state()
-            .and_then(|state| state.content.running())
-            .map(|running| running.emulator.keypad.clone());
-
-        if let (Some(controller), Some(keypad)) = (self.controller.as_mut(), keypad) {
+        if let (Some(controller), Some(emulator)) = (self.controller.as_mut(), self.emulator.as_mut()) {
             for (button, pressed) in controller.poll() {
-                self.keypad_tracker.handle_controller_button(button, pressed, &keypad);
+                self.keypad_tracker
+                    .handle_controller_button(button, pressed, emulator.keypad());
             }
         }
 

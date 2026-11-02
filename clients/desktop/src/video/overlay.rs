@@ -1,11 +1,11 @@
 use egui::{Align2, Area, Color32, FontFamily, Id, Label, RichText, TextWrapMode, vec2};
-use getset::{CopyGetters, MutGetters, Setters};
+use getset::{CopyGetters, Setters};
 
-#[derive(Setters, MutGetters, CopyGetters)]
+#[derive(Setters, CopyGetters)]
 pub(crate) struct FpsOverlay {
     #[getset(get_copy = "pub", set = "pub")]
     fps: f64,
-    #[getset(get_copy = "pub", get_mut = "pub")]
+    #[getset(get_copy = "pub", set = "pub")]
     show: bool,
 }
 
@@ -15,7 +15,7 @@ impl FpsOverlay {
     }
 }
 
-#[derive(Setters, MutGetters, CopyGetters)]
+#[derive(Setters, CopyGetters)]
 pub(crate) struct PausedOverlay {
     #[getset(get_copy = "pub", set = "pub")]
     show: bool,
