@@ -3,12 +3,12 @@ use ironboyadvance::KeypadButton;
 
 use super::ControllerBackend;
 
-pub struct GilrsBackend {
+pub(super) struct GilrsBackend {
     gilrs: Gilrs,
 }
 
 impl GilrsBackend {
-    pub fn new() -> Option<Self> {
+    pub(super) fn new() -> Option<Self> {
         let gilrs = Gilrs::new().ok()?;
         Some(Self { gilrs })
     }
