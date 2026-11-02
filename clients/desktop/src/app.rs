@@ -14,6 +14,7 @@ use winit::{
 
 use crate::{
     BASE_TITLE,
+    audio::{self, AudioSink},
     config::Config,
     emulator::{self, Emulator},
     input::{Controller, HotKey, KeypadTracker, build_menu, keycode_to_button, keycode_to_hotkey},
@@ -35,6 +36,8 @@ pub(crate) struct Application {
     show_fps: bool,
     emulator: Option<Emulator>,
     pending_rom: Option<String>,
+    _audio_stream: Option<cpal::Stream>,
+    audio_sink: Option<AudioSink>,
     keypad_tracker: KeypadTracker,
     modifiers: ModifiersState,
     gpu: Option<GpuContext>,
@@ -46,12 +49,19 @@ pub(crate) struct Application {
 
 impl Application {
     pub(crate) fn new(rom_path: Option<String>, config: Config, show_logs: bool) -> Self {
+        let (_audio_stream, audio_sink) = match audio::start() {
+            Some(output) => (Some(output.stream), Some(output.sink)),
+            None => (None, None),
+        };
+
         Self {
             config,
             show_logs,
             show_fps: false,
             emulator: None,
             pending_rom: rom_path,
+            _audio_stream,
+            audio_sink,
             keypad_tracker: KeypadTracker::new(),
             modifiers: ModifiersState::empty(),
             gpu: None,
@@ -61,10 +71,9 @@ impl Application {
             menu: None,
         }
     }
-
     fn mount(&mut self, rom_path: String) {
         if let Some(emulator) = self.emulator.take() {
-            emulator.stop();
+            self.audio_sink = emulator.stop();
         }
 
         let rom_buffer = match emulator::read_rom(&rom_path) {
@@ -75,9 +84,18 @@ impl Application {
             }
         };
 
-        match Emulator::spawn(rom_path.clone(), rom_buffer, &self.config, self.show_logs) {
+        match Emulator::spawn(
+            rom_path.clone(),
+            rom_buffer,
+            &self.config,
+            self.show_logs,
+            self.audio_sink.take(),
+        ) {
             Ok(emulator) => self.emulator = Some(emulator),
-            Err(e) => tracing::error!("failed to load rom {rom_path}: {e}"),
+            Err(failure) => {
+                tracing::error!("failed to load rom {rom_path}: {}", failure.error);
+                self.audio_sink = failure.audio_sink;
+            }
         }
     }
 

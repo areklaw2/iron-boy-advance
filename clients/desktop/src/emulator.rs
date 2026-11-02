@@ -14,7 +14,12 @@ use getset::{CopyGetters, Getters};
 use ironboyadvance::{BootError, SystemInfo, Viewport, boot, detect_console, system_info};
 use ringbuf::traits::Producer;
 
-use crate::{DesktopError, audio, config::Config, input::KEYPAD_IDLE};
+use crate::{
+    DesktopError,
+    audio::{self, AudioSink},
+    config::Config,
+    input::KEYPAD_IDLE,
+};
 
 struct FrameLimiter {
     duration: Duration,
@@ -70,6 +75,10 @@ fn current_unix_seconds() -> u64 {
     Local::now().naive_local().and_utc().timestamp().max(0) as u64
 }
 
+pub(crate) struct SpawnFailure {
+    pub(crate) error: DesktopError,
+    pub(crate) audio_sink: Option<AudioSink>,
+}
 pub(crate) enum EmulatorCommand {
     SetPaused(bool),
     SetMaxSpeed(bool),
@@ -89,9 +98,8 @@ pub(crate) struct Emulator {
     #[getset(get_copy = "pub(crate)")]
     paused: bool,
     max_speed: bool,
-    _audio_stream: Option<cpal::Stream>,
     rom_path: String,
-    thread: JoinHandle<()>,
+    thread: JoinHandle<Option<AudioSink>>,
 }
 
 impl Emulator {
@@ -100,9 +108,26 @@ impl Emulator {
         rom_buffer: Vec<u8>,
         config: &Config,
         show_logs: bool,
-    ) -> Result<Emulator, DesktopError> {
-        let kind = detect_console(&rom_buffer).ok_or(BootError::UnknownFormat)?;
-        let bios_buffer = read_bios(config.bios(kind))?;
+        mut audio_sink: Option<AudioSink>,
+    ) -> Result<Emulator, SpawnFailure> {
+        let kind = match detect_console(&rom_buffer) {
+            Some(kind) => kind,
+            None => {
+                return Err(SpawnFailure {
+                    error: BootError::UnknownFormat.into(),
+                    audio_sink,
+                });
+            }
+        };
+        let bios_buffer = match read_bios(config.bios(kind)) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return Err(SpawnFailure {
+                    error: error.into(),
+                    audio_sink,
+                });
+            }
+        };
 
         let SystemInfo {
             viewport,
@@ -115,13 +140,9 @@ impl Emulator {
         let (frame_tx, frame_rx) = mpsc::channel::<Vec<u32>>();
         let (command_tx, command_rx) = mpsc::channel::<EmulatorCommand>();
 
-        let (audio_stream, mut audio_producer, mut resampler) = match audio::start() {
-            Some(output) => {
-                let resampler = audio::Resampler::new(sample_rate, output.output_sample_rate);
-                (Some(output.stream), Some(output.producer), Some(resampler))
-            }
-            None => (None, None, None),
-        };
+        let mut resampler = audio_sink
+            .as_ref()
+            .map(|sink| audio::Resampler::new(sample_rate, sink.output_sample_rate));
         let emu_keypad = keypad.clone();
         let emu_rom_path = rom_path.clone();
 
@@ -141,7 +162,7 @@ impl Emulator {
                 }
                 Err(error) => {
                     let _ = boot_tx.send(Err(error));
-                    return;
+                    return audio_sink;
                 }
             };
 
@@ -164,7 +185,7 @@ impl Emulator {
                         }
                         Ok(EmulatorCommand::Stop) => break 'frame,
                         Err(TryRecvError::Empty) => break 'commands,
-                        Err(TryRecvError::Disconnected) => return,
+                        Err(TryRecvError::Disconnected) => return audio_sink,
                     }
                 }
 
@@ -172,11 +193,11 @@ impl Emulator {
                     system.handle_pressed_buttons(emu_keypad.load(Ordering::Relaxed));
                     overshoot = system.run(cycles_per_frame, overshoot);
 
-                    if let (Some(producer), Some(resampler)) = (audio_producer.as_mut(), resampler.as_mut()) {
+                    if let (Some(sink), Some(resampler)) = (audio_sink.as_mut(), resampler.as_mut()) {
                         for &sample in system.audio_buffer() {
                             resampler.push_sample(sample, |left, right| {
-                                let _ = producer.try_push(left);
-                                let _ = producer.try_push(right);
+                                let _ = sink.producer.try_push(left);
+                                let _ = sink.producer.try_push(right);
                             });
                         }
                     }
@@ -191,15 +212,24 @@ impl Emulator {
                     frame_limiter.wait();
                 }
             }
+
+            audio_sink
         });
 
         match boot_rx.recv() {
             Ok(Ok(())) => {}
             Ok(Err(error)) => {
-                let _ = thread.join();
-                return Err(DesktopError::BootError(error));
+                return Err(SpawnFailure {
+                    error: DesktopError::BootError(error),
+                    audio_sink: thread.join().unwrap_or(None),
+                });
             }
-            Err(_) => return Err(DesktopError::EmulatorThreadExited),
+            Err(_) => {
+                return Err(SpawnFailure {
+                    error: DesktopError::EmulatorThreadExited,
+                    audio_sink: thread.join().unwrap_or(None),
+                });
+            }
         }
 
         Ok(Emulator {
@@ -207,7 +237,6 @@ impl Emulator {
             frames: frame_rx,
             commands: command_tx,
             viewport,
-            _audio_stream: audio_stream,
             last_frame: None,
             fps_counter: FpsCounter::new(),
             paused: false,
@@ -227,10 +256,14 @@ impl Emulator {
         self.send(EmulatorCommand::SetMaxSpeed(self.max_speed));
     }
 
-    pub(crate) fn stop(self) {
+    pub(crate) fn stop(self) -> Option<AudioSink> {
         self.send(EmulatorCommand::Stop);
-        if let Err(e) = self.thread.join() {
-            tracing::error!("emulator thread panicked: {e:?}");
+        match self.thread.join() {
+            Ok(audio_sink) => audio_sink,
+            Err(e) => {
+                tracing::error!("emulator thread panicked: {e:?}");
+                None
+            }
         }
     }
 

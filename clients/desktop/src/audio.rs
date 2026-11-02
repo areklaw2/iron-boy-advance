@@ -6,10 +6,14 @@ use ringbuf::{
 
 pub(crate) type AudioProducer = HeapProd<f32>;
 
+pub(crate) struct AudioSink {
+    pub(crate) producer: AudioProducer,
+    pub(crate) output_sample_rate: u32,
+}
+
 pub(crate) struct AudioOutput {
-    pub stream: cpal::Stream,
-    pub producer: AudioProducer,
-    pub output_sample_rate: u32,
+    pub(crate) stream: cpal::Stream,
+    pub(crate) sink: AudioSink,
 }
 
 pub(crate) fn start() -> Option<AudioOutput> {
@@ -47,8 +51,10 @@ pub(crate) fn start() -> Option<AudioOutput> {
 
     Some(AudioOutput {
         stream,
-        producer,
-        output_sample_rate,
+        sink: AudioSink {
+            producer,
+            output_sample_rate,
+        },
     })
 }
 
