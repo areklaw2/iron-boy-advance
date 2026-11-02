@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use egui_wgpu::ScreenDescriptor;
 use ironboyadvance::GBA_VIEWPORT;
@@ -34,6 +34,7 @@ pub(crate) struct Application {
     show_logs: bool,
     show_fps: bool,
     emulator: Option<Emulator>,
+    pending_rom: Option<String>,
     keypad_tracker: KeypadTracker,
     modifiers: ModifiersState,
     gpu: Option<GpuContext>,
@@ -44,12 +45,13 @@ pub(crate) struct Application {
 }
 
 impl Application {
-    pub(crate) fn new(_title: String, config: Config, show_logs: bool, emulator: Option<Emulator>) -> Self {
+    pub(crate) fn new(rom_path: Option<String>, config: Config, show_logs: bool) -> Self {
         Self {
             config,
             show_logs,
             show_fps: false,
-            emulator,
+            emulator: None,
+            pending_rom: rom_path,
             keypad_tracker: KeypadTracker::new(),
             modifiers: ModifiersState::empty(),
             gpu: None,
@@ -60,7 +62,11 @@ impl Application {
         }
     }
 
-    fn load_rom(&mut self, rom_path: String) {
+    fn mount(&mut self, rom_path: String) {
+        if let Some(emulator) = self.emulator.take() {
+            emulator.stop();
+        }
+
         let rom_buffer = match emulator::read_rom(&rom_path) {
             Ok(bytes) => bytes,
             Err(e) => {
@@ -69,24 +75,38 @@ impl Application {
             }
         };
 
-        match Emulator::spawn(rom_path.clone(), rom_buffer, self.config.clone(), self.show_logs) {
-            Ok(emulator) => {
-                let Some(gpu) = self.gpu.as_ref() else { return };
-                let Some(window_id) = self.main_window else { return };
-                let Some(state) = self.windows.get_mut(&window_id) else {
-                    return;
-                };
-
-                let rom_name = std::path::Path::new(&rom_path)
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or(&rom_path);
-                state.attach_renderer(gpu, emulator.viewport());
-                state.window.set_title(&format!("{BASE_TITLE} - {rom_name}"));
-                self.emulator = Some(emulator);
-            }
+        match Emulator::spawn(rom_path.clone(), rom_buffer, &self.config, self.show_logs) {
+            Ok(emulator) => self.emulator = Some(emulator),
             Err(e) => tracing::error!("failed to load rom {rom_path}: {e}"),
         }
+    }
+
+    fn attach_to_main_window(&mut self) {
+        let Some(gpu) = self.gpu.as_ref() else { return };
+        let Some(window_id) = self.main_window else { return };
+        let Some(state) = self.windows.get_mut(&window_id) else {
+            return;
+        };
+
+        match self.emulator.as_ref() {
+            Some(emulator) => {
+                let rom_name = Path::new(emulator.rom_path())
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or(emulator.rom_path());
+                state.window.set_title(&format!("{BASE_TITLE} - {rom_name}"));
+                state.attach_renderer(gpu, emulator.viewport());
+            }
+            None => {
+                state.window.set_title(BASE_TITLE);
+                state.renderer = None;
+            }
+        }
+    }
+
+    fn load_rom(&mut self, rom_path: String) {
+        self.mount(rom_path);
+        self.attach_to_main_window();
     }
 
     fn drain_and_render(&mut self, window_id: WindowId) {
@@ -133,7 +153,7 @@ impl Application {
         let fps = self.emulator.as_ref().map_or(0.0, Emulator::fps);
         let paused = self.emulator.as_ref().is_some_and(Emulator::paused);
         state.gui.fps_overlay_mut().set_fps(fps);
-        state.gui.fps_overlay_mut().set_show(self.show_fps);
+        state.gui.fps_overlay_mut().set_show(self.show_fps && self.emulator.is_some());
         state.gui.paused_overlay_mut().set_show(paused);
 
         // Egui must upload its textures and vertex/index buffers BEFORE the render pass
@@ -222,8 +242,8 @@ impl Application {
                 }
             }
             HotKey::Reset => {
-                if let Some(emulator) = self.emulator.as_mut() {
-                    emulator.reset();
+                if let Some(rom_path) = self.emulator.as_ref().map(|emulator| emulator.rom_path().to_owned()) {
+                    self.load_rom(rom_path);
                 }
             }
         }
@@ -238,14 +258,16 @@ impl ApplicationHandler<UserEvent> for Application {
             return;
         }
 
-        let loaded_viewport = self.emulator.as_ref().map(Emulator::viewport);
-        let window_viewport = loaded_viewport.unwrap_or(GBA_VIEWPORT);
+        if let Some(rom_path) = self.pending_rom.take() {
+            self.mount(rom_path);
+        }
 
+        let viewport = self.emulator.as_ref().map(Emulator::viewport).unwrap_or(GBA_VIEWPORT);
         let attrs = Window::default_attributes()
             .with_title(BASE_TITLE)
             .with_inner_size(LogicalSize::new(
-                window_viewport.width as u32 * INITIAL_WINDOW_SCALE,
-                window_viewport.height as u32 * INITIAL_WINDOW_SCALE,
+                viewport.width as u32 * INITIAL_WINDOW_SCALE,
+                viewport.height as u32 * INITIAL_WINDOW_SCALE,
             ));
         let window = Arc::new(event_loop.create_window(attrs).expect("failed to create window"));
 
@@ -255,13 +277,10 @@ impl ApplicationHandler<UserEvent> for Application {
         let gpu = self.gpu.as_ref().unwrap();
 
         let window_id = window.id();
-        let mut window_state = WindowState::new(gpu, window);
-        if let Some(viewport) = loaded_viewport {
-            window_state.attach_renderer(gpu, viewport);
-        }
-
-        self.windows.insert(window_id, window_state);
+        self.windows.insert(window_id, WindowState::new(gpu, window));
         self.main_window = Some(window_id);
+        self.attach_to_main_window();
+
         self.controller = Controller::new();
         self.menu = Some(build_menu());
     }

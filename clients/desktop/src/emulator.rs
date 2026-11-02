@@ -5,7 +5,7 @@ use std::{
         atomic::{AtomicU16, Ordering},
         mpsc::{self, Receiver, Sender, TryRecvError},
     },
-    thread,
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 
@@ -71,9 +71,9 @@ fn current_unix_seconds() -> u64 {
 }
 
 pub(crate) enum EmulatorCommand {
-    Reset,
     SetPaused(bool),
     SetMaxSpeed(bool),
+    Stop,
 }
 
 #[derive(Getters, CopyGetters)]
@@ -90,13 +90,15 @@ pub(crate) struct Emulator {
     paused: bool,
     max_speed: bool,
     _audio_stream: Option<cpal::Stream>,
+    rom_path: String,
+    thread: JoinHandle<()>,
 }
 
 impl Emulator {
     pub(crate) fn spawn(
         rom_path: String,
         rom_buffer: Vec<u8>,
-        config: Config,
+        config: &Config,
         show_logs: bool,
     ) -> Result<Emulator, DesktopError> {
         let kind = detect_console(&rom_buffer).ok_or(BootError::UnknownFormat)?;
@@ -120,11 +122,29 @@ impl Emulator {
             }
             None => (None, None, None),
         };
-
         let emu_keypad = keypad.clone();
-        thread::spawn(move || {
-            let mut system = boot(kind, &rom_path, rom_buffer, bios_buffer, current_unix_seconds(), show_logs)
-                .unwrap_or_else(|e| panic!("failed to initialize emulator: {e}"));
+        let emu_rom_path = rom_path.clone();
+
+        let (boot_tx, boot_rx) = mpsc::sync_channel::<Result<(), BootError>>(1);
+        let thread = thread::spawn(move || {
+            let mut system = match boot(
+                kind,
+                &emu_rom_path,
+                rom_buffer,
+                bios_buffer,
+                current_unix_seconds(),
+                show_logs,
+            ) {
+                Ok(system) => {
+                    let _ = boot_tx.send(Ok(()));
+                    system
+                }
+                Err(error) => {
+                    let _ = boot_tx.send(Err(error));
+                    return;
+                }
+            };
+
             let mut overshoot = 0;
             let mut frame_limiter = FrameLimiter::new(fps);
             let mut paused = false;
@@ -142,35 +162,7 @@ impl Emulator {
                             frame_limiter = FrameLimiter::new(fps);
                             tracing::info!("max_speed {}", if turbo { "on" } else { "off" });
                         }
-                        Ok(EmulatorCommand::Reset) => {
-                            let rom = match read_rom(&rom_path) {
-                                Ok(bytes) => bytes,
-                                Err(e) => {
-                                    tracing::error!("reset failed reading rom {rom_path}: {e}");
-                                    continue 'commands;
-                                }
-                            };
-                            let Some(reset_kind) = detect_console(&rom) else {
-                                tracing::error!("reset failed: unrecognized rom format");
-                                continue 'commands;
-                            };
-                            let bios = match read_bios(config.bios(reset_kind)) {
-                                Ok(bytes) => bytes,
-                                Err(e) => {
-                                    tracing::error!("reset failed reading boot rom: {e}");
-                                    continue 'commands;
-                                }
-                            };
-                            match boot(reset_kind, &rom_path, rom, bios, current_unix_seconds(), show_logs) {
-                                Ok(new_system) => {
-                                    system = new_system;
-                                    overshoot = 0;
-                                    frame_limiter = FrameLimiter::new(fps);
-                                    tracing::info!("emulator reset");
-                                }
-                                Err(e) => tracing::error!("reset failed building emulator: {e}"),
-                            }
-                        }
+                        Ok(EmulatorCommand::Stop) => break 'frame,
                         Err(TryRecvError::Empty) => break 'commands,
                         Err(TryRecvError::Disconnected) => return,
                     }
@@ -201,6 +193,15 @@ impl Emulator {
             }
         });
 
+        match boot_rx.recv() {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                let _ = thread.join();
+                return Err(DesktopError::BootError(error));
+            }
+            Err(_) => return Err(DesktopError::EmulatorThreadExited),
+        }
+
         Ok(Emulator {
             keypad,
             frames: frame_rx,
@@ -211,6 +212,8 @@ impl Emulator {
             fps_counter: FpsCounter::new(),
             paused: false,
             max_speed: false,
+            rom_path,
+            thread,
         })
     }
 
@@ -224,10 +227,11 @@ impl Emulator {
         self.send(EmulatorCommand::SetMaxSpeed(self.max_speed));
     }
 
-    pub(crate) fn reset(&mut self) {
-        self.send(EmulatorCommand::Reset);
-        self.last_frame = None;
-        self.fps_counter = FpsCounter::new();
+    pub(crate) fn stop(self) {
+        self.send(EmulatorCommand::Stop);
+        if let Err(e) = self.thread.join() {
+            tracing::error!("emulator thread panicked: {e:?}");
+        }
     }
 
     pub(crate) fn drain_frames(&mut self) {
@@ -243,6 +247,10 @@ impl Emulator {
 
     pub(crate) fn fps(&self) -> f64 {
         self.fps_counter.fps
+    }
+
+    pub(crate) fn rom_path(&self) -> &str {
+        &self.rom_path
     }
 
     fn send(&self, command: EmulatorCommand) {

@@ -1,4 +1,4 @@
-use std::{io, path::Path};
+use std::io;
 use thiserror::Error;
 use winit::event_loop::EventLoop;
 
@@ -16,7 +16,6 @@ mod window;
 use crate::{
     app::{Application, UserEvent},
     config::Config,
-    emulator::Emulator,
     logger::initialize_logger,
 };
 use ironboyadvance::{Console, detect_console};
@@ -27,14 +26,14 @@ const BASE_TITLE: &str = "Iron Boy Advance";
 pub enum DesktopError {
     #[error("IO error: {0}")]
     IoError(#[from] io::Error),
-    #[error("Rom path was invalid")]
-    InvalidRomPath,
     #[error("Failed to create event loop: {0}")]
     EventLoopError(#[from] winit::error::EventLoopError),
     #[error("Screenshot failed: {0}")]
     ScreenshotError(#[from] image::ImageError),
     #[error("Failed to boot emulator: {0}")]
     BootError(#[from] ironboyadvance::BootError),
+    #[error("Emulator thread exited before it finished booting")]
+    EmulatorThreadExited,
 }
 
 pub fn run(rom_path: Option<String>, bios_path: Option<String>, show_logs: bool) -> Result<(), DesktopError> {
@@ -42,30 +41,23 @@ pub fn run(rom_path: Option<String>, bios_path: Option<String>, show_logs: bool)
 
     let mut config = Config::load().unwrap_or_default();
 
-    let rom_buffer = rom_path.as_deref().map(emulator::read_rom).transpose()?;
-    let kind = rom_buffer.as_deref().and_then(detect_console);
-
-    if let Some(ref boot_rom_arg) = bios_path {
-        config.set_bios(kind.unwrap_or(Console::Gba), boot_rom_arg);
-        if let Err(e) = config.save() {
-            tracing::warn!("failed to persist boot rom path to config: {e}");
+    if let Some(bios_path) = &bios_path {
+        let console = match rom_path.as_deref() {
+            Some(path) => emulator::read_rom(path).ok().and_then(|rom| detect_console(&rom)),
+            None => Some(Console::Gba),
+        };
+        match console {
+            Some(console) => {
+                config.set_bios(console, bios_path);
+                if let Err(e) = config.save() {
+                    tracing::warn!("failed to persist boot rom path to config: {e}");
+                }
+            }
+            None => tracing::warn!("not saving --bios: could not detect a console from --rom"),
         }
     }
 
-    let (title, initial_emulator) = match rom_path.zip(rom_buffer) {
-        Some((rom_path, rom_buffer)) => {
-            let rom_name = Path::new(&rom_path)
-                .file_name()
-                .and_then(|name| name.to_str())
-                .map(|s| s.to_string())
-                .ok_or(DesktopError::InvalidRomPath)?;
-            let emu = Emulator::spawn(rom_path, rom_buffer, config.clone(), show_logs)?;
-            (format!("{BASE_TITLE} - {rom_name}"), Some(emu))
-        }
-        None => (BASE_TITLE.to_string(), None),
-    };
-
-    let mut app = Application::new(title, config, show_logs, initial_emulator);
+    let mut app = Application::new(rom_path, config, show_logs);
 
     let event_loop = EventLoop::<UserEvent>::with_user_event().build()?;
     let proxy = event_loop.create_proxy();
