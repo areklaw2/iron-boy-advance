@@ -8,8 +8,6 @@ mod config;
 mod emulator;
 mod input;
 mod logger;
-mod menu;
-mod screenshot;
 mod video;
 mod window;
 

@@ -1,6 +1,5 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
-use egui_wgpu::ScreenDescriptor;
 use ironboyadvance::GBA_VIEWPORT;
 use muda::Menu;
 use winit::{
@@ -18,8 +17,7 @@ use crate::{
     config::Config,
     emulator::{self, Emulator},
     input::{Controller, HotKey, KeypadTracker, build_menu, keycode_to_button, keycode_to_hotkey},
-    screenshot::save_screenshot,
-    video::{GpuContext, draw_splash},
+    video::{GpuContext, Overlays, save_screenshot},
     window::WindowState,
 };
 
@@ -117,7 +115,7 @@ impl Application {
             }
             None => {
                 state.window.set_title(BASE_TITLE);
-                state.renderer = None;
+                state.frame_renderer = None;
             }
         }
     }
@@ -125,96 +123,6 @@ impl Application {
     fn load_rom(&mut self, rom_path: String) {
         self.mount(rom_path);
         self.attach_to_main_window();
-    }
-
-    fn drain_and_render(&mut self, window_id: WindowId) {
-        let (Some(gpu), Some(state)) = (self.gpu.as_ref(), self.windows.get_mut(&window_id)) else {
-            return;
-        };
-
-        if let Some(emulator) = self.emulator.as_mut() {
-            emulator.drain_frames();
-        }
-
-        let output = match state.surface.acquire() {
-            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
-            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                let size = state.window.inner_size();
-                state.resize(gpu, size);
-                return;
-            }
-            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => return,
-            wgpu::CurrentSurfaceTexture::Validation => {
-                tracing::error!("wgpu surface validation error during acquire");
-                return;
-            }
-        };
-
-        let frame = self.emulator.as_ref().and_then(Emulator::last_frame);
-        if let (Some(renderer), Some(frame)) = (state.renderer.as_ref(), frame) {
-            renderer.upload_frame(gpu, frame);
-        }
-
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let mut encoder = gpu.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("desktop-encoder"),
-        });
-
-        let screen = ScreenDescriptor {
-            size_in_pixels: [state.surface.config().width, state.surface.config().height],
-            pixels_per_point: state.window.scale_factor() as f32,
-        };
-
-        let is_splash = self.emulator.is_none();
-
-        let fps = self.emulator.as_ref().map_or(0.0, Emulator::fps);
-        let paused = self.emulator.as_ref().is_some_and(Emulator::paused);
-        state.gui.fps_overlay_mut().set_fps(fps);
-        state.gui.fps_overlay_mut().set_show(self.show_fps && self.emulator.is_some());
-        state.gui.paused_overlay_mut().set_show(paused);
-
-        // Egui must upload its textures and vertex/index buffers BEFORE the render pass
-        // begins, because begin_render_pass borrows the encoder.
-        let prepared = state
-            .gui
-            .prepare(&state.window, gpu.device(), gpu.queue(), &mut encoder, &screen, |ui| {
-                if is_splash {
-                    draw_splash(ui);
-                }
-            });
-
-        {
-            let mut rpass = encoder
-                .begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("desktop-rpass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &view,
-                        depth_slice: None,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                    multiview_mask: None,
-                })
-                .forget_lifetime();
-
-            if let (Some(renderer), Some(_)) = (state.renderer.as_ref(), frame) {
-                renderer.draw_frame(&mut rpass);
-            }
-
-            state.gui.paint(&mut rpass, &prepared, &screen);
-        }
-
-        state.gui.cleanup(prepared);
-
-        gpu.queue().submit(std::iter::once(encoder.finish()));
-        gpu.queue().present(output);
     }
 
     fn main_window_state(&self) -> Option<&WindowState> {
@@ -314,7 +222,7 @@ impl ApplicationHandler<UserEvent> for Application {
             .filter(|_| self.main_window == Some(window_id))
             .map(|emulator| emulator.keypad().clone());
 
-        let egui_consumed = state.gui.on_window_event(&window, &event);
+        let egui_consumed = state.egui_layer.on_window_event(&window, &event);
 
         match event {
             WindowEvent::CloseRequested => {
@@ -367,7 +275,18 @@ impl ApplicationHandler<UserEvent> for Application {
                 }
             }
             WindowEvent::RedrawRequested => {
-                self.drain_and_render(window_id);
+                if let Some(emulator) = self.emulator.as_mut() {
+                    emulator.drain_frames();
+                }
+
+                let overlays = Overlays {
+                    fps: self.emulator.as_ref().filter(|_| self.show_fps).map(Emulator::fps),
+                    paused: self.emulator.as_ref().is_some_and(Emulator::paused),
+                };
+
+                if let (Some(gpu), Some(state)) = (self.gpu.as_ref(), self.windows.get_mut(&window_id)) {
+                    state.render(gpu, self.emulator.as_ref(), &overlays);
+                }
             }
             _ => {}
         }

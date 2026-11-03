@@ -118,7 +118,7 @@ impl FrameRenderer {
 
         let shader = gpu.device().create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("gba-frame-shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/frame.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/frame.wgsl").into()),
         });
 
         let pipeline_layout = gpu.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

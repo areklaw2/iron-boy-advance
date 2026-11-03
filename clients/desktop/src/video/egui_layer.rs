@@ -1,19 +1,17 @@
 use egui::{FontData, FontDefinitions, FontFamily, TexturesDelta, ViewportId, epaint::ClippedPrimitive};
 use egui_wgpu::{RendererOptions, ScreenDescriptor};
-use getset::MutGetters;
 use winit::{event::WindowEvent, window::Window};
 
-use crate::video::overlay::{FpsOverlay, OverlayKind, PausedOverlay};
+use crate::video::{
+    GpuContext,
+    overlay::{OverlayKind, Overlays},
+    splash::draw_splash,
+};
 
-#[derive(MutGetters)]
-pub(crate) struct Gui {
+pub(crate) struct EguiLayer {
     context: egui::Context,
     state: egui_winit::State,
     renderer: egui_wgpu::Renderer,
-    #[getset(get_mut = "pub")]
-    fps_overlay: FpsOverlay,
-    #[getset(get_mut = "pub")]
-    paused_overlay: PausedOverlay,
 }
 
 pub(crate) struct PreparedFrame {
@@ -21,7 +19,7 @@ pub(crate) struct PreparedFrame {
     pub textures_delta: TexturesDelta,
 }
 
-impl Gui {
+impl EguiLayer {
     pub(crate) fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat, window: &Window) -> Self {
         let context = egui::Context::default();
         install_gbboot_font(&context);
@@ -47,8 +45,6 @@ impl Gui {
             context,
             state,
             renderer,
-            fps_overlay: FpsOverlay::new(),
-            paused_overlay: PausedOverlay::new(),
         }
     }
 
@@ -56,26 +52,25 @@ impl Gui {
         self.state.on_window_event(window, event).consumed
     }
 
-    /// Step 1: build the egui frame and upload textures + vertex/index buffers.
-    /// Must be called BEFORE `begin_render_pass` on the encoder.
     pub(crate) fn prepare(
         &mut self,
         window: &Window,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        gpu: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
         screen: &ScreenDescriptor,
-        content: impl Fn(&mut egui::Ui),
+        overlays: &Overlays,
+        show_splash: bool,
     ) -> PreparedFrame {
         let raw_input = self.state.take_egui_input(window);
-        let fps_overlay = &self.fps_overlay;
-        let paused_overlay = &self.paused_overlay;
         let mut full_output = self.context.run_ui(raw_input, |ui| {
-            content(ui);
-            if fps_overlay.show() {
-                OverlayKind::Fps(fps_overlay.fps()).draw(ui.ctx());
+            if show_splash {
+                draw_splash(ui);
             }
-            if paused_overlay.show() {
+
+            if let Some(fps) = overlays.fps {
+                OverlayKind::Fps(fps).draw(ui.ctx());
+            }
+            if overlays.paused {
                 OverlayKind::Paused.draw(ui.ctx());
             }
         });
@@ -86,10 +81,11 @@ impl Gui {
 
         for (id, deltas) in full_output.textures_delta.set.drain() {
             for delta in deltas {
-                self.renderer.update_texture(device, queue, id, &delta);
+                self.renderer.update_texture(gpu.device(), gpu.queue(), id, &delta);
             }
         }
-        self.renderer.update_buffers(device, queue, encoder, &paint_jobs, screen);
+        self.renderer
+            .update_buffers(gpu.device(), gpu.queue(), encoder, &paint_jobs, screen);
 
         PreparedFrame {
             paint_jobs,
@@ -97,12 +93,10 @@ impl Gui {
         }
     }
 
-    /// Step 2: paint egui into a render pass (detached from the encoder).
     pub(crate) fn paint(&self, rpass: &mut wgpu::RenderPass<'static>, prepared: &PreparedFrame, screen: &ScreenDescriptor) {
         self.renderer.render(rpass, &prepared.paint_jobs, screen);
     }
 
-    /// Step 3: free textures egui is done with. Call after the pass has ended.
     pub(crate) fn cleanup(&mut self, mut prepared: PreparedFrame) {
         for id in prepared.textures_delta.free.drain() {
             self.renderer.free_texture(&id);

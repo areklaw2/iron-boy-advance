@@ -1,7 +1,7 @@
 use ironboyadvance::Viewport;
 use winit::dpi::PhysicalSize;
 
-use crate::{DesktopError, video::fit_scale};
+use crate::{DesktopError, video::frame_renderer::fit_scale};
 
 const SCREENSHOT_DIRECTORY: &str = "screenshots";
 
