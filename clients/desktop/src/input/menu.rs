@@ -2,8 +2,16 @@ use muda::{
     Menu, MenuItem, PredefinedMenuItem, Submenu,
     accelerator::{Accelerator, Code, Modifiers},
 };
+use winit::event_loop::EventLoopProxy;
 
-pub(crate) fn build_menu() -> Menu {
+use crate::app::UserEvent;
+
+pub(crate) fn build_menu(proxy: EventLoopProxy<UserEvent>) -> Menu {
+    let menu_proxy = proxy.clone();
+    muda::MenuEvent::set_event_handler(Some(move |event| {
+        let _ = menu_proxy.send_event(UserEvent::MenuEvent(event));
+    }));
+
     let menu = Menu::new();
     let menu_item2 = MenuItem::new("Menu item #2", false, None);
     let submenu = Submenu::with_items(

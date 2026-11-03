@@ -2,7 +2,7 @@ use std::{
     fs, io,
     sync::{
         Arc,
-        atomic::{AtomicU16, Ordering},
+        atomic::{AtomicBool, AtomicU16, Ordering},
         mpsc::{self, Receiver, Sender, TryRecvError},
     },
     thread::{self, JoinHandle},
@@ -13,9 +13,11 @@ use chrono::Local;
 use getset::{CopyGetters, Getters};
 use ironboyadvance::{BootError, SystemInfo, Viewport, boot, detect_console, system_info};
 use ringbuf::traits::Producer;
+use winit::event_loop::EventLoopProxy;
 
 use crate::{
     DesktopError,
+    app::UserEvent,
     audio::{self, AudioSink},
     config::Config,
     input::KEYPAD_IDLE,
@@ -79,6 +81,21 @@ pub(crate) struct SpawnFailure {
     pub(crate) error: DesktopError,
     pub(crate) audio_sink: Option<AudioSink>,
 }
+
+struct PanicNotifier {
+    panicked: Arc<AtomicBool>,
+    proxy: EventLoopProxy<UserEvent>,
+}
+
+impl Drop for PanicNotifier {
+    fn drop(&mut self) {
+        if thread::panicking() {
+            self.panicked.store(true, Ordering::Relaxed);
+            let _ = self.proxy.send_event(UserEvent::EmulatorExited);
+        }
+    }
+}
+
 pub(crate) enum EmulatorCommand {
     SetPaused(bool),
     SetMaxSpeed(bool),
@@ -100,6 +117,7 @@ pub(crate) struct Emulator {
     max_speed: bool,
     rom_path: String,
     thread: JoinHandle<Option<AudioSink>>,
+    panicked: Arc<AtomicBool>,
 }
 
 impl Emulator {
@@ -108,6 +126,7 @@ impl Emulator {
         rom_buffer: Vec<u8>,
         config: &Config,
         show_logs: bool,
+        proxy: EventLoopProxy<UserEvent>,
         mut audio_sink: Option<AudioSink>,
     ) -> Result<Emulator, SpawnFailure> {
         let kind = match detect_console(&rom_buffer) {
@@ -145,9 +164,15 @@ impl Emulator {
             .map(|sink| audio::Resampler::new(sample_rate, sink.output_sample_rate));
         let emu_keypad = keypad.clone();
         let emu_rom_path = rom_path.clone();
+        let panicked = Arc::new(AtomicBool::new(false));
+        let panic_notifier = PanicNotifier {
+            panicked: panicked.clone(),
+            proxy,
+        };
 
         let (boot_tx, boot_rx) = mpsc::sync_channel::<Result<(), BootError>>(1);
         let thread = thread::spawn(move || {
+            let _panic_notifier = panic_notifier;
             let mut system = match boot(
                 kind,
                 &emu_rom_path,
@@ -243,6 +268,7 @@ impl Emulator {
             max_speed: false,
             rom_path,
             thread,
+            panicked,
         })
     }
 
@@ -284,6 +310,10 @@ impl Emulator {
 
     pub(crate) fn rom_path(&self) -> &str {
         &self.rom_path
+    }
+
+    pub(crate) fn panicked(&self) -> bool {
+        self.panicked.load(Ordering::Relaxed)
     }
 
     fn send(&self, command: EmulatorCommand) {

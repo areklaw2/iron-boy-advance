@@ -6,7 +6,7 @@ use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
     event::{ElementState, KeyEvent, WindowEvent},
-    event_loop::ActiveEventLoop,
+    event_loop::{ActiveEventLoop, EventLoopProxy},
     keyboard::{KeyCode, ModifiersState, PhysicalKey},
     window::{Window, WindowId},
 };
@@ -26,6 +26,7 @@ const INITIAL_WINDOW_SCALE: u32 = 6;
 #[derive(Debug)]
 pub(crate) enum UserEvent {
     MenuEvent(muda::MenuEvent),
+    EmulatorExited,
 }
 
 pub(crate) struct Application {
@@ -33,20 +34,22 @@ pub(crate) struct Application {
     show_logs: bool,
     show_fps: bool,
     emulator: Option<Emulator>,
-    pending_rom: Option<String>,
+    rom_path: Option<String>,
     _audio_stream: Option<cpal::Stream>,
     audio_sink: Option<AudioSink>,
-    keypad_tracker: KeypadTracker,
-    modifiers: ModifiersState,
     gpu: Option<GpuContext>,
     windows: HashMap<WindowId, WindowState>,
     main_window: Option<WindowId>,
+    focused_window: Option<WindowId>,
     controller: Option<Controller>,
+    keypad_tracker: KeypadTracker,
+    modifiers: ModifiersState,
     menu: Option<Menu>,
+    proxy: EventLoopProxy<UserEvent>,
 }
 
 impl Application {
-    pub(crate) fn new(rom_path: Option<String>, config: Config, show_logs: bool) -> Self {
+    pub(crate) fn new(rom_path: Option<String>, config: Config, show_logs: bool, proxy: EventLoopProxy<UserEvent>) -> Self {
         let (_audio_stream, audio_sink) = match audio::start() {
             Some(output) => (Some(output.stream), Some(output.sink)),
             None => (None, None),
@@ -57,16 +60,18 @@ impl Application {
             show_logs,
             show_fps: false,
             emulator: None,
-            pending_rom: rom_path,
+            rom_path,
             _audio_stream,
             audio_sink,
-            keypad_tracker: KeypadTracker::new(),
-            modifiers: ModifiersState::empty(),
             gpu: None,
             windows: HashMap::new(),
             main_window: None,
+            focused_window: None,
             controller: None,
+            keypad_tracker: KeypadTracker::new(),
+            modifiers: ModifiersState::empty(),
             menu: None,
+            proxy,
         }
     }
     fn mount(&mut self, rom_path: String) {
@@ -87,6 +92,7 @@ impl Application {
             rom_buffer,
             &self.config,
             self.show_logs,
+            self.proxy.clone(),
             self.audio_sink.take(),
         ) {
             Ok(emulator) => self.emulator = Some(emulator),
@@ -184,7 +190,7 @@ impl ApplicationHandler<UserEvent> for Application {
             return;
         }
 
-        if let Some(rom_path) = self.pending_rom.take() {
+        if let Some(rom_path) = self.rom_path.take() {
             self.mount(rom_path);
         }
 
@@ -208,7 +214,7 @@ impl ApplicationHandler<UserEvent> for Application {
         self.attach_to_main_window();
 
         self.controller = Controller::new();
-        self.menu = Some(build_menu());
+        self.menu = Some(build_menu(self.proxy.clone()));
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
@@ -302,8 +308,23 @@ impl ApplicationHandler<UserEvent> for Application {
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
-        let UserEvent::MenuEvent(menu_event) = event;
-        tracing::debug!("menu event {:?}", menu_event.id());
+        match event {
+            UserEvent::MenuEvent(menu_event) => tracing::debug!("menu event {:?}", menu_event.id()),
+            UserEvent::EmulatorExited => {
+                if self.emulator.as_ref().is_some_and(Emulator::panicked)
+                    && let Some(emulator) = self.emulator.take()
+                {
+                    self.audio_sink = emulator.stop();
+                    if self.audio_sink.is_none()
+                        && let Some(output) = audio::start()
+                    {
+                        self._audio_stream = Some(output.stream);
+                        self.audio_sink = Some(output.sink);
+                    }
+                    self.attach_to_main_window();
+                }
+            }
+        }
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
