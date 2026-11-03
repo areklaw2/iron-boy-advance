@@ -29,6 +29,11 @@ impl KeypadTracker {
         self.store(out);
     }
 
+    pub(crate) fn release_controller(&mut self, out: &Arc<AtomicU16>) {
+        self.controller = KEYPAD_IDLE;
+        self.store(out);
+    }
+
     fn store(&self, out: &Arc<AtomicU16>) {
         out.store(self.keyboard & self.controller, Ordering::Relaxed);
     }

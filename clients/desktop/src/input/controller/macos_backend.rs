@@ -7,7 +7,6 @@ pub(super) struct MacosControllerBackend;
 
 impl MacosControllerBackend {
     pub(super) fn new() -> Option<Self> {
-        unsafe { GCController::setShouldMonitorBackgroundEvents(true) };
         Some(Self)
     }
 }

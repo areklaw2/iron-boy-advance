@@ -232,6 +232,15 @@ impl ApplicationHandler<UserEvent> for Application {
                 }
             }
 
+            WindowEvent::Focused(true) => self.focused_window = Some(window_id),
+            WindowEvent::Focused(false) => {
+                if self.focused_window == Some(window_id) {
+                    self.focused_window = None;
+                    if let Some(emulator) = self.emulator.as_ref() {
+                        self.keypad_tracker.release_controller(emulator.keypad());
+                    }
+                }
+            }
             WindowEvent::ModifiersChanged(modifiers) => {
                 self.modifiers = modifiers.state();
             }
@@ -298,10 +307,15 @@ impl ApplicationHandler<UserEvent> for Application {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if let (Some(controller), Some(emulator)) = (self.controller.as_mut(), self.emulator.as_mut()) {
-            for (button, pressed) in controller.poll() {
-                self.keypad_tracker
-                    .handle_controller_button(button, pressed, emulator.keypad());
+        if let Some(controller) = self.controller.as_mut() {
+            let buttons = controller.poll();
+            if self.focused_window.is_some()
+                && let Some(emulator) = self.emulator.as_ref()
+            {
+                for (button, pressed) in buttons {
+                    self.keypad_tracker
+                        .handle_controller_button(button, pressed, emulator.keypad());
+                }
             }
         }
 
