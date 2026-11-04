@@ -1,4 +1,6 @@
-use egui::{FontData, FontDefinitions, FontFamily, TexturesDelta, ViewportId, epaint::ClippedPrimitive};
+use egui::{
+    Color32, FontData, FontDefinitions, FontFamily, Id, LayerId, Order, TexturesDelta, ViewportId, epaint::ClippedPrimitive,
+};
 use egui_wgpu::{RendererOptions, ScreenDescriptor};
 use winit::{event::WindowEvent, window::Window};
 
@@ -72,6 +74,17 @@ impl EguiLayer {
             }
             if overlays.paused {
                 OverlayKind::Paused.draw(ui.ctx());
+            }
+            if let Some(screenshot) = overlays.screenshot.as_ref() {
+                let ctx = ui.ctx();
+                let alpha = (screenshot.alpha * 255.0) as u8;
+                ctx.layer_painter(LayerId::new(Order::Background, Id::unique("screenshot_flash")))
+                    .rect_filled(ctx.content_rect(), 0.0, Color32::from_white_alpha(alpha));
+                OverlayKind::Screenshot {
+                    name: screenshot.name.clone(),
+                    alpha: screenshot.alpha,
+                }
+                .draw(ctx);
             }
         });
 

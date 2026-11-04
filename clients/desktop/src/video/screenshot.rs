@@ -1,17 +1,43 @@
+use std::time::{Duration, Instant};
+
 use ironboyadvance::Viewport;
 use winit::dpi::PhysicalSize;
 
-use crate::{DesktopError, video::frame_renderer::fit_scale};
+use crate::{
+    DesktopError,
+    video::{frame_renderer::fit_scale, overlay::ScreenshotOverlay},
+};
 
 const SCREENSHOT_DIRECTORY: &str = "screenshots";
+const SCREENSHOT_FLASH_DURATION: Duration = Duration::from_millis(1000);
+
+pub(crate) struct ScreenshotNotice {
+    taken: Instant,
+    name: String,
+}
+
+impl ScreenshotNotice {
+    pub(crate) fn new(name: String) -> Self {
+        Self {
+            taken: Instant::now(),
+            name,
+        }
+    }
+
+    pub(crate) fn overlay(&self) -> Option<ScreenshotOverlay> {
+        let remaining = 1.0 - self.taken.elapsed().as_secs_f32() / SCREENSHOT_FLASH_DURATION.as_secs_f32();
+        (remaining > 0.0).then(|| ScreenshotOverlay {
+            alpha: remaining * remaining,
+            name: self.name.clone(),
+        })
+    }
+}
 
 pub(crate) fn save_screenshot(
     frame: &[u32],
     viewport: Viewport,
     window_size: PhysicalSize<u32>,
-) -> Result<(), DesktopError> {
-    //TODO: when a screenshot is taken we need to give some type of overlay or visual notification that it happened
-
+) -> Result<String, DesktopError> {
     let src_w = viewport.width as u32;
     let src_h = viewport.height as u32;
 
@@ -36,10 +62,11 @@ pub(crate) fn save_screenshot(
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis())
         .unwrap_or(0);
-    let name = format!("{SCREENSHOT_DIRECTORY}/screenshot-{timestamp}.png");
+    let file_name = format!("screenshot-{timestamp}.png");
+    let path = format!("{SCREENSHOT_DIRECTORY}/{file_name}");
 
     std::fs::create_dir_all(SCREENSHOT_DIRECTORY)?;
-    image::save_buffer(&name, &rgba_buffer, out_w, out_h, image::ColorType::Rgba8)?;
-    tracing::info!("wrote {name} ({out_w}x{out_h})");
-    Ok(())
+    image::save_buffer(&path, &rgba_buffer, out_w, out_h, image::ColorType::Rgba8)?;
+    tracing::info!("wrote {path} ({out_w}x{out_h})");
+    Ok(file_name)
 }

@@ -16,7 +16,7 @@ use crate::{
     config::Config,
     emulator::{self, Emulator, FpsTarget},
     input::{AppMenu, Controller, HotKey, KeypadTracker, MenuAction, build_menu, keycode_to_button, keycode_to_hotkey},
-    video::{GpuContext, Overlays, save_screenshot},
+    video::{GpuContext, Overlays, ScreenshotNotice, save_screenshot},
     window::WindowState,
 };
 
@@ -33,6 +33,7 @@ pub(crate) struct Application {
     show_logs: bool,
     show_fps: bool,
     fps_target: FpsTarget,
+    screenshot: Option<ScreenshotNotice>,
     emulator: Option<Emulator>,
     rom_path: Option<String>,
     _audio_stream: Option<cpal::Stream>,
@@ -60,6 +61,7 @@ impl Application {
             show_logs,
             show_fps: false,
             fps_target: FpsTarget::Native,
+            screenshot: None,
             emulator: None,
             rom_path,
             _audio_stream,
@@ -193,17 +195,23 @@ impl Application {
         }
     }
 
-    fn take_screenshot(&self) {
+    fn take_screenshot(&mut self) {
+        let mut saved_name = None;
         if let (Some(emulator), Some(window_state)) = (self.emulator.as_ref(), self.main_window_state()) {
             match emulator.last_frame() {
                 Some(frame) => {
                     let window_size = window_state.window.inner_size();
-                    if let Err(e) = save_screenshot(frame, emulator.viewport(), window_size) {
-                        tracing::error!("screenshot failed: {e}");
+                    match save_screenshot(frame, emulator.viewport(), window_size) {
+                        Ok(name) => saved_name = Some(name),
+                        Err(e) => tracing::error!("screenshot failed: {e}"),
                     }
                 }
                 None => tracing::warn!("screenshot requested before any frame has arrived"),
             }
+        }
+
+        if let Some(name) = saved_name {
+            self.screenshot = Some(ScreenshotNotice::new(name));
         }
     }
 
@@ -342,6 +350,7 @@ impl ApplicationHandler<UserEvent> for Application {
                 let overlays = Overlays {
                     fps: self.emulator.as_ref().filter(|_| self.show_fps).map(Emulator::fps),
                     paused: self.emulator.as_ref().is_some_and(Emulator::paused),
+                    screenshot: self.screenshot.as_ref().and_then(ScreenshotNotice::overlay),
                 };
 
                 if let (Some(gpu), Some(state)) = (self.gpu.as_ref(), self.windows.get_mut(&window_id)) {
