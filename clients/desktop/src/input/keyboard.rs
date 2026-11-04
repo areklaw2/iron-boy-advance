@@ -4,7 +4,6 @@ use winit::keyboard::{KeyCode, ModifiersState};
 pub(crate) enum HotKey {
     Reset,
     TogglePause,
-    ToggleMaxSpeed,
     ToggleFps,
     Screenshot,
 }
@@ -14,7 +13,6 @@ pub(crate) fn keycode_to_hotkey(modifiers: ModifiersState, code: KeyCode) -> Opt
     match (command, code) {
         (true, KeyCode::KeyR) => Some(HotKey::Reset),
         (true, KeyCode::KeyP) => Some(HotKey::TogglePause),
-        (false, KeyCode::F2) => Some(HotKey::ToggleMaxSpeed),
         (false, KeyCode::F3) => Some(HotKey::ToggleFps),
         (false, KeyCode::F4) => Some(HotKey::Screenshot),
         _ => None,

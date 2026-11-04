@@ -23,6 +23,13 @@ use crate::{
     input::KEYPAD_IDLE,
 };
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum FpsTarget {
+    Fixed(u32),
+    Max,
+    Native,
+}
+
 struct FrameLimiter {
     duration: Duration,
     clock: Instant,
@@ -98,7 +105,7 @@ impl Drop for PanicNotifier {
 
 pub(crate) enum EmulatorCommand {
     SetPaused(bool),
-    SetMaxSpeed(bool),
+    SetFps(FpsTarget),
     Stop,
 }
 
@@ -114,7 +121,6 @@ pub(crate) struct Emulator {
     fps_counter: FpsCounter,
     #[getset(get_copy = "pub(crate)")]
     paused: bool,
-    max_speed: bool,
     rom_path: String,
     thread: JoinHandle<Option<AudioSink>>,
     panicked: Arc<AtomicBool>,
@@ -150,7 +156,7 @@ impl Emulator {
 
         let SystemInfo {
             viewport,
-            fps,
+            native_fps,
             sample_rate,
             cycles_per_frame,
         } = system_info(kind);
@@ -192,9 +198,9 @@ impl Emulator {
             };
 
             let mut overshoot = 0;
-            let mut frame_limiter = FrameLimiter::new(fps);
+            let mut frame_limiter = FrameLimiter::new(native_fps);
             let mut paused = false;
-            let mut turbo = false;
+            let mut is_max_fps = false;
 
             'frame: loop {
                 'commands: loop {
@@ -203,10 +209,14 @@ impl Emulator {
                             paused = value;
                             tracing::info!("emulator {}", if paused { "paused" } else { "resumed" });
                         }
-                        Ok(EmulatorCommand::SetMaxSpeed(value)) => {
-                            turbo = value;
+                        Ok(EmulatorCommand::SetFps(fps_target)) => {
+                            is_max_fps = fps_target == FpsTarget::Max;
+                            let fps = match fps_target {
+                                FpsTarget::Fixed(fixed_fps) => fixed_fps as f32,
+                                FpsTarget::Max | FpsTarget::Native => native_fps,
+                            };
                             frame_limiter = FrameLimiter::new(fps);
-                            tracing::info!("max_speed {}", if turbo { "on" } else { "off" });
+                            tracing::info!("fps target {fps_target:?}");
                         }
                         Ok(EmulatorCommand::Stop) => break 'frame,
                         Err(TryRecvError::Empty) => break 'commands,
@@ -233,7 +243,7 @@ impl Emulator {
                     }
                 }
 
-                if !turbo || paused {
+                if !is_max_fps || paused {
                     frame_limiter.wait();
                 }
             }
@@ -265,7 +275,6 @@ impl Emulator {
             last_frame: None,
             fps_counter: FpsCounter::new(),
             paused: false,
-            max_speed: false,
             rom_path,
             thread,
             panicked,
@@ -277,9 +286,8 @@ impl Emulator {
         self.send(EmulatorCommand::SetPaused(self.paused));
     }
 
-    pub(crate) fn toggle_max_speed(&mut self) {
-        self.max_speed ^= true;
-        self.send(EmulatorCommand::SetMaxSpeed(self.max_speed));
+    pub(crate) fn set_fps(&self, fps_target: FpsTarget) {
+        self.send(EmulatorCommand::SetFps(fps_target));
     }
 
     pub(crate) fn stop(self) -> Option<AudioSink> {

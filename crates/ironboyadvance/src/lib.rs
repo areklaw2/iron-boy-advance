@@ -26,7 +26,7 @@ pub const GBA_VIEWPORT: Viewport = Viewport {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SystemInfo {
     pub viewport: Viewport,
-    pub fps: f32,
+    pub native_fps: f32,
     pub sample_rate: u32,
     pub cycles_per_frame: usize,
 }
@@ -35,7 +35,7 @@ pub fn system_info(kind: Console) -> SystemInfo {
     match kind {
         Console::Gba => SystemInfo {
             viewport: GBA_VIEWPORT,
-            fps: ironboyadvance_gba::FPS,
+            native_fps: ironboyadvance_gba::FPS,
             sample_rate: ironboyadvance_gba::APU_SAMPLING_FREQUENCY as u32,
             cycles_per_frame: ironboyadvance_gba::CYCLES_PER_FRAME,
         },
@@ -44,7 +44,7 @@ pub fn system_info(kind: Console) -> SystemInfo {
                 width: ironboyadvance_gbc::VIEWPORT_WIDTH,
                 height: ironboyadvance_gbc::VIEWPORT_HEIGHT,
             },
-            fps: ironboyadvance_gbc::FPS,
+            native_fps: ironboyadvance_gbc::FPS,
             sample_rate: ironboyadvance_gbc::SAMPLE_RATE,
             cycles_per_frame: ironboyadvance_gbc::CYCLES_PER_FRAME,
         },

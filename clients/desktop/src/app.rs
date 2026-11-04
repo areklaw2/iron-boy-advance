@@ -1,7 +1,6 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
 use ironboyadvance::GBA_VIEWPORT;
-use muda::Menu;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
@@ -15,8 +14,8 @@ use crate::{
     BASE_TITLE,
     audio::{self, AudioSink},
     config::Config,
-    emulator::{self, Emulator},
-    input::{Controller, HotKey, KeypadTracker, build_menu, keycode_to_button, keycode_to_hotkey},
+    emulator::{self, Emulator, FpsTarget},
+    input::{AppMenu, Controller, HotKey, KeypadTracker, MenuAction, build_menu, keycode_to_button, keycode_to_hotkey},
     video::{GpuContext, Overlays, save_screenshot},
     window::WindowState,
 };
@@ -33,6 +32,7 @@ pub(crate) struct Application {
     config: Config,
     show_logs: bool,
     show_fps: bool,
+    fps_target: FpsTarget,
     emulator: Option<Emulator>,
     rom_path: Option<String>,
     _audio_stream: Option<cpal::Stream>,
@@ -44,7 +44,7 @@ pub(crate) struct Application {
     controller: Option<Controller>,
     keypad_tracker: KeypadTracker,
     modifiers: ModifiersState,
-    menu: Option<Menu>,
+    menu: Option<AppMenu>,
     proxy: EventLoopProxy<UserEvent>,
 }
 
@@ -59,6 +59,7 @@ impl Application {
             config,
             show_logs,
             show_fps: false,
+            fps_target: FpsTarget::Native,
             emulator: None,
             rom_path,
             _audio_stream,
@@ -74,6 +75,7 @@ impl Application {
             proxy,
         }
     }
+
     fn mount(&mut self, rom_path: String) {
         if let Some(emulator) = self.emulator.take() {
             self.audio_sink = emulator.stop();
@@ -95,7 +97,10 @@ impl Application {
             self.proxy.clone(),
             self.audio_sink.take(),
         ) {
-            Ok(emulator) => self.emulator = Some(emulator),
+            Ok(emulator) => {
+                emulator.set_fps(self.fps_target);
+                self.emulator = Some(emulator);
+            }
             Err(failure) => {
                 tracing::error!("failed to load rom {rom_path}: {}", failure.error);
                 self.audio_sink = failure.audio_sink;
@@ -104,6 +109,10 @@ impl Application {
     }
 
     fn attach_to_main_window(&mut self) {
+        if let Some(menu) = self.menu.as_ref() {
+            menu.set_rom_loaded(self.emulator.is_some());
+        }
+
         let Some(gpu) = self.gpu.as_ref() else { return };
         let Some(window_id) = self.main_window else { return };
         let Some(state) = self.windows.get_mut(&window_id) else {
@@ -145,42 +154,78 @@ impl Application {
         };
 
         match hotkey {
-            HotKey::Screenshot => {
-                if let (Some(emulator), Some(window_state)) = (self.emulator.as_ref(), self.main_window_state()) {
-                    match emulator.last_frame() {
-                        Some(frame) => {
-                            let window_size = window_state.window.inner_size();
-                            if let Err(e) = save_screenshot(frame, emulator.viewport(), window_size) {
-                                tracing::error!("screenshot failed: {e}");
-                            }
-                        }
-                        None => tracing::warn!("screenshot requested before any frame has arrived"),
-                    }
-                }
-            }
-            HotKey::ToggleFps => {
-                if self.emulator.is_some() {
-                    self.show_fps ^= true;
-                }
-            }
-            HotKey::TogglePause => {
-                if let Some(emulator) = self.emulator.as_mut() {
-                    emulator.toggle_pause();
-                }
-            }
-            HotKey::ToggleMaxSpeed => {
-                if let Some(emulator) = self.emulator.as_mut() {
-                    emulator.toggle_max_speed();
-                }
-            }
-            HotKey::Reset => {
-                if let Some(rom_path) = self.emulator.as_ref().map(|emulator| emulator.rom_path().to_owned()) {
-                    self.load_rom(rom_path);
-                }
-            }
+            HotKey::Screenshot => self.take_screenshot(),
+            HotKey::ToggleFps => self.toggle_show_fps(),
+            HotKey::TogglePause => self.toggle_pause(),
+            HotKey::Reset => self.reset(),
         }
 
         true
+    }
+
+    fn handle_menu_action(&mut self, action: MenuAction, event_loop: &ActiveEventLoop) {
+        match action {
+            MenuAction::Settings => tracing::warn!("Settings not implemented"),
+            MenuAction::Mute => tracing::warn!("Mute not implemented"),
+            MenuAction::ChangeFps(fps_target) => {
+                self.fps_target = fps_target;
+                if let Some(menu) = self.menu.as_ref() {
+                    menu.select_fps(fps_target);
+                }
+                if let Some(emulator) = self.emulator.as_ref() {
+                    emulator.set_fps(fps_target);
+                }
+            }
+            MenuAction::Screenshot => self.take_screenshot(),
+            MenuAction::Reset => self.reset(),
+            MenuAction::Pause => self.toggle_pause(),
+            MenuAction::Quit => event_loop.exit(),
+            MenuAction::LoadRom => tracing::warn!("LoadRom not implemented"),
+            MenuAction::LoadState => tracing::warn!("LoadState not implemented"),
+            MenuAction::SaveState => tracing::warn!("SaveState not implemented"),
+            MenuAction::ShowFps => self.toggle_show_fps(),
+            MenuAction::ShowLogs => tracing::warn!("ShowLogs not implemented"),
+            MenuAction::Palettes => tracing::warn!("Palettes not implemented"),
+            MenuAction::Sprites => tracing::warn!("Sprites not implemented"),
+            MenuAction::Tiles => tracing::warn!("Tiles not implemented"),
+            MenuAction::Maps => tracing::warn!("Maps not implemented"),
+            MenuAction::AudioChannels => tracing::warn!("AudioChannels not implemented"),
+        }
+    }
+
+    fn take_screenshot(&self) {
+        if let (Some(emulator), Some(window_state)) = (self.emulator.as_ref(), self.main_window_state()) {
+            match emulator.last_frame() {
+                Some(frame) => {
+                    let window_size = window_state.window.inner_size();
+                    if let Err(e) = save_screenshot(frame, emulator.viewport(), window_size) {
+                        tracing::error!("screenshot failed: {e}");
+                    }
+                }
+                None => tracing::warn!("screenshot requested before any frame has arrived"),
+            }
+        }
+    }
+
+    fn toggle_show_fps(&mut self) {
+        if self.emulator.is_some() {
+            self.show_fps ^= true;
+            if let Some(menu) = self.menu.as_ref() {
+                menu.set_show_fps(self.show_fps);
+            }
+        }
+    }
+
+    fn toggle_pause(&mut self) {
+        if let Some(emulator) = self.emulator.as_mut() {
+            emulator.toggle_pause();
+        }
+    }
+
+    fn reset(&mut self) {
+        if let Some(rom_path) = self.emulator.as_ref().map(|emulator| emulator.rom_path().to_owned()) {
+            self.load_rom(rom_path);
+        }
     }
 }
 
@@ -211,10 +256,10 @@ impl ApplicationHandler<UserEvent> for Application {
         let window_id = window.id();
         self.windows.insert(window_id, WindowState::new(gpu, window));
         self.main_window = Some(window_id);
+        self.menu = Some(build_menu(self.proxy.clone()));
         self.attach_to_main_window();
 
         self.controller = Controller::new();
-        self.menu = Some(build_menu(self.proxy.clone()));
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
@@ -307,9 +352,15 @@ impl ApplicationHandler<UserEvent> for Application {
         }
     }
 
-    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: UserEvent) {
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UserEvent) {
         match event {
-            UserEvent::MenuEvent(menu_event) => tracing::debug!("menu event {:?}", menu_event.id()),
+            UserEvent::MenuEvent(menu_event) => {
+                if let Some(menu) = self.menu.as_ref()
+                    && let Some(action) = menu.action(menu_event.id())
+                {
+                    self.handle_menu_action(action, event_loop);
+                }
+            }
             UserEvent::EmulatorExited => {
                 if self.emulator.as_ref().is_some_and(Emulator::panicked)
                     && let Some(emulator) = self.emulator.take()
