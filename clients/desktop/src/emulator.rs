@@ -12,7 +12,7 @@ use std::{
 use chrono::Local;
 use getset::{CopyGetters, Getters};
 use ironboyadvance::{BootError, SystemInfo, Viewport, boot, detect_console, system_info};
-use ringbuf::traits::Producer;
+use ringbuf::traits::{Observer, Producer};
 use winit::event_loop::EventLoopProxy;
 
 use crate::{
@@ -216,6 +216,9 @@ impl Emulator {
                                 FpsTarget::Max | FpsTarget::Native => native_fps,
                             };
                             frame_limiter = FrameLimiter::new(fps);
+                            if let Some(resampler) = resampler.as_mut() {
+                                resampler.set_speed((fps / native_fps) as f64);
+                            }
                             tracing::info!("fps target {fps_target:?}");
                         }
                         Ok(EmulatorCommand::Stop) => break 'frame,
@@ -228,11 +231,13 @@ impl Emulator {
                     system.handle_pressed_buttons(emu_keypad.load(Ordering::Relaxed));
                     overshoot = system.run(cycles_per_frame, overshoot);
 
-                    if let (Some(sink), Some(resampler)) = (audio_sink.as_mut(), resampler.as_mut()) {
+                    if !is_max_fps && let (Some(sink), Some(resampler)) = (audio_sink.as_mut(), resampler.as_mut()) {
                         for &sample in system.audio_buffer() {
                             resampler.push_sample(sample, |left, right| {
-                                let _ = sink.producer.try_push(left);
-                                let _ = sink.producer.try_push(right);
+                                if sink.producer.vacant_len() >= 2 {
+                                    let _ = sink.producer.try_push(left);
+                                    let _ = sink.producer.try_push(right);
+                                }
                             });
                         }
                     }

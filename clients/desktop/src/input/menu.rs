@@ -157,6 +157,7 @@ pub(crate) fn build_menu(proxy: EventLoopProxy<UserEvent>) -> AppMenu {
         (FpsTarget::Fixed(60), "60"),
         (FpsTarget::Fixed(90), "90"),
         (FpsTarget::Fixed(120), "120"),
+        (FpsTarget::Fixed(240), "240"),
         (FpsTarget::Max, "Max"),
         (FpsTarget::Native, "59.7275 (Native)"),
     ]
