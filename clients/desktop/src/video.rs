@@ -1,12 +1,14 @@
+mod egui_layer;
+mod frame_renderer;
 mod gpu;
-mod gui;
 mod overlay;
-mod renderer;
+mod screenshot;
 mod splash;
 mod surface;
 
-pub use gpu::GpuContext;
-pub use gui::Gui;
-pub use renderer::GbaRenderer;
-pub use splash::draw_splash;
-pub use surface::WindowSurface;
+pub(crate) use egui_layer::EguiLayer;
+pub(crate) use frame_renderer::FrameRenderer;
+pub(crate) use gpu::GpuContext;
+pub(crate) use overlay::Overlays;
+pub(crate) use screenshot::{ScreenshotNotice, save_screenshot};
+pub(crate) use surface::WindowSurface;

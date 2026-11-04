@@ -10,11 +10,11 @@ run-bios bios rom *flags:
 run-release bios rom *flags:
   cargo run --release --bin IronBoyAdvance -- --bios {{bios}} --rom "{{rom}}" {{flags}}
 
-profile bios rom *flags:
+profile bios rom:
   cargo build --release --bin IronBoyAdvance
   samply record ./target/release/IronBoyAdvance --bios {{bios}} --rom "{{rom}}"
 
-profile-dev bios rom *flags:
+profile-dev bios rom:
   cargo build --profile profiling --bin IronBoyAdvance
   samply record ./target/profiling/IronBoyAdvance --bios {{bios}} --rom "{{rom}}"
 

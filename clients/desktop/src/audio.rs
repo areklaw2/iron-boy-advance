@@ -4,15 +4,19 @@ use ringbuf::{
     traits::{Consumer, Split},
 };
 
-pub type AudioProducer = HeapProd<f32>;
+pub(crate) type AudioProducer = HeapProd<f32>;
 
-pub struct AudioOutput {
-    pub stream: cpal::Stream,
-    pub producer: AudioProducer,
-    pub output_sample_rate: u32,
+pub(crate) struct AudioSink {
+    pub(crate) producer: AudioProducer,
+    pub(crate) output_sample_rate: u32,
 }
 
-pub fn start() -> Option<AudioOutput> {
+pub(crate) struct AudioOutput {
+    pub(crate) stream: cpal::Stream,
+    pub(crate) sink: AudioSink,
+}
+
+pub(crate) fn start() -> Option<AudioOutput> {
     let host = cpal::default_host();
     let device = host.default_output_device()?;
 
@@ -47,27 +51,36 @@ pub fn start() -> Option<AudioOutput> {
 
     Some(AudioOutput {
         stream,
-        producer,
-        output_sample_rate,
+        sink: AudioSink {
+            producer,
+            output_sample_rate,
+        },
     })
 }
 
-pub struct Resampler {
+pub(crate) struct Resampler {
+    base_step: f64,
     step: f64,
     next_output_position: f64,
     previous_sample: (f32, f32),
 }
 
 impl Resampler {
-    pub fn new(input_rate: u32, output_rate: u32) -> Self {
+    pub(crate) fn new(input_rate: u32, output_rate: u32) -> Self {
+        let base_step = input_rate as f64 / output_rate as f64;
         Resampler {
-            step: input_rate as f64 / output_rate as f64,
+            base_step,
+            step: base_step,
             next_output_position: 0.0,
             previous_sample: (0.0, 0.0),
         }
     }
 
-    pub fn push_sample(&mut self, sample: (f32, f32), mut emit: impl FnMut(f32, f32)) {
+    pub(crate) fn set_speed(&mut self, speed: f64) {
+        self.step = self.base_step * speed;
+    }
+
+    pub(crate) fn push_sample(&mut self, sample: (f32, f32), mut emit: impl FnMut(f32, f32)) {
         let (previous_left, previous_right) = self.previous_sample;
         let (current_left, current_right) = sample;
 
@@ -98,15 +111,30 @@ mod tests {
             resampler.push_sample((0.5, -0.5), |_, _| emitted += 1);
         }
 
-        // One second of input frames should produce ~one second of output frames.
         let difference = (emitted as i64 - output_rate as i64).abs();
         assert!(difference <= 1, "emitted {emitted}, expected ~{output_rate}");
     }
 
     #[test]
+    fn doubled_speed_consumes_input_twice_as_fast() {
+        let input_rate = 32768;
+        let output_rate = 48000;
+        let mut resampler = Resampler::new(input_rate, output_rate);
+        resampler.set_speed(2.0);
+
+        let mut emitted = 0;
+        for _ in 0..input_rate {
+            resampler.push_sample((0.5, -0.5), |_, _| emitted += 1);
+        }
+
+        let expected = output_rate / 2;
+        let difference = (emitted as i64 - expected as i64).abs();
+        assert!(difference <= 1, "emitted {emitted}, expected ~{expected}");
+    }
+
+    #[test]
     fn constant_input_yields_constant_output() {
         let mut resampler = Resampler::new(32768, 48000);
-        // Prime previous_frame so interpolation has no edge to ramp from.
         resampler.push_sample((1.0, -1.0), |_, _| {});
 
         let mut all_constant = true;

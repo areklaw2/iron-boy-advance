@@ -1,39 +1,24 @@
 use egui::{Align2, Area, Color32, FontFamily, Id, Label, RichText, TextWrapMode, vec2};
-use getset::{CopyGetters, MutGetters, Setters};
 
-#[derive(Setters, MutGetters, CopyGetters)]
-pub struct FpsOverlay {
-    #[getset(get_copy = "pub", set = "pub")]
-    fps: f64,
-    #[getset(get_copy = "pub", get_mut = "pub")]
-    show: bool,
+pub(crate) struct Overlays {
+    pub(crate) fps: Option<f64>,
+    pub(crate) paused: bool,
+    pub(crate) screenshot: Option<ScreenshotOverlay>,
 }
 
-impl FpsOverlay {
-    pub fn new() -> Self {
-        Self { fps: 0.0, show: false }
-    }
+pub(crate) struct ScreenshotOverlay {
+    pub(crate) name: String,
+    pub(crate) alpha: f32,
 }
 
-#[derive(Setters, MutGetters, CopyGetters)]
-pub struct PausedOverlay {
-    #[getset(get_copy = "pub", get_mut = "pub")]
-    show: bool,
-}
-
-impl PausedOverlay {
-    pub fn new() -> Self {
-        Self { show: false }
-    }
-}
-
-pub enum OverlayKind {
+pub(super) enum OverlayKind {
     Fps(f64),
     Paused,
+    Screenshot { name: String, alpha: f32 },
 }
 
 impl OverlayKind {
-    pub fn draw(&self, ctx: &egui::Context) {
+    pub(super) fn draw(&self, ctx: &egui::Context) {
         let (anchor, offset) = self.anchor();
         Area::new(Id::unique(self.id()))
             .anchor(anchor, offset)
@@ -55,6 +40,7 @@ impl OverlayKind {
         match self {
             OverlayKind::Fps(_) => "fps_overlay",
             OverlayKind::Paused => "paused_overlay",
+            OverlayKind::Screenshot { .. } => "screenshot_overlay",
         }
     }
 
@@ -62,6 +48,7 @@ impl OverlayKind {
         match self {
             OverlayKind::Fps(_) => (Align2::RIGHT_BOTTOM, vec2(-10.0, -10.0)),
             OverlayKind::Paused => (Align2::CENTER_CENTER, vec2(0.0, 0.0)),
+            OverlayKind::Screenshot { .. } => (Align2::LEFT_TOP, vec2(10.0, 10.0)),
         }
     }
 
@@ -69,6 +56,7 @@ impl OverlayKind {
         match self {
             OverlayKind::Fps(fps) => format!("{fps:.1} FPS"),
             OverlayKind::Paused => "PAUSED".to_owned(),
+            OverlayKind::Screenshot { name, .. } => name.clone(),
         }
     }
 
@@ -76,6 +64,7 @@ impl OverlayKind {
         match self {
             OverlayKind::Fps(_) => Color32::GREEN,
             OverlayKind::Paused => Color32::YELLOW,
+            OverlayKind::Screenshot { alpha, .. } => Color32::from_black_alpha((alpha * 255.0) as u8),
         }
     }
 
@@ -83,6 +72,7 @@ impl OverlayKind {
         match self {
             OverlayKind::Fps(_) => 24.0,
             OverlayKind::Paused => 72.0,
+            OverlayKind::Screenshot { .. } => 24.0,
         }
     }
 }

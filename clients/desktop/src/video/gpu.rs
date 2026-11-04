@@ -1,19 +1,16 @@
 use getset::Getters;
 
 #[derive(Getters)]
-pub struct GpuContext {
-    #[getset(get = "pub")]
+#[getset(get = "pub(crate)")]
+pub(crate) struct GpuContext {
     instance: wgpu::Instance,
-    #[getset(get = "pub")]
     adapter: wgpu::Adapter,
-    #[getset(get = "pub")]
     device: wgpu::Device,
-    #[getset(get = "pub")]
     queue: wgpu::Queue,
 }
 
 impl GpuContext {
-    pub async fn new() -> Self {
+    pub(crate) async fn new() -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             flags: wgpu::InstanceFlags::default(),

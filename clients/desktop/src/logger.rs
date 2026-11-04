@@ -2,7 +2,7 @@ use std::fs::OpenOptions;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
-pub fn initialize_logger() -> WorkerGuard {
+pub(crate) fn initialize_logger() -> WorkerGuard {
     let log_file = OpenOptions::new()
         .create(true)
         .write(true)

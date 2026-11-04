@@ -2,8 +2,8 @@ use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use ironboyadvance_arm7tdmi::{CPU_CLOCK_SPEED, ExecutionStrategy, cpu::Arm7tdmiCpu};
 use ironboyadvance_common::{
-    emulator::{Emulator, SystemInspection},
     scheduler::Scheduler,
+    system::{System, SystemInspection},
 };
 use thiserror::Error;
 
@@ -95,7 +95,7 @@ impl<E: ExecutionStrategy> GameBoyAdvance<E> {
     }
 }
 
-impl<E: ExecutionStrategy> Emulator for GameBoyAdvance<E> {
+impl<E: ExecutionStrategy> System for GameBoyAdvance<E> {
     fn run(&mut self, cycles: usize, overshoot: usize) -> usize {
         let start_time = self.scheduler.borrow().timestamp();
         let target = cycles.saturating_sub(overshoot);
