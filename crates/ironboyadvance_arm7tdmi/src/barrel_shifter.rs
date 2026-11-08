@@ -1,7 +1,6 @@
 use std::fmt;
 
 #[derive(Debug, Copy, Clone)]
-#[allow(clippy::upper_case_acronyms)]
 pub enum ShiftType {
     LSL,
     LSR,

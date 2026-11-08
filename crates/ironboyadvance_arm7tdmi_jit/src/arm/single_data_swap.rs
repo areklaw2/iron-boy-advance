@@ -33,7 +33,10 @@ impl Compile for SingleDataSwap {
             ; mov w21, w0
         }
         if rm as usize == PC {
-            dynasm! { assembler ; .arch aarch64 ; add w21, w21, #4 }
+            dynasm! { assembler
+               ; .arch aarch64
+               ; add w21, w21, #4
+            }
         }
 
         match self.byte() {

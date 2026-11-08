@@ -327,7 +327,6 @@ pub unsafe extern "C" fn load_8<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, ad
     cpu.load_8(address, access_pattern as u8)
 }
 
-#[allow(unused)]
 pub unsafe extern "C" fn load_signed_8<I: MemoryInterface>(
     cpu: *mut Arm7tdmiCpu<I>,
     address: u32,
@@ -343,7 +342,6 @@ pub unsafe extern "C" fn load_16<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, a
     cpu.load_16(address, access_pattern as u8)
 }
 
-#[allow(unused)]
 pub unsafe extern "C" fn load_signed_16<I: MemoryInterface>(
     cpu: *mut Arm7tdmiCpu<I>,
     address: u32,
@@ -353,7 +351,6 @@ pub unsafe extern "C" fn load_signed_16<I: MemoryInterface>(
     cpu.load_signed_16(address, access_pattern as u8)
 }
 
-#[allow(unused)]
 pub unsafe extern "C" fn load_rotated_16<I: MemoryInterface>(
     cpu: *mut Arm7tdmiCpu<I>,
     address: u32,
@@ -388,7 +385,6 @@ pub unsafe extern "C" fn store_8<I: MemoryInterface>(
     cpu.store_8(address, source as u8, access_pattern as u8);
 }
 
-#[allow(unused)]
 pub unsafe extern "C" fn store_16<I: MemoryInterface>(
     cpu: *mut Arm7tdmiCpu<I>,
     address: u32,
