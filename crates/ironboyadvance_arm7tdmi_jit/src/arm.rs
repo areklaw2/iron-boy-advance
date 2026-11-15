@@ -18,6 +18,7 @@ mod multiply;
 mod multiply_long;
 mod psr_transfer;
 mod single_data_swap;
+mod single_data_transfer;
 mod software_interrupt;
 mod undefined;
 
@@ -31,7 +32,7 @@ impl Compile for ArmInstruction {
             Self::SingleDataSwap(i) => i.compile::<I>(assembler),
             Self::BranchAndExchange(i) => i.compile::<I>(assembler),
             Self::HalfwordAndSignedDataTransfer(i) => i.compile::<I>(assembler),
-            Self::SingleDataTransfer(_i) => todo!(),
+            Self::SingleDataTransfer(i) => i.compile::<I>(assembler),
             Self::Undefined(i) => i.compile::<I>(assembler),
             Self::BlockDataTransfer(_i) => todo!(),
             Self::BranchAndBranchWithLink(i) => i.compile::<I>(assembler),

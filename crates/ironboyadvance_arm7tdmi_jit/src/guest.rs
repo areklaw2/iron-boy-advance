@@ -286,7 +286,7 @@ pub struct ShiftResult {
     pub carry: u32,
 }
 
-pub extern "C" fn lsl_by_register(value: u32, amount: u32, carry: u32) -> ShiftResult {
+pub extern "C" fn lsl_shift(value: u32, amount: u32, carry: u32) -> ShiftResult {
     let mut carry = carry != 0;
     let value = barrel_shifter::lsl(value, amount, &mut carry);
     ShiftResult {
@@ -295,27 +295,27 @@ pub extern "C" fn lsl_by_register(value: u32, amount: u32, carry: u32) -> ShiftR
     }
 }
 
-pub extern "C" fn lsr_by_register(value: u32, amount: u32, carry: u32) -> ShiftResult {
+pub extern "C" fn lsr_shift(value: u32, amount: u32, carry: u32, immediate_shift: u32) -> ShiftResult {
     let mut carry = carry != 0;
-    let value = barrel_shifter::lsr(value, amount, &mut carry, false);
+    let value = barrel_shifter::lsr(value, amount, &mut carry, immediate_shift != 0);
     ShiftResult {
         value,
         carry: carry as u32,
     }
 }
 
-pub extern "C" fn asr_by_register(value: u32, amount: u32, carry: u32) -> ShiftResult {
+pub extern "C" fn asr_shift(value: u32, amount: u32, carry: u32, immediate_shift: u32) -> ShiftResult {
     let mut carry = carry != 0;
-    let value = barrel_shifter::asr(value, amount, &mut carry, false);
+    let value = barrel_shifter::asr(value, amount, &mut carry, immediate_shift != 0);
     ShiftResult {
         value,
         carry: carry as u32,
     }
 }
 
-pub extern "C" fn ror_by_register(value: u32, amount: u32, carry: u32) -> ShiftResult {
+pub extern "C" fn ror_shift(value: u32, amount: u32, carry: u32, immediate_shift: u32) -> ShiftResult {
     let mut carry = carry != 0;
-    let value = barrel_shifter::ror(value, amount, &mut carry, false);
+    let value = barrel_shifter::ror(value, amount, &mut carry, immediate_shift != 0);
     ShiftResult {
         value,
         carry: carry as u32,
