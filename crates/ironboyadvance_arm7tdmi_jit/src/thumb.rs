@@ -13,7 +13,9 @@ use ironboyadvance_arm7tdmi::{
 mod conditional_branch;
 mod hi_register_operations_branch_exchange;
 mod long_branch_with_link;
+mod software_interrupt;
 mod unconditional_branch;
+mod undefined;
 
 impl Compile for ThumbInstruction {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -34,10 +36,10 @@ impl Compile for ThumbInstruction {
             Self::PushPopRegisters(_i) => todo!(),
             Self::MultipleLoadStore(_i) => todo!(),
             Self::ConditionalBranch(i) => i.compile::<I>(assembler),
-            Self::SoftwareInterrupt(_i) => todo!(),
+            Self::SoftwareInterrupt(i) => i.compile::<I>(assembler),
             Self::UnconditionalBranch(i) => i.compile::<I>(assembler),
             Self::LongBranchWithLink(i) => i.compile::<I>(assembler),
-            Self::Undefined(_i) => todo!(),
+            Self::Undefined(i) => i.compile::<I>(assembler),
         }
     }
 }

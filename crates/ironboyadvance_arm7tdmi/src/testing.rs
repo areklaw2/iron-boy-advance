@@ -329,11 +329,7 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "thumb_bl_suffix.json.bin",
         "thumb_bx.json.bin",
         "thumb_add_cmp_mov_hi.json.bin",
-        // -- software_interrupt
-        // "thumb_swi.json.bin",
-
-        // -- undefined (no test file)
-
+        "thumb_swi.json.bin",
         // -- pc_relative_load
         // "thumb_ldr_pc_rel.json.bin",
 
