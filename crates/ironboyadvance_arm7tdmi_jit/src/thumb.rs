@@ -10,9 +10,32 @@ use ironboyadvance_arm7tdmi::{
     },
 };
 
+mod unconditional_branch;
+
 impl Compile for ThumbInstruction {
-    fn compile<I: MemoryInterface>(&self, _assembler: &mut Assembler<Aarch64Relocation>) {
-        todo!()
+    fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
+        match self {
+            Self::MoveShiftedRegister(_i) => todo!(),
+            Self::AddSubtract(_i) => todo!(),
+            Self::MoveCompareAddSubtractImmediate(_i) => todo!(),
+            Self::AluOperations(_i) => todo!(),
+            Self::HiRegisterOperationsBranchExchange(_i) => todo!(),
+            Self::PcRelativeLoad(_i) => todo!(),
+            Self::LoadStoreRegisterOffset(_i) => todo!(),
+            Self::LoadStoreSignExtendedByteHalfword(_i) => todo!(),
+            Self::LoadStoreImmediateOffset(_i) => todo!(),
+            Self::LoadStoreHalfword(_i) => todo!(),
+            Self::SpRelativeLoadStore(_i) => todo!(),
+            Self::LoadAddress(_i) => todo!(),
+            Self::AddOffsetToSp(_i) => todo!(),
+            Self::PushPopRegisters(_i) => todo!(),
+            Self::MultipleLoadStore(_i) => todo!(),
+            Self::ConditionalBranch(_i) => todo!(),
+            Self::SoftwareInterrupt(_i) => todo!(),
+            Self::UnconditionalBranch(i) => i.compile::<I>(assembler),
+            Self::LongBranchWithLink(_i) => todo!(),
+            Self::Undefined(_i) => todo!(),
+        }
     }
 }
 

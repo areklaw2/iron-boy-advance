@@ -321,27 +321,69 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
 }
 
 pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
-    let files_to_run = [
-        "arm_b_bl.json.bin",
-        "arm_bx.json.bin",
-        "arm_cdp.json.bin",
-        "arm_stc_ldc.json.bin",
-        "arm_mcr_mrc.json.bin",
-        "arm_swi.json.bin",
-        "arm_data_proc_immediate_shift.json.bin",
-        "arm_data_proc_immediate.json.bin",
-        "arm_data_proc_register_shift.json.bin",
-        "arm_mrs.json.bin",
-        "arm_msr_imm.json.bin",
-        "arm_msr_reg.json.bin",
-        "arm_mul_mla.json.bin",
-        "arm_mull_mlal.json.bin",
-        "arm_swp.json.bin",
-        "arm_ldr_str_immediate_offset.json.bin",
-        "arm_ldr_str_register_offset.json.bin",
-        "arm_ldrh_strh.json.bin",
-        "arm_ldrsb_ldrsh.json.bin",
-        "arm_ldm_stm.json.bin",
+    let thumb_files_to_run: &[&str] = &[
+        "thumb_b.json.bin",
+        // -- conditional_branch
+        // "thumb_bcc.json.bin",
+        // "thumb_undefined_bcc.json.bin",
+
+        // -- long_branch_with_link
+        // "thumb_bl_blx_prefix.json.bin",
+        // "thumb_bl_suffix.json.bin",
+
+        // -- hi_register_operations_branch_exchange
+        // "thumb_bx.json.bin",
+        // "thumb_add_cmp_mov_hi.json.bin",
+
+        // -- software_interrupt
+        // "thumb_swi.json.bin",
+
+        // -- undefined (no test file)
+
+        // -- pc_relative_load
+        // "thumb_ldr_pc_rel.json.bin",
+
+        // -- load_store_register_offset
+        // "thumb_ldr_str_reg_offset.json.bin",
+        // "thumb_ldrsb_strb_reg_offset.json.bin",
+
+        // -- load_store_immediate_offset
+        // "thumb_ldr_str_imm_offset.json.bin",
+        // "thumb_ldrb_strb_imm_offset.json.bin",
+
+        // -- load_store_halfword
+        // "thumb_ldrh_strh_imm_offset.json.bin",
+
+        // -- sp_relative_load_store
+        // "thumb_ldr_str_sp_rel.json.bin",
+
+        // -- load_store_sign_extended_byte_halfword
+        // "thumb_ldrh_strh_reg_offset.json.bin",
+        // "thumb_ldrsh_ldrsb_reg_offset.json.bin",
+
+        // -- add_subtract
+        // "thumb_add_sub.json.bin",
+
+        // -- move_compare_add_subtract_immediate
+        // "thumb_mov_cmp_add_sub.json.bin",
+
+        // -- move_shifted_register
+        // "thumb_lsl_lsr_asr.json.bin",
+
+        // -- load_address
+        // "thumb_add_sp_or_pc.json.bin",
+
+        // -- add_offset_to_sp
+        // "thumb_add_sub_sp.json.bin",
+
+        // -- multiple_load_store
+        // "thumb_ldm_stm.json.bin",
+
+        // -- push_pop_registers
+        // "thumb_push_pop.json.bin",
+
+        // -- alu_operations
+        // "thumb_data_proc.json.bin",
     ];
 
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");
@@ -350,7 +392,10 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
         .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("bin"))
-        .filter(|p| files_to_run.contains(&p.file_name().unwrap().to_str().unwrap()))
+        .filter(|p| {
+            let name = p.file_name().unwrap().to_str().unwrap();
+            name.starts_with("arm_") || thumb_files_to_run.contains(&name)
+        })
         .collect();
 
     file_paths
