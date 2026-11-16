@@ -2,7 +2,7 @@ use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{CpuAction, arm::BlockDataTransfer, cpu::PC, memory::MemoryInterface};
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_call, emit_epilogue_extended, emit_prologue_extended, guest};
+use crate::{Compile, emit_action, emit_call, emit_epilogue_extended, emit_prologue_extended, guest};
 
 impl Compile for BlockDataTransfer {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -233,16 +233,7 @@ impl Compile for BlockDataTransfer {
             emit_call(assembler, guest::set_cpsr_mode::<I> as *const ());
         }
 
-        match action {
-            CpuAction::PipelineFlush => dynasm! { assembler
-                ; .arch aarch64
-                ; movn w0, #0
-            },
-            CpuAction::Advance(access) => dynasm! { assembler
-                ; .arch aarch64
-                ; mov w0, #access as u32
-            },
-        }
+        emit_action(assembler, action);
 
         emit_epilogue_extended(assembler);
     }

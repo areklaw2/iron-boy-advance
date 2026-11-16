@@ -199,6 +199,19 @@ fn emit_call(assembler: &mut Assembler<Aarch64Relocation>, target: *const ()) {
     }
 }
 
+fn emit_action(assembler: &mut Assembler<Aarch64Relocation>, action: CpuAction) {
+    match action {
+        CpuAction::PipelineFlush => dynasm! { assembler
+            ; .arch aarch64
+            ; movn w0, #0
+        },
+        CpuAction::Advance(access) => dynasm! { assembler
+            ; .arch aarch64
+            ; mov w0, #access as u32
+        },
+    }
+}
+
 #[allow(clippy::useless_conversion)]
 fn emit_immediate_32(assembler: &mut Assembler<Aarch64Relocation>, register: u8, value: u32) {
     let low = value & 0xFFFF;

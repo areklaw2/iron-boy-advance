@@ -1,13 +1,15 @@
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
-    DataProcessingOpcode,
+    CpuAction, DataProcessingOpcode,
     arm::DataProcessing,
     barrel_shifter::{ShiftBy, ShiftType},
     cpu::PC,
     memory::MemoryInterface,
 };
 
-use crate::{Compile, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use ironboyadvance_common::memory::MemoryAccess;
+
+use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
 
 impl Compile for DataProcessing {
     #[allow(clippy::useless_conversion)]
@@ -399,20 +401,17 @@ impl Compile for DataProcessing {
                     ; mov x0, x19
                 }
                 emit_call(assembler, guest::pipeline_flush::<I> as *const ());
-                dynasm! { assembler
-                    ; .arch aarch64
-                    ; movn w0, #0
-                }
+                emit_action(assembler, CpuAction::PipelineFlush);
             }
             false => match shift_by {
-                ShiftBy::Immediate => dynasm! { assembler
-                    ; .arch aarch64
-                    ; mov w0, #3
-                },
-                ShiftBy::Register => dynasm! { assembler
-                    ; .arch aarch64
-                    ; mov w0, #2
-                },
+                ShiftBy::Immediate => emit_action(
+                    assembler,
+                    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
+                ),
+                ShiftBy::Register => emit_action(
+                    assembler,
+                    CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
+                ),
             },
         }
 

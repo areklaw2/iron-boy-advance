@@ -1,7 +1,9 @@
 use dynasmrt::{Assembler, DynasmApi, DynasmLabelApi, aarch64::Aarch64Relocation, dynasm};
-use ironboyadvance_arm7tdmi::{arm::PsrTransfer, memory::MemoryInterface};
+use ironboyadvance_arm7tdmi::{CpuAction, arm::PsrTransfer, memory::MemoryInterface};
 
-use crate::{Compile, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use ironboyadvance_common::memory::MemoryAccess;
+
+use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
 
 impl Compile for PsrTransfer {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -133,10 +135,10 @@ impl Compile for PsrTransfer {
             }
         }
 
-        dynasm! { assembler
-            ; .arch aarch64
-            ; mov w0, #3
-        }
+        emit_action(
+            assembler,
+            CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
+        );
         emit_epilogue(assembler);
     }
 }
