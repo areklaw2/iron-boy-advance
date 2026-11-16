@@ -323,10 +323,8 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
 pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
     let thumb_files_to_run: &[&str] = &[
         "thumb_b.json.bin",
-        // -- conditional_branch
-        // "thumb_bcc.json.bin",
-        // "thumb_undefined_bcc.json.bin",
-
+        "thumb_bcc.json.bin",
+        "thumb_undefined_bcc.json.bin",
         // -- long_branch_with_link
         // "thumb_bl_blx_prefix.json.bin",
         // "thumb_bl_suffix.json.bin",

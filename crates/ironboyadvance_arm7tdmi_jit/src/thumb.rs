@@ -10,6 +10,7 @@ use ironboyadvance_arm7tdmi::{
     },
 };
 
+mod conditional_branch;
 mod unconditional_branch;
 
 impl Compile for ThumbInstruction {
@@ -30,7 +31,7 @@ impl Compile for ThumbInstruction {
             Self::AddOffsetToSp(_i) => todo!(),
             Self::PushPopRegisters(_i) => todo!(),
             Self::MultipleLoadStore(_i) => todo!(),
-            Self::ConditionalBranch(_i) => todo!(),
+            Self::ConditionalBranch(i) => i.compile::<I>(assembler),
             Self::SoftwareInterrupt(_i) => todo!(),
             Self::UnconditionalBranch(i) => i.compile::<I>(assembler),
             Self::LongBranchWithLink(_i) => todo!(),

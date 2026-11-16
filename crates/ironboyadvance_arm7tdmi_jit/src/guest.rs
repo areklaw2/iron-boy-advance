@@ -10,6 +10,11 @@ use ironboyadvance_common::memory::MemoryAccess;
 
 use crate::PIPELINE_FLUSH;
 
+pub unsafe extern "C" fn is_condition_met<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, condition: u32) -> u32 {
+    let cpu = unsafe { &*cpu };
+    cpu.is_condition_met(condition.into()) as u32
+}
+
 pub unsafe extern "C" fn pc<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
     let cpu = unsafe { &*cpu };
     cpu.pc()
