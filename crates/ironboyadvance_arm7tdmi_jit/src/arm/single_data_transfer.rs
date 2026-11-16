@@ -54,10 +54,10 @@ impl Compile for SingleDataTransfer {
                     ; mov w3, #1
                 }
                 match self.shift_type() {
-                    ShiftType::LSL => emit_call(assembler, guest::lsl_shift as *const ()),
-                    ShiftType::LSR => emit_call(assembler, guest::lsr_shift as *const ()),
-                    ShiftType::ASR => emit_call(assembler, guest::asr_shift as *const ()),
-                    ShiftType::ROR => emit_call(assembler, guest::ror_shift as *const ()),
+                    ShiftType::LSL => emit_call(assembler, guest::lsl as *const ()),
+                    ShiftType::LSR => emit_call(assembler, guest::lsr as *const ()),
+                    ShiftType::ASR => emit_call(assembler, guest::asr as *const ()),
+                    ShiftType::ROR => emit_call(assembler, guest::ror as *const ()),
                 }
                 dynasm! { assembler
                     ; .arch aarch64

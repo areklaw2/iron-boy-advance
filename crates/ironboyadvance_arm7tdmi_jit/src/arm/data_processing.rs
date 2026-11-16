@@ -323,10 +323,10 @@ impl Compile for DataProcessing {
                     ; mov w3, #0
                 }
                 match shift_type {
-                    LSL => emit_call(assembler, guest::lsl_shift as *const ()),
-                    LSR => emit_call(assembler, guest::lsr_shift as *const ()),
-                    ASR => emit_call(assembler, guest::asr_shift as *const ()),
-                    ROR => emit_call(assembler, guest::ror_shift as *const ()),
+                    LSL => emit_call(assembler, guest::lsl as *const ()),
+                    LSR => emit_call(assembler, guest::lsr as *const ()),
+                    ASR => emit_call(assembler, guest::asr as *const ()),
+                    ROR => emit_call(assembler, guest::ror as *const ()),
                 }
 
                 dynasm! { assembler

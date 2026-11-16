@@ -160,6 +160,27 @@ fn emit_epilogue_link_only(assembler: &mut Assembler<Aarch64Relocation>) {
     }
 }
 
+fn emit_prologue_extended(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; stp x24, x23, [sp, #-64]!
+        ; stp x22, x21, [sp, #16]
+        ; stp x20, x19, [sp, #32]
+        ; str x30, [sp, #48]
+    }
+}
+
+fn emit_epilogue_extended(assembler: &mut Assembler<Aarch64Relocation>) {
+    dynasm! { assembler
+        ; .arch aarch64
+        ; ldr x30, [sp, #48]
+        ; ldp x20, x19, [sp, #32]
+        ; ldp x22, x21, [sp, #16]
+        ; ldp x24, x23, [sp], #64
+        ; ret
+    }
+}
+
 fn emit_call(assembler: &mut Assembler<Aarch64Relocation>, target: *const ()) {
     let address = target as usize;
 

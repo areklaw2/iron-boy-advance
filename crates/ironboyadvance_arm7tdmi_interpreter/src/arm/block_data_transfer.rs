@@ -19,10 +19,10 @@ impl Execute for BlockDataTransfer {
 
         let load = self.load();
         let load_psr_force_user = self.load_psr_force_user();
+        let switch_mode = load_psr_force_user && (!load || !transfer_pc);
+
         let mode = cpu.cpsr().mode();
-        let switch_mode =
-            load_psr_force_user && (!load || !transfer_pc) && ![CpuMode::User, CpuMode::System].contains(&mode);
-        if switch_mode {
+        if switch_mode && ![CpuMode::User, CpuMode::System].contains(&mode) {
             cpu.cpsr_mut().set_mode(CpuMode::User);
         }
 
@@ -44,7 +44,7 @@ impl Execute for BlockDataTransfer {
             true => {
                 for (i, register) in (0..16).filter(|&r| (register_list >> r) & 1 == 1).enumerate() {
                     if pre_index {
-                        address = address.wrapping_add(4)
+                        address = address.wrapping_add(4);
                     }
 
                     let value = cpu.load_32(address, memory_access as u8);
