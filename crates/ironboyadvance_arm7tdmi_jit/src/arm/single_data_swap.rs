@@ -1,7 +1,9 @@
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
-use ironboyadvance_arm7tdmi::{arm::SingleDataSwap, cpu::PC, memory::MemoryInterface};
+use ironboyadvance_arm7tdmi::{CpuAction, arm::SingleDataSwap, cpu::PC, memory::MemoryInterface};
 
-use crate::{Compile, emit_call, emit_epilogue, emit_prologue, guest};
+use ironboyadvance_common::memory::MemoryAccess;
+
+use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
 
 impl Compile for SingleDataSwap {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -33,7 +35,10 @@ impl Compile for SingleDataSwap {
             ; mov w21, w0
         }
         if rm as usize == PC {
-            dynasm! { assembler ; .arch aarch64 ; add w21, w21, #4 }
+            dynasm! { assembler
+               ; .arch aarch64
+               ; add w21, w21, #4
+            }
         }
 
         match self.byte() {
@@ -95,15 +100,12 @@ impl Compile for SingleDataSwap {
                     ; mov x0, x19
                 }
                 emit_call(assembler, guest::pipeline_flush::<I> as *const ());
-                dynasm! { assembler
-                    ; .arch aarch64
-                    ; movn w0, #0
-                }
+                emit_action(assembler, CpuAction::PipelineFlush);
             }
-            false => dynasm! { assembler
-                ; .arch aarch64
-                ; mov w0, #2
-            },
+            false => emit_action(
+                assembler,
+                CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
+            ),
         }
         emit_epilogue(assembler);
     }

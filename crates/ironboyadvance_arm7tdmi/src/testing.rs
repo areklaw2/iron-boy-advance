@@ -337,11 +337,11 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "arm_mul_mla.json.bin",
         "arm_mull_mlal.json.bin",
         "arm_swp.json.bin",
-        // "arm_ldr_str_immediate_offset.json.bin",
-        // "arm_ldr_str_register_offset.json.bin",
-        // "arm_ldrh_strh.json.bin",
-        // "arm_ldrsb_ldrsh.json.bin",
-        // "arm_ldm_stm.json.bin",
+        "arm_ldr_str_immediate_offset.json.bin",
+        "arm_ldr_str_register_offset.json.bin",
+        "arm_ldrh_strh.json.bin",
+        "arm_ldrsb_ldrsh.json.bin",
+        "arm_ldm_stm.json.bin",
     ];
 
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");

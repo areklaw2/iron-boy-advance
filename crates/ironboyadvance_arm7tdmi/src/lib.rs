@@ -226,7 +226,6 @@ impl fmt::Display for HiRegister {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[allow(clippy::upper_case_acronyms)]
 pub enum Condition {
     EQ,
     NE,
@@ -294,7 +293,6 @@ impl fmt::Display for Condition {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[allow(clippy::upper_case_acronyms)]
 pub enum DataProcessingOpcode {
     AND,
     EOR,
@@ -363,7 +361,6 @@ impl fmt::Display for DataProcessingOpcode {
 
 // THUMB
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[allow(clippy::upper_case_acronyms)]
 pub enum MovCmpAddSubImmediateOpcode {
     MOV,
     CMP,
@@ -395,7 +392,6 @@ impl fmt::Display for MovCmpAddSubImmediateOpcode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[allow(clippy::upper_case_acronyms)]
 pub enum AluOperationsOpcode {
     AND,
     EOR,
@@ -463,7 +459,6 @@ impl fmt::Display for AluOperationsOpcode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[allow(clippy::upper_case_acronyms)]
 pub enum HiRegOpsBxOpcode {
     ADD,
     CMP,
@@ -494,7 +489,6 @@ impl fmt::Display for HiRegOpsBxOpcode {
     }
 }
 
-#[allow(unused)]
 pub enum Exception {
     Reset = 0x00,
     Undefined = 0x04,

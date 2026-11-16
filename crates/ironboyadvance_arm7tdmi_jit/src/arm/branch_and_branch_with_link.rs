@@ -1,8 +1,8 @@
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
-use ironboyadvance_arm7tdmi::{arm::BranchAndBranchWithLink, cpu::LR, memory::MemoryInterface};
+use ironboyadvance_arm7tdmi::{CpuAction, arm::BranchAndBranchWithLink, cpu::LR, memory::MemoryInterface};
 use ironboyadvance_common::bits::SignExtend;
 
-use crate::{Compile, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
 
 impl Compile for BranchAndBranchWithLink {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -42,10 +42,7 @@ impl Compile for BranchAndBranchWithLink {
             ; mov x0, x19
         }
         emit_call(assembler, guest::pipeline_flush::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; movn w0, #0
-        }
+        emit_action(assembler, CpuAction::PipelineFlush);
         emit_epilogue(assembler);
     }
 }

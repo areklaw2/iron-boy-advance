@@ -24,50 +24,30 @@ impl Execute for HalfwordAndSignedDataTransfer {
 
         let pre_index = self.pre_index();
         if pre_index {
-            address = address.wrapping_add(offset)
+            address = address.wrapping_add(offset);
         }
 
         let load = self.load();
-        let write_back = self.write_back();
+        let updates_base = self.write_back() || !pre_index;
         let s = self.signed();
         let h = self.halfword();
         match load {
-            true => match (s, h) {
-                (false, false) => {}
-                (false, true) => {
-                    let value = cpu.load_rotated_16(address, MemoryAccess::NonSequential as u8);
-                    if write_back || !pre_index {
-                        if rn != rd && rn == PC {
-                            cpu.pipeline_flush();
-                        }
-                        cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+            true => {
+                let value = match (s, h) {
+                    (false, false) => None,
+                    (false, true) => Some(cpu.load_rotated_16(address, MemoryAccess::NonSequential as u8)),
+                    (true, false) => Some(cpu.load_signed_8(address, MemoryAccess::NonSequential as u8)),
+                    (true, true) => Some(cpu.load_signed_16(address, MemoryAccess::NonSequential as u8)),
+                };
+
+                if let Some(value) = value {
+                    if updates_base {
+                        write_back(cpu, rn, offset, rn != rd && rn == PC);
                     }
                     cpu.idle_cycle();
                     cpu.set_register(rd, value);
                 }
-                (true, false) => {
-                    let value = cpu.load_signed_8(address, MemoryAccess::NonSequential as u8);
-                    if write_back || !pre_index {
-                        if rn != rd && rn == PC {
-                            cpu.pipeline_flush();
-                        }
-                        cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
-                    }
-                    cpu.idle_cycle();
-                    cpu.set_register(rd, value);
-                }
-                (true, true) => {
-                    let value = cpu.load_signed_16(address, MemoryAccess::NonSequential as u8);
-                    if write_back || !pre_index {
-                        if rn != rd && rn == PC {
-                            cpu.pipeline_flush();
-                        }
-                        cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
-                    }
-                    cpu.idle_cycle();
-                    cpu.set_register(rd, value);
-                }
-            },
+            }
             false => {
                 let mut value = cpu.register(rd);
                 if rd == PC {
@@ -77,29 +57,14 @@ impl Execute for HalfwordAndSignedDataTransfer {
                     (false, false) => {}
                     (false, true) => {
                         cpu.store_16(address, value as u16, MemoryAccess::NonSequential as u8);
-                        if write_back || !pre_index {
-                            if rn == PC {
-                                cpu.pipeline_flush();
-                            }
-                            cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+                        if updates_base {
+                            write_back(cpu, rn, offset, rn == PC);
                         }
                     }
-                    (true, false) => {
+                    (true, _) => {
                         cpu.idle_cycle();
-                        if write_back || !pre_index {
-                            if rn == PC {
-                                cpu.pipeline_flush();
-                            }
-                            cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
-                        }
-                    }
-                    (true, true) => {
-                        cpu.idle_cycle();
-                        if write_back || !pre_index {
-                            if rn == PC {
-                                cpu.pipeline_flush();
-                            }
-                            cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
+                        if updates_base {
+                            write_back(cpu, rn, offset, rn == PC);
                         }
                     }
                 };
@@ -114,4 +79,11 @@ impl Execute for HalfwordAndSignedDataTransfer {
             false => CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
         }
     }
+}
+
+fn write_back<I: MemoryInterface>(cpu: &mut Arm7tdmiCpu<I>, rn: usize, offset: u32, flush_first: bool) {
+    if flush_first {
+        cpu.pipeline_flush();
+    }
+    cpu.set_register(rn, cpu.register(rn).wrapping_add(offset));
 }

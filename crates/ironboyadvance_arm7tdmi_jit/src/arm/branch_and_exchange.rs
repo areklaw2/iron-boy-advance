@@ -1,7 +1,7 @@
 use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
-use ironboyadvance_arm7tdmi::{arm::BranchAndExchange, memory::MemoryInterface};
+use ironboyadvance_arm7tdmi::{CpuAction, arm::BranchAndExchange, memory::MemoryInterface};
 
-use crate::{Compile, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
 
 impl Compile for BranchAndExchange {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -32,10 +32,7 @@ impl Compile for BranchAndExchange {
             ; mov x0, x19
         }
         emit_call(assembler, guest::pipeline_flush::<I> as *const ());
-        dynasm! { assembler
-            ; .arch aarch64
-            ; movn w0, #0
-        }
+        emit_action(assembler, CpuAction::PipelineFlush);
         emit_epilogue(assembler);
     }
 }

@@ -10,13 +10,16 @@ use ironboyadvance_arm7tdmi::{
 };
 use ironboyadvance_common::bits::BitOps;
 
+mod block_data_transfer;
 mod branch_and_branch_with_link;
 mod branch_and_exchange;
 mod data_processing;
+mod halfword_and_signed_data_transfer;
 mod multiply;
 mod multiply_long;
 mod psr_transfer;
 mod single_data_swap;
+mod single_data_transfer;
 mod software_interrupt;
 mod undefined;
 
@@ -29,10 +32,10 @@ impl Compile for ArmInstruction {
             Self::MultiplyLong(i) => i.compile::<I>(assembler),
             Self::SingleDataSwap(i) => i.compile::<I>(assembler),
             Self::BranchAndExchange(i) => i.compile::<I>(assembler),
-            Self::HalfwordAndSignedDataTransfer(_i) => todo!(),
-            Self::SingleDataTransfer(_i) => todo!(),
+            Self::HalfwordAndSignedDataTransfer(i) => i.compile::<I>(assembler),
+            Self::SingleDataTransfer(i) => i.compile::<I>(assembler),
             Self::Undefined(i) => i.compile::<I>(assembler),
-            Self::BlockDataTransfer(_i) => todo!(),
+            Self::BlockDataTransfer(i) => i.compile::<I>(assembler),
             Self::BranchAndBranchWithLink(i) => i.compile::<I>(assembler),
             Self::SoftwareInterrupt(i) => i.compile::<I>(assembler),
             Self::CoprocessorDataOperation(i) => i.compile::<I>(assembler),

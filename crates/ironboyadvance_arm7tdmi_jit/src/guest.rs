@@ -1,5 +1,5 @@
 use ironboyadvance_arm7tdmi::{
-    CpuState, Exception,
+    CpuMode, CpuState, Exception,
     alu::{self},
     barrel_shifter,
     cpu::Arm7tdmiCpu,
@@ -65,6 +65,11 @@ pub unsafe extern "C" fn cpsr_mode<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>)
     cpu.cpsr().mode() as u32
 }
 
+pub unsafe extern "C" fn set_cpsr_mode<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.cpsr_mut().set_mode(CpuMode::from_bits(value as u8));
+}
+
 pub unsafe extern "C" fn set_cpsr<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
     let cpu = unsafe { &mut *cpu };
     cpu.set_cpsr(ProgramStatusRegister::from_bits_with_defaults(value));
@@ -78,6 +83,15 @@ pub unsafe extern "C" fn set_cpsr_to_spsr<I: MemoryInterface>(cpu: *mut Arm7tdmi
 pub unsafe extern "C" fn set_cpsr_state<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
     let cpu = unsafe { &mut *cpu };
     cpu.cpsr_mut().set_state(CpuState::from_bits((value & 0x1) as u8));
+}
+
+pub unsafe extern "C" fn enter_user_mode<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
+    let cpu = unsafe { &mut *cpu };
+    let mode = cpu.cpsr().mode();
+    if ![CpuMode::User, CpuMode::System].contains(&mode) {
+        cpu.cpsr_mut().set_mode(CpuMode::User);
+    }
+    mode as u32
 }
 
 pub unsafe extern "C" fn pipeline_flush<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
@@ -286,7 +300,7 @@ pub struct ShiftResult {
     pub carry: u32,
 }
 
-pub extern "C" fn lsl_by_register(value: u32, amount: u32, carry: u32) -> ShiftResult {
+pub extern "C" fn lsl(value: u32, amount: u32, carry: u32) -> ShiftResult {
     let mut carry = carry != 0;
     let value = barrel_shifter::lsl(value, amount, &mut carry);
     ShiftResult {
@@ -295,27 +309,27 @@ pub extern "C" fn lsl_by_register(value: u32, amount: u32, carry: u32) -> ShiftR
     }
 }
 
-pub extern "C" fn lsr_by_register(value: u32, amount: u32, carry: u32) -> ShiftResult {
+pub extern "C" fn lsr(value: u32, amount: u32, carry: u32, immediate_shift: u32) -> ShiftResult {
     let mut carry = carry != 0;
-    let value = barrel_shifter::lsr(value, amount, &mut carry, false);
+    let value = barrel_shifter::lsr(value, amount, &mut carry, immediate_shift != 0);
     ShiftResult {
         value,
         carry: carry as u32,
     }
 }
 
-pub extern "C" fn asr_by_register(value: u32, amount: u32, carry: u32) -> ShiftResult {
+pub extern "C" fn asr(value: u32, amount: u32, carry: u32, immediate_shift: u32) -> ShiftResult {
     let mut carry = carry != 0;
-    let value = barrel_shifter::asr(value, amount, &mut carry, false);
+    let value = barrel_shifter::asr(value, amount, &mut carry, immediate_shift != 0);
     ShiftResult {
         value,
         carry: carry as u32,
     }
 }
 
-pub extern "C" fn ror_by_register(value: u32, amount: u32, carry: u32) -> ShiftResult {
+pub extern "C" fn ror(value: u32, amount: u32, carry: u32, immediate_shift: u32) -> ShiftResult {
     let mut carry = carry != 0;
-    let value = barrel_shifter::ror(value, amount, &mut carry, false);
+    let value = barrel_shifter::ror(value, amount, &mut carry, immediate_shift != 0);
     ShiftResult {
         value,
         carry: carry as u32,
@@ -327,7 +341,6 @@ pub unsafe extern "C" fn load_8<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, ad
     cpu.load_8(address, access_pattern as u8)
 }
 
-#[allow(unused)]
 pub unsafe extern "C" fn load_signed_8<I: MemoryInterface>(
     cpu: *mut Arm7tdmiCpu<I>,
     address: u32,
@@ -343,7 +356,6 @@ pub unsafe extern "C" fn load_16<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, a
     cpu.load_16(address, access_pattern as u8)
 }
 
-#[allow(unused)]
 pub unsafe extern "C" fn load_signed_16<I: MemoryInterface>(
     cpu: *mut Arm7tdmiCpu<I>,
     address: u32,
@@ -353,7 +365,6 @@ pub unsafe extern "C" fn load_signed_16<I: MemoryInterface>(
     cpu.load_signed_16(address, access_pattern as u8)
 }
 
-#[allow(unused)]
 pub unsafe extern "C" fn load_rotated_16<I: MemoryInterface>(
     cpu: *mut Arm7tdmiCpu<I>,
     address: u32,
@@ -363,7 +374,6 @@ pub unsafe extern "C" fn load_rotated_16<I: MemoryInterface>(
     cpu.load_rotated_16(address, access_pattern as u8)
 }
 
-#[allow(unused)]
 pub unsafe extern "C" fn load_32<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, address: u32, access_pattern: u32) -> u32 {
     let cpu = unsafe { &mut *cpu };
     cpu.load_32(address, access_pattern as u8)
@@ -388,7 +398,6 @@ pub unsafe extern "C" fn store_8<I: MemoryInterface>(
     cpu.store_8(address, source as u8, access_pattern as u8);
 }
 
-#[allow(unused)]
 pub unsafe extern "C" fn store_16<I: MemoryInterface>(
     cpu: *mut Arm7tdmiCpu<I>,
     address: u32,
