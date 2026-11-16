@@ -11,6 +11,7 @@ use ironboyadvance_arm7tdmi::{
 };
 
 mod conditional_branch;
+mod long_branch_with_link;
 mod unconditional_branch;
 
 impl Compile for ThumbInstruction {
@@ -34,7 +35,7 @@ impl Compile for ThumbInstruction {
             Self::ConditionalBranch(i) => i.compile::<I>(assembler),
             Self::SoftwareInterrupt(_i) => todo!(),
             Self::UnconditionalBranch(i) => i.compile::<I>(assembler),
-            Self::LongBranchWithLink(_i) => todo!(),
+            Self::LongBranchWithLink(i) => i.compile::<I>(assembler),
             Self::Undefined(_i) => todo!(),
         }
     }

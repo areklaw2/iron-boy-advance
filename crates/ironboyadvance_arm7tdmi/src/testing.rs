@@ -325,10 +325,8 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "thumb_b.json.bin",
         "thumb_bcc.json.bin",
         "thumb_undefined_bcc.json.bin",
-        // -- long_branch_with_link
-        // "thumb_bl_blx_prefix.json.bin",
-        // "thumb_bl_suffix.json.bin",
-
+        "thumb_bl_blx_prefix.json.bin",
+        "thumb_bl_suffix.json.bin",
         // -- hi_register_operations_branch_exchange
         // "thumb_bx.json.bin",
         // "thumb_add_cmp_mov_hi.json.bin",
