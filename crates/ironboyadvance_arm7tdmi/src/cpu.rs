@@ -74,6 +74,14 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     fn cpu_context_mut(&mut self) -> &mut CpuContext {
         self.bus.cpu_context_mut()
     }
+
+    fn peek_16(&mut self, address: u32) -> Option<u32> {
+        self.bus.peek_16(address)
+    }
+
+    fn peek_32(&mut self, address: u32) -> Option<u32> {
+        self.bus.peek_32(address)
+    }
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {

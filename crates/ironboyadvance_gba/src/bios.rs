@@ -44,6 +44,23 @@ impl Bios {
     pub fn set_pc(&self, pc: u32) {
         self.pc_in_bios.set(pc <= BIOS_END);
     }
+
+    pub fn peek_16(&self, address: u32) -> Option<u32> {
+        let aligned_address = address & !1;
+        self.peek_32(aligned_address)
+            .map(|word| (word >> ((aligned_address & 2) * 8)) & 0xFFFF)
+    }
+
+    pub fn peek_32(&self, address: u32) -> Option<u32> {
+        let aligned_address = address & !3;
+        match aligned_address <= BIOS_END {
+            true => {
+                let index = aligned_address as usize;
+                Some(u32::from_le_bytes(self.data[index..index + 4].try_into().unwrap()))
+            }
+            false => None,
+        }
+    }
 }
 
 impl SystemMemoryAccess for Bios {
