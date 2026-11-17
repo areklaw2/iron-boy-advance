@@ -13,6 +13,7 @@ use ironboyadvance_arm7tdmi::{
 mod conditional_branch;
 mod hi_register_operations_branch_exchange;
 mod long_branch_with_link;
+mod pc_relative_load;
 mod software_interrupt;
 mod unconditional_branch;
 mod undefined;
@@ -25,7 +26,7 @@ impl Compile for ThumbInstruction {
             Self::MoveCompareAddSubtractImmediate(_i) => todo!(),
             Self::AluOperations(_i) => todo!(),
             Self::HiRegisterOperationsBranchExchange(i) => i.compile::<I>(assembler),
-            Self::PcRelativeLoad(_i) => todo!(),
+            Self::PcRelativeLoad(i) => i.compile::<I>(assembler),
             Self::LoadStoreRegisterOffset(_i) => todo!(),
             Self::LoadStoreSignExtendedByteHalfword(_i) => todo!(),
             Self::LoadStoreImmediateOffset(_i) => todo!(),

@@ -330,9 +330,7 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "thumb_bx.json.bin",
         "thumb_add_cmp_mov_hi.json.bin",
         "thumb_swi.json.bin",
-        // -- pc_relative_load
-        // "thumb_ldr_pc_rel.json.bin",
-
+        "thumb_ldr_pc_rel.json.bin",
         // -- load_store_register_offset
         // "thumb_ldr_str_reg_offset.json.bin",
         // "thumb_ldrsb_strb_reg_offset.json.bin",
