@@ -85,7 +85,7 @@ impl Compile for MoveCompareAddSubtractImmediate {
 
         emit_action(
             assembler,
-            CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
+            CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
         );
         emit_epilogue(assembler);
     }

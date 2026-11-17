@@ -65,6 +65,11 @@ pub unsafe extern "C" fn set_cpsr_zero<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu
     cpu.cpsr_mut().set_zero(value == 0);
 }
 
+pub unsafe extern "C" fn set_cpsr_carry<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, value: u32) {
+    let cpu = unsafe { &mut *cpu };
+    cpu.cpsr_mut().set_carry(value != 0);
+}
+
 pub unsafe extern "C" fn cpsr_mode<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
     let cpu = unsafe { &*cpu };
     cpu.cpsr().mode() as u32

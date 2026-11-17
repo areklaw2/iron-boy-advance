@@ -58,7 +58,7 @@ impl Compile for AddSubtract {
         emit_call(assembler, guest::set_register::<I> as *const ());
         emit_action(
             assembler,
-            CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
+            CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
         );
         emit_epilogue(assembler);
     }

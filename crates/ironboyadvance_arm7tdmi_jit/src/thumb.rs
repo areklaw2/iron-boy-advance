@@ -10,16 +10,22 @@ use ironboyadvance_arm7tdmi::{
     },
 };
 
+mod add_offset_to_sp;
 mod add_subtract;
+mod alu_operations;
 mod conditional_branch;
 mod hi_register_operations_branch_exchange;
+mod load_address;
 mod load_store_halfword;
 mod load_store_immediate_offset;
 mod load_store_register_offset;
 mod load_store_sign_extended_byte_halfword;
 mod long_branch_with_link;
 mod move_compare_add_subtract_immediate;
+mod move_shifted_register;
+mod multiple_load_store;
 mod pc_relative_load;
+mod push_pop_registers;
 mod software_interrupt;
 mod sp_relative_load_store;
 mod unconditional_branch;
@@ -28,10 +34,10 @@ mod undefined;
 impl Compile for ThumbInstruction {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         match self {
-            Self::MoveShiftedRegister(_i) => todo!(),
+            Self::MoveShiftedRegister(i) => i.compile::<I>(assembler),
             Self::AddSubtract(i) => i.compile::<I>(assembler),
             Self::MoveCompareAddSubtractImmediate(i) => i.compile::<I>(assembler),
-            Self::AluOperations(_i) => todo!(),
+            Self::AluOperations(i) => i.compile::<I>(assembler),
             Self::HiRegisterOperationsBranchExchange(i) => i.compile::<I>(assembler),
             Self::PcRelativeLoad(i) => i.compile::<I>(assembler),
             Self::LoadStoreRegisterOffset(i) => i.compile::<I>(assembler),
@@ -39,10 +45,10 @@ impl Compile for ThumbInstruction {
             Self::LoadStoreImmediateOffset(i) => i.compile::<I>(assembler),
             Self::LoadStoreHalfword(i) => i.compile::<I>(assembler),
             Self::SpRelativeLoadStore(i) => i.compile::<I>(assembler),
-            Self::LoadAddress(_i) => todo!(),
-            Self::AddOffsetToSp(_i) => todo!(),
-            Self::PushPopRegisters(_i) => todo!(),
-            Self::MultipleLoadStore(_i) => todo!(),
+            Self::LoadAddress(i) => i.compile::<I>(assembler),
+            Self::AddOffsetToSp(i) => i.compile::<I>(assembler),
+            Self::PushPopRegisters(i) => i.compile::<I>(assembler),
+            Self::MultipleLoadStore(i) => i.compile::<I>(assembler),
             Self::ConditionalBranch(i) => i.compile::<I>(assembler),
             Self::SoftwareInterrupt(i) => i.compile::<I>(assembler),
             Self::UnconditionalBranch(i) => i.compile::<I>(assembler),

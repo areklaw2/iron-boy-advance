@@ -12,14 +12,14 @@ impl Execute for MoveShiftedRegister {
     fn execute<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> CpuAction {
         let rd = self.rd() as usize;
         let rs = self.rs() as usize;
-        let offset5 = self.offset() as u32;
+        let offset = self.offset() as u32;
 
         let value = cpu.register(rs);
         let mut carry = cpu.cpsr().carry();
         let result = match ShiftType::from(self.opcode()) {
-            ShiftType::LSL => lsl(value, offset5, &mut carry),
-            ShiftType::LSR => lsr(value, offset5, &mut carry, true),
-            ShiftType::ASR => asr(value, offset5, &mut carry, true),
+            ShiftType::LSL => lsl(value, offset, &mut carry),
+            ShiftType::LSR => lsr(value, offset, &mut carry, true),
+            ShiftType::ASR => asr(value, offset, &mut carry, true),
             ShiftType::ROR => unimplemented!(),
         };
 
