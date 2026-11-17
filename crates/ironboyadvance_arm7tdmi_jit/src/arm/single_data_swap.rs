@@ -109,4 +109,8 @@ impl Compile for SingleDataSwap {
         }
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        self.rd() as usize == PC
+    }
 }

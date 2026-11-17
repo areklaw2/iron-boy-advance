@@ -237,4 +237,9 @@ impl Compile for BlockDataTransfer {
 
         emit_epilogue_extended(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        let transfer_pc = self.register_list() == 0 || (self.register_list() >> PC) & 1 == 1;
+        (self.load() && transfer_pc) || (self.write_back() && self.rn() as usize == PC)
+    }
 }

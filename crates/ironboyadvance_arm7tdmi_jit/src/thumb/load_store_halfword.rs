@@ -70,4 +70,8 @@ impl Compile for LoadStoreHalfword {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        false
+    }
 }

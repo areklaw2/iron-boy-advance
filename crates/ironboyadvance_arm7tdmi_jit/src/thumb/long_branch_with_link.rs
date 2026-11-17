@@ -74,4 +74,8 @@ impl Compile for LongBranchWithLink {
 
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        self.high()
+    }
 }

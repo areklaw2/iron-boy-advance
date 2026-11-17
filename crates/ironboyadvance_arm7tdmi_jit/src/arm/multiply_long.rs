@@ -154,4 +154,8 @@ impl Compile for MultiplyLong {
 
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        self.rd_hi() as usize == PC || self.rd_lo() as usize == PC
+    }
 }

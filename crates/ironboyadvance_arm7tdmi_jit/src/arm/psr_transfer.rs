@@ -141,4 +141,8 @@ impl Compile for PsrTransfer {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        false
+    }
 }

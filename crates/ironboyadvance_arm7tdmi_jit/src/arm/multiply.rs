@@ -113,4 +113,8 @@ impl Compile for Multiply {
 
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        self.rd() as usize == PC
+    }
 }

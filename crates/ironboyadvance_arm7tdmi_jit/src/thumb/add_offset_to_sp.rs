@@ -40,4 +40,8 @@ impl Compile for AddOffsetToSp {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        false
+    }
 }

@@ -108,4 +108,8 @@ impl Compile for LoadStoreImmediateOffset {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        false
+    }
 }

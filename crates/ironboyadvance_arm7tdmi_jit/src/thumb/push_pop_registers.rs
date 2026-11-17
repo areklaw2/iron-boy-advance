@@ -224,4 +224,8 @@ impl Compile for PushPopRegisters {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        self.load() && (self.store_lr_load_pc() || self.register_list_bits() == 0)
+    }
 }

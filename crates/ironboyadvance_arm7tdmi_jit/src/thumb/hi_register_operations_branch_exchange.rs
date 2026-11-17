@@ -164,4 +164,17 @@ impl Compile for HiRegisterOperationsBranchExchange {
         emit_action(assembler, action);
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        let opcode: HiRegOpsBxOpcode = self.opcode().into();
+        if opcode == HiRegOpsBxOpcode::BX {
+            return true;
+        }
+
+        let destination = match self.h1() {
+            true => self.hd() as usize + 8,
+            false => self.rd() as usize,
+        };
+        destination == PC
+    }
 }

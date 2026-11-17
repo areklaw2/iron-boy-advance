@@ -42,4 +42,8 @@ impl Compile for PcRelativeLoad {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        false
+    }
 }

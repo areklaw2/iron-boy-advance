@@ -26,6 +26,7 @@ const PIPELINE_FLUSH: u32 = 0xFFFF_FFFF;
 
 pub trait Compile {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>);
+    fn ends_block(&self) -> bool;
 }
 
 pub struct JitCompiler {

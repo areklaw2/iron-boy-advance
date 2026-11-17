@@ -60,4 +60,8 @@ impl Compile for ConditionalBranch {
         }
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        true
+    }
 }

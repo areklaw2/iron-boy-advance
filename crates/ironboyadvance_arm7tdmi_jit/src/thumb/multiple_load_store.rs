@@ -165,4 +165,8 @@ impl Compile for MultipleLoadStore {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        self.load() && self.register_list_bits() == 0
+    }
 }

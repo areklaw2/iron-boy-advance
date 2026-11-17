@@ -14,4 +14,8 @@ impl Compile for SoftwareInterrupt {
         emit_call(assembler, guest::software_interrupt::<I> as *const ());
         emit_epilogue_link_only(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        true
+    }
 }

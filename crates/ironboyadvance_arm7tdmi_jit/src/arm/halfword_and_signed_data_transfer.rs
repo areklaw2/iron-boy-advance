@@ -165,6 +165,11 @@ impl Compile for HalfwordAndSignedDataTransfer {
 
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        let updates_base = self.write_back() || !self.pre_index();
+        (updates_base && self.rn() as usize == PC) || (self.load() && self.rd() as usize == PC)
+    }
 }
 
 fn emit_write_back<I: MemoryInterface>(assembler: &mut Assembler<Aarch64Relocation>, rn: u32, flush_first: bool) {

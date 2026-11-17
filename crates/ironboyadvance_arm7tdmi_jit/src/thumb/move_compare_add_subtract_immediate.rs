@@ -89,4 +89,8 @@ impl Compile for MoveCompareAddSubtractImmediate {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        false
+    }
 }

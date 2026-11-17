@@ -10,4 +10,8 @@ impl Compile for Undefined {
         emit_action(assembler, CpuAction::PipelineFlush);
         emit_epilogue_link_only(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        true
+    }
 }

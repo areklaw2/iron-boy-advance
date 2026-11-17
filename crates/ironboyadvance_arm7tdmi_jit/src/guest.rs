@@ -360,12 +360,6 @@ pub unsafe extern "C" fn load_signed_8<I: MemoryInterface>(
     cpu.load_signed_8(address, access_pattern as u8)
 }
 
-#[allow(unused)]
-pub unsafe extern "C" fn load_16<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>, address: u32, access_pattern: u32) -> u32 {
-    let cpu = unsafe { &mut *cpu };
-    cpu.load_16(address, access_pattern as u8)
-}
-
 pub unsafe extern "C" fn load_signed_16<I: MemoryInterface>(
     cpu: *mut Arm7tdmiCpu<I>,
     address: u32,

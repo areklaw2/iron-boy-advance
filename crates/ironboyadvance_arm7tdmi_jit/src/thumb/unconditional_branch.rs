@@ -35,4 +35,8 @@ impl Compile for UnconditionalBranch {
 
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        true
+    }
 }

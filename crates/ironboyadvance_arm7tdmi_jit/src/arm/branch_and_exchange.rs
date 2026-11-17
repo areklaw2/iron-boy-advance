@@ -35,4 +35,8 @@ impl Compile for BranchAndExchange {
         emit_action(assembler, CpuAction::PipelineFlush);
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        true
+    }
 }

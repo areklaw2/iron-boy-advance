@@ -46,4 +46,8 @@ impl Compile for LoadAddress {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        false
+    }
 }

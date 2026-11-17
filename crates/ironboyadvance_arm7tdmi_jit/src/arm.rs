@@ -43,6 +43,26 @@ impl Compile for ArmInstruction {
             Self::CoprocessorRegisterTransfer(i) => i.compile::<I>(assembler),
         }
     }
+
+    fn ends_block(&self) -> bool {
+        match self {
+            Self::DataProcessing(i) => i.ends_block(),
+            Self::PsrTransfer(i) => i.ends_block(),
+            Self::Multiply(i) => i.ends_block(),
+            Self::MultiplyLong(i) => i.ends_block(),
+            Self::SingleDataSwap(i) => i.ends_block(),
+            Self::BranchAndExchange(i) => i.ends_block(),
+            Self::HalfwordAndSignedDataTransfer(i) => i.ends_block(),
+            Self::SingleDataTransfer(i) => i.ends_block(),
+            Self::Undefined(i) => i.ends_block(),
+            Self::BlockDataTransfer(i) => i.ends_block(),
+            Self::BranchAndBranchWithLink(i) => i.ends_block(),
+            Self::SoftwareInterrupt(i) => i.ends_block(),
+            Self::CoprocessorDataOperation(i) => i.ends_block(),
+            Self::CoprocessorDataTransfer(i) => i.ends_block(),
+            Self::CoprocessorRegisterTransfer(i) => i.ends_block(),
+        }
+    }
 }
 
 pub fn decode_arm(value: u32) -> ArmInstruction {

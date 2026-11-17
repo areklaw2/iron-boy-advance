@@ -69,4 +69,8 @@ impl Compile for SpRelativeLoadStore {
         );
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        false
+    }
 }

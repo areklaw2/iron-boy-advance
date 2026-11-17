@@ -56,6 +56,31 @@ impl Compile for ThumbInstruction {
             Self::Undefined(i) => i.compile::<I>(assembler),
         }
     }
+
+    fn ends_block(&self) -> bool {
+        match self {
+            Self::MoveShiftedRegister(i) => i.ends_block(),
+            Self::AddSubtract(i) => i.ends_block(),
+            Self::MoveCompareAddSubtractImmediate(i) => i.ends_block(),
+            Self::AluOperations(i) => i.ends_block(),
+            Self::HiRegisterOperationsBranchExchange(i) => i.ends_block(),
+            Self::PcRelativeLoad(i) => i.ends_block(),
+            Self::LoadStoreRegisterOffset(i) => i.ends_block(),
+            Self::LoadStoreSignExtendedByteHalfword(i) => i.ends_block(),
+            Self::LoadStoreImmediateOffset(i) => i.ends_block(),
+            Self::LoadStoreHalfword(i) => i.ends_block(),
+            Self::SpRelativeLoadStore(i) => i.ends_block(),
+            Self::LoadAddress(i) => i.ends_block(),
+            Self::AddOffsetToSp(i) => i.ends_block(),
+            Self::PushPopRegisters(i) => i.ends_block(),
+            Self::MultipleLoadStore(i) => i.ends_block(),
+            Self::ConditionalBranch(i) => i.ends_block(),
+            Self::SoftwareInterrupt(i) => i.ends_block(),
+            Self::UnconditionalBranch(i) => i.ends_block(),
+            Self::LongBranchWithLink(i) => i.ends_block(),
+            Self::Undefined(i) => i.ends_block(),
+        }
+    }
 }
 
 pub fn decode_thumb(value: u16) -> ThumbInstruction {

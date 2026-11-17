@@ -186,4 +186,8 @@ impl Compile for AluOperations {
         emit_action(assembler, action);
         emit_epilogue(assembler);
     }
+
+    fn ends_block(&self) -> bool {
+        false
+    }
 }
