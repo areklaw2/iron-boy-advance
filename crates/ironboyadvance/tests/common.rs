@@ -2,7 +2,7 @@
 
 use std::{env, fs, path::PathBuf};
 
-use ironboyadvance::{System, SystemInfo, boot, detect_console, system_info};
+use ironboyadvance::{ExecutionMode, System, SystemInfo, boot, detect_console, system_info};
 
 const FNV_OFFSET_BASIS: u64 = 14695981039346656037;
 const FNV_PRIME: u64 = 1099511628211;
@@ -35,11 +35,15 @@ pub struct Headless {
 
 impl Headless {
     pub fn load(relative_path: &str) -> Headless {
+        Headless::load_with(relative_path, ExecutionMode::Interpreter)
+    }
+
+    pub fn load_with(relative_path: &str, mode: ExecutionMode) -> Headless {
         let path = staged_rom_path(relative_path);
         let rom = fs::read(&path).unwrap_or_else(|error| panic!("failed to read {path:?}: {error}"));
         let kind = detect_console(&rom).unwrap_or_else(|| panic!("unrecognized rom format: {path:?}"));
 
-        let system = boot(kind, &path.to_string_lossy(), rom, Vec::new(), TEST_UNIX_SECONDS, false)
+        let system = boot(kind, &path.to_string_lossy(), rom, Vec::new(), TEST_UNIX_SECONDS, false, mode)
             .unwrap_or_else(|error| panic!("failed to boot {path:?}: {error}"));
 
         Headless {

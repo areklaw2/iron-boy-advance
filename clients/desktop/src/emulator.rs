@@ -11,7 +11,7 @@ use std::{
 
 use chrono::Local;
 use getset::{CopyGetters, Getters};
-use ironboyadvance::{BootError, SystemInfo, Viewport, boot, detect_console, system_info};
+use ironboyadvance::{BootError, ExecutionMode, SystemInfo, Viewport, boot, detect_console, system_info};
 use ringbuf::traits::{Observer, Producer};
 use winit::event_loop::EventLoopProxy;
 
@@ -186,6 +186,7 @@ impl Emulator {
                 bios_buffer,
                 current_unix_seconds(),
                 show_logs,
+                ExecutionMode::Interpreter,
             ) {
                 Ok(system) => {
                     let _ = boot_tx.send(Ok(()));

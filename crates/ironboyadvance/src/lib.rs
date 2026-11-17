@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
 use ironboyadvance_arm7tdmi_interpreter::Interpreter;
+#[cfg(target_arch = "aarch64")]
+use ironboyadvance_arm7tdmi_jit::JitCompiler;
 use ironboyadvance_gba::{GameBoyAdvance, GbaError};
 use ironboyadvance_gbc::{GameBoyColor, GbcError};
 use thiserror::Error;
@@ -16,6 +18,17 @@ pub enum BootError {
     Gbc(#[from] GbcError),
     #[error("unrecognized rom format")]
     UnknownFormat,
+    #[error("the JIT is not supported on this platform")]
+    JitUnsupported,
+    #[cfg(target_arch = "aarch64")]
+    #[error("failed to initialize JIT: {0}")]
+    Jit(#[from] ironboyadvance_arm7tdmi_jit::JitError),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExecutionMode {
+    Interpreter,
+    Jit,
 }
 
 pub const GBA_VIEWPORT: Viewport = Viewport {
@@ -58,16 +71,36 @@ pub fn boot(
     bios: Vec<u8>,
     unix_seconds: u64,
     show_logs: bool,
+    mode: ExecutionMode,
 ) -> Result<Box<dyn System>, BootError> {
     match kind {
-        Console::Gba => Ok(Box::new(GameBoyAdvance::new(
-            PathBuf::from(rom_path),
-            rom,
-            bios,
-            unix_seconds,
-            show_logs,
-            Interpreter::new(),
-        )?)),
+        Console::Gba => match mode {
+            ExecutionMode::Interpreter => Ok(Box::new(GameBoyAdvance::new(
+                PathBuf::from(rom_path),
+                rom,
+                bios,
+                unix_seconds,
+                show_logs,
+                Interpreter::new(),
+            )?)),
+            ExecutionMode::Jit => {
+                #[cfg(target_arch = "aarch64")]
+                {
+                    Ok(Box::new(GameBoyAdvance::new(
+                        PathBuf::from(rom_path),
+                        rom,
+                        bios,
+                        unix_seconds,
+                        show_logs,
+                        JitCompiler::new()?,
+                    )?))
+                }
+                #[cfg(not(target_arch = "aarch64"))]
+                {
+                    Err(BootError::JitUnsupported)
+                }
+            }
+        },
         Console::Gb | Console::Gbc => Ok(Box::new(GameBoyColor::new(
             kind,
             PathBuf::from(rom_path),
