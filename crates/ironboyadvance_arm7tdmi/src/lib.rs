@@ -21,6 +21,8 @@ pub trait Dissasemble {
 
 pub trait ExecutionStrategy {
     fn cycle<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>);
+
+    fn flush_cache(&mut self) {}
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -59,7 +61,7 @@ impl fmt::Display for CpuMode {
 }
 
 #[bitflag(u8)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum CpuState {
     #[base]
     Arm = 0,

@@ -1,5 +1,7 @@
 # Writing a JIT `compile()` Method
 
+> **Note:** This is a record of how the per-instruction `compile()` methods were learned and written. Every ARM and THUMB instruction now compiles and passes SingleStepTests. The probe workflow it describes (`just probe`, `scripts/probe.sh`) has been removed; `just dump` and `just disasm` remain.
+
 ## 1. The Mental Model
 
 Compiled blocks are native ARM64 code in an mmap'd (memory mapped) buffer. They can't touch the `Arm7tdmiCpu` struct directly, because they know nothing about Rust's types or memory layout.
@@ -253,33 +255,48 @@ The `#2` is Multiply's return code (internal cycles make it NonSequential). Take
 
 ### Labels
 
-A label marks a spot in the emitted code so a branch can jump to it. You need one only for a decision made at runtime, like the CPU mode. Check that first:
+A label marks a spot in the emitted code so a branch can jump to it. You need one only for a decision made at runtime. Check that first:
 
-- Condition codes are handled in `cycle()`.
+- Condition codes are handled in `cycle()`, except THUMB `B<cond>`, which checks its own condition.
 - `rd == PC` and register lists come from the instruction word, so they're compile-time `if`s.
 - A runtime check that's emulator plumbing rather than guest behavior belongs in one helper.
+
+THUMB `B<cond>` is the case that needs one: whether the branch is taken is only known at runtime, so the value returned in `w0` is too. `emit_action` picks its action at compile time, so emit both paths and let the CPU run one:
 
 ```rust
 use dynasmrt::DynasmLabelApi;
 
-; cmp w0, #16
-; b.eq >user       // ">" = jump FORWARD to the next "user:"
-...
-; b >done
-; user:            // definition: emits zero bytes
-...
-; done:
+emit_call(assembler, guest::is_condition_met::<I> as *const ());
+dynasm! { assembler
+    ; .arch aarch64
+    ; tbnz w0, #0, >branch    // ">" = jump FORWARD to the next "branch:"
+}
+emit_action(assembler, CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential));
+dynasm! { assembler
+    ; .arch aarch64
+    ; b >end                  // skip over the taken path
+    ; branch:                 // definition: emits zero bytes
+}
+// taken path: pc, add offset, set_pc, pipeline_flush
+emit_action(assembler, CpuAction::PipelineFlush);
+dynasm! { assembler
+    ; .arch aarch64
+    ; end:
+}
+emit_epilogue(assembler);
 ```
 
-There are three kinds. Use local labels unless you have a reason not to:
+Both paths are always emitted and only one runs. Without the `b >end`, the not-taken path would fall through into the taken one. Each path sets `w0` last, right before `end:`, so the return value survives to the epilogue.
 
-- **Local** (`>name` forward, `<name` backward, `name:` to define). Every `compile()` can reuse the same name, and each reference binds to the nearest matching definition.
+There are three kinds of label. Use local labels unless you have a reason not to:
+
+- **Local** (`>name` forward, `<name` backward, `name:` to define). Any name works, every `compile()` can reuse it, and each reference binds to the nearest matching definition.
 - **Dynamic** (`let label = assembler.new_dynamic_label();`, then `=>label` to reference and define). The ID lives in a variable, so use it when a label must be passed around or outlive one instruction, as block linking will.
 - **Global** (`->name`). Avoid. The name must be unique across the whole assembler, so the second instruction that uses it panics.
 
 An undefined label (`>skip` with no `skip:`) isn't a compile error. It fails at `commit()`, when the block runs, so `cargo check` won't catch it.
 
-To test a Rust `bool` return, use `tbnz w0, #0`, not `cbnz w0`. AAPCS64 leaves the high bits of narrow returns unspecified, so only bit 0 is guaranteed.
+`tbz` and `tbnz` test one bit and branch if it's zero or nonzero. To test a Rust `bool` return, use `tbnz w0, #0`, not `cbnz w0`. AAPCS64 leaves the high bits of narrow returns unspecified, so only bit 0 is guaranteed. Test it straight after the call, before anything else overwrites `w0`.
 
 ### Merging Under a Mask
 

@@ -142,6 +142,14 @@ impl MemoryInterface for TestBus {
     fn cpu_context_mut(&mut self) -> &mut CpuContext {
         &mut self.cpu_context
     }
+
+    fn peek_16(&mut self, _address: u32) -> Option<u32> {
+        None
+    }
+
+    fn peek_32(&mut self, _address: u32) -> Option<u32> {
+        None
+    }
 }
 
 impl SystemMemoryAccess for TestBus {
@@ -282,6 +290,7 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
         cpu.set_spsrs(initial_state.spsr.map(ProgramStatusRegister::from_bits_with_defaults));
         cpu.set_pipeline(initial_state.pipeline);
 
+        strategy.flush_cache();
         strategy.cycle(&mut cpu);
 
         assert_eq!(cpu.general_registers(), &final_state.r);
@@ -321,36 +330,12 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
 }
 
 pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
-    let files_to_run = [
-        "arm_b_bl.json.bin",
-        "arm_bx.json.bin",
-        "arm_cdp.json.bin",
-        "arm_stc_ldc.json.bin",
-        "arm_mcr_mrc.json.bin",
-        "arm_swi.json.bin",
-        "arm_data_proc_immediate_shift.json.bin",
-        "arm_data_proc_immediate.json.bin",
-        "arm_data_proc_register_shift.json.bin",
-        "arm_mrs.json.bin",
-        "arm_msr_imm.json.bin",
-        "arm_msr_reg.json.bin",
-        "arm_mul_mla.json.bin",
-        "arm_mull_mlal.json.bin",
-        "arm_swp.json.bin",
-        "arm_ldr_str_immediate_offset.json.bin",
-        "arm_ldr_str_register_offset.json.bin",
-        "arm_ldrh_strh.json.bin",
-        "arm_ldrsb_ldrsh.json.bin",
-        "arm_ldm_stm.json.bin",
-    ];
-
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");
     let directory = fs::read_dir(&directory_path).expect("Unable to access directory");
     let file_paths: Vec<PathBuf> = directory
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
         .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("bin"))
-        .filter(|p| files_to_run.contains(&p.file_name().unwrap().to_str().unwrap()))
         .collect();
 
     file_paths

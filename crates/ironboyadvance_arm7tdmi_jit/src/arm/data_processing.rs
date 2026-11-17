@@ -9,7 +9,7 @@ use ironboyadvance_arm7tdmi::{
 
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, emit_immediate_32, guest};
 
 impl Compile for DataProcessing {
     #[allow(clippy::useless_conversion)]
@@ -38,10 +38,9 @@ impl Compile for DataProcessing {
         let operand1_arg_register: u8 = if swap_operands { 3 } else { 2 };
         let computed_value_arg_register: u8 = if swap_operands { 2 } else { operand2_arg_register };
 
-        emit_prologue(assembler);
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; movz w1, #rn
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -121,7 +120,7 @@ impl Compile for DataProcessing {
                             if needs_carry {
                                 dynasm! { assembler
                                     ; .arch aarch64
-                                    ; str w0, [sp, #40]
+                                    ; str w0, [sp, #56]
                                 }
                                 dynasm! { assembler
                                     ; .arch aarch64
@@ -131,7 +130,7 @@ impl Compile for DataProcessing {
                                 dynasm! { assembler
                                     ; .arch aarch64
                                     ; mov W(carry_arg_register), w0
-                                    ; ldr w0, [sp, #40]
+                                    ; ldr w0, [sp, #56]
                                 }
                             }
                             dynasm! { assembler
@@ -218,7 +217,7 @@ impl Compile for DataProcessing {
                             // RRX: operand2 = (rm >> 1) | (cpsr_carry << 31), carry = rm & 1
                             dynasm! { assembler
                                 ; .arch aarch64
-                                ; str w0, [sp, #40]
+                                ; str w0, [sp, #56]
                             }
                             dynasm! { assembler
                                 ; .arch aarch64
@@ -227,7 +226,7 @@ impl Compile for DataProcessing {
                             emit_call(assembler, guest::cpsr_carry::<I> as *const ());
                             dynasm! { assembler
                                 ; .arch aarch64
-                                ; ldr w9, [sp, #40]
+                                ; ldr w9, [sp, #56]
                             }
                             if needs_carry {
                                 dynasm! { assembler
@@ -414,7 +413,9 @@ impl Compile for DataProcessing {
                 ),
             },
         }
+    }
 
-        emit_epilogue(assembler);
+    fn ends_block(&self) -> bool {
+        self.rd() as usize == PC
     }
 }

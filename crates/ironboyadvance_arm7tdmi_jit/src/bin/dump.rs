@@ -29,6 +29,14 @@ impl MemoryInterface for DummyBus {
     fn cpu_context_mut(&mut self) -> &mut CpuContext {
         unimplemented!()
     }
+
+    fn peek_16(&mut self, _address: u32) -> Option<u32> {
+        None
+    }
+
+    fn peek_32(&mut self, _address: u32) -> Option<u32> {
+        None
+    }
 }
 
 fn main() {

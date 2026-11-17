@@ -35,6 +35,10 @@ pub trait MemoryInterface {
     fn idle_cycle(&mut self);
 
     fn cpu_context_mut(&mut self) -> &mut CpuContext;
+
+    fn peek_16(&mut self, address: u32) -> Option<u32>;
+
+    fn peek_32(&mut self, address: u32) -> Option<u32>;
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {

@@ -102,6 +102,30 @@ impl MemoryInterface for SystemBus {
     fn cpu_context_mut(&mut self) -> &mut CpuContext {
         &mut self.cpu_context
     }
+
+    fn peek_16(&mut self, address: u32) -> Option<u32> {
+        let address = self.align(address, MemoryAccessWidth::HalfWord);
+        match address & 0xFF000000 {
+            BIOS_BASE => self.bios.peek_16(address),
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => Some(self.memory.read_16(address) as u32),
+            ROM_WS0_LO | ROM_WS0_HI | ROM_WS1_LO | ROM_WS1_HI | ROM_WS2_LO | ROM_WS2_HI => {
+                Some(self.cartridge.read_16(address) as u32)
+            }
+            _ => None,
+        }
+    }
+
+    fn peek_32(&mut self, address: u32) -> Option<u32> {
+        let address = self.align(address, MemoryAccessWidth::Word);
+        match address & 0xFF000000 {
+            BIOS_BASE => self.bios.peek_32(address),
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => Some(self.memory.read_32(address)),
+            ROM_WS0_LO | ROM_WS0_HI | ROM_WS1_LO | ROM_WS1_HI | ROM_WS2_LO | ROM_WS2_HI => {
+                Some(self.cartridge.read_32(address))
+            }
+            _ => None,
+        }
+    }
 }
 
 impl SystemMemoryAccess for SystemBus {
@@ -110,16 +134,11 @@ impl SystemMemoryAccess for SystemBus {
     fn read_8(&self, address: u32) -> u8 {
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.read_8(address),
-            WRAM_BOARD_BASE => self.memory.read_8(address),
-            WRAM_CHIP_BASE => self.memory.read_8(address),
-            IO_REGISTERS_BASE => self.io_registers.read_8(address),
-            PALETTE_RAM_BASE => self.io_registers.read_8(address),
-            VRAM_BASE => self.io_registers.read_8(address),
-            OAM_BASE => self.io_registers.read_8(address),
-            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.read_8(address),
-            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.read_8(address),
-            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_8(address),
-            SRAM_LO | SRAM_HI => self.cartridge.read_8(address),
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => self.memory.read_8(address),
+            IO_REGISTERS_BASE | PALETTE_RAM_BASE | VRAM_BASE | OAM_BASE => self.io_registers.read_8(address),
+            ROM_WS0_LO | ROM_WS0_HI | ROM_WS1_LO | ROM_WS1_HI | ROM_WS2_LO | ROM_WS2_HI | SRAM_LO | SRAM_HI => {
+                self.cartridge.read_8(address)
+            }
             _ => {
                 debug!("Unused Read from {:08X}", address);
                 self.open_bus_read(address, MemoryAccessWidth::Byte) as u8
@@ -131,16 +150,11 @@ impl SystemMemoryAccess for SystemBus {
         let address = self.align(address, MemoryAccessWidth::HalfWord);
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.read_16(address),
-            WRAM_BOARD_BASE => self.memory.read_16(address),
-            WRAM_CHIP_BASE => self.memory.read_16(address),
-            IO_REGISTERS_BASE => self.io_registers.read_16(address),
-            PALETTE_RAM_BASE => self.io_registers.read_16(address),
-            VRAM_BASE => self.io_registers.read_16(address),
-            OAM_BASE => self.io_registers.read_16(address),
-            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.read_16(address),
-            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.read_16(address),
-            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_16(address),
-            SRAM_LO | SRAM_HI => self.cartridge.read_16(address),
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => self.memory.read_16(address),
+            IO_REGISTERS_BASE | PALETTE_RAM_BASE | VRAM_BASE | OAM_BASE => self.io_registers.read_16(address),
+            ROM_WS0_LO | ROM_WS0_HI | ROM_WS1_LO | ROM_WS1_HI | ROM_WS2_LO | ROM_WS2_HI | SRAM_LO | SRAM_HI => {
+                self.cartridge.read_16(address)
+            }
             _ => {
                 debug!("Unused Read from {:08X}", address);
                 self.open_bus_read(address, MemoryAccessWidth::HalfWord) as u16
@@ -152,16 +166,11 @@ impl SystemMemoryAccess for SystemBus {
         let address = self.align(address, MemoryAccessWidth::Word);
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.read_32(address),
-            WRAM_BOARD_BASE => self.memory.read_32(address),
-            WRAM_CHIP_BASE => self.memory.read_32(address),
-            IO_REGISTERS_BASE => self.io_registers.read_32(address),
-            PALETTE_RAM_BASE => self.io_registers.read_32(address),
-            VRAM_BASE => self.io_registers.read_32(address),
-            OAM_BASE => self.io_registers.read_32(address),
-            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.read_32(address),
-            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.read_32(address),
-            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.read_32(address),
-            SRAM_LO | SRAM_HI => self.cartridge.read_32(address),
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => self.memory.read_32(address),
+            IO_REGISTERS_BASE | PALETTE_RAM_BASE | VRAM_BASE | OAM_BASE => self.io_registers.read_32(address),
+            ROM_WS0_LO | ROM_WS0_HI | ROM_WS1_LO | ROM_WS1_HI | ROM_WS2_LO | ROM_WS2_HI | SRAM_LO | SRAM_HI => {
+                self.cartridge.read_32(address)
+            }
             _ => {
                 debug!("Unused Read from {:08X}", address);
                 self.open_bus_read(address, MemoryAccessWidth::Word)
@@ -172,16 +181,11 @@ impl SystemMemoryAccess for SystemBus {
     fn write_8(&mut self, address: u32, value: u8) {
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.write_8(address, value),
-            WRAM_BOARD_BASE => self.memory.write_8(address, value),
-            WRAM_CHIP_BASE => self.memory.write_8(address, value),
-            IO_REGISTERS_BASE => self.io_registers.write_8(address, value),
-            PALETTE_RAM_BASE => self.io_registers.write_8(address, value),
-            VRAM_BASE => self.io_registers.write_8(address, value),
-            OAM_BASE => self.io_registers.write_8(address, value),
-            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.write_8(address, value),
-            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_8(address, value),
-            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_8(address, value),
-            SRAM_LO | SRAM_HI => self.cartridge.write_8(address, value),
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => self.memory.write_8(address, value),
+            IO_REGISTERS_BASE | PALETTE_RAM_BASE | VRAM_BASE | OAM_BASE => self.io_registers.write_8(address, value),
+            ROM_WS0_LO | ROM_WS0_HI | ROM_WS1_LO | ROM_WS1_HI | ROM_WS2_LO | ROM_WS2_HI | SRAM_LO | SRAM_HI => {
+                self.cartridge.write_8(address, value)
+            }
             _ => debug!("Unused Write {} to {:08X}", value, address),
         }
     }
@@ -190,16 +194,11 @@ impl SystemMemoryAccess for SystemBus {
         let address = self.align(address, MemoryAccessWidth::HalfWord);
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.write_16(address, value),
-            WRAM_BOARD_BASE => self.memory.write_16(address, value),
-            WRAM_CHIP_BASE => self.memory.write_16(address, value),
-            IO_REGISTERS_BASE => self.io_registers.write_16(address, value),
-            PALETTE_RAM_BASE => self.io_registers.write_16(address, value),
-            VRAM_BASE => self.io_registers.write_16(address, value),
-            OAM_BASE => self.io_registers.write_16(address, value),
-            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.write_16(address, value),
-            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_16(address, value),
-            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_16(address, value),
-            SRAM_LO | SRAM_HI => self.cartridge.write_16(address, value),
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => self.memory.write_16(address, value),
+            IO_REGISTERS_BASE | PALETTE_RAM_BASE | VRAM_BASE | OAM_BASE => self.io_registers.write_16(address, value),
+            ROM_WS0_LO | ROM_WS0_HI | ROM_WS1_LO | ROM_WS1_HI | ROM_WS2_LO | ROM_WS2_HI | SRAM_LO | SRAM_HI => {
+                self.cartridge.write_16(address, value)
+            }
             _ => debug!("Unused Write {} to {:08X}", value, address),
         }
     }
@@ -208,16 +207,11 @@ impl SystemMemoryAccess for SystemBus {
         let address = self.align(address, MemoryAccessWidth::Word);
         match address & 0xFF000000 {
             BIOS_BASE => self.bios.write_32(address, value),
-            WRAM_BOARD_BASE => self.memory.write_32(address, value),
-            WRAM_CHIP_BASE => self.memory.write_32(address, value),
-            IO_REGISTERS_BASE => self.io_registers.write_32(address, value),
-            PALETTE_RAM_BASE => self.io_registers.write_32(address, value),
-            VRAM_BASE => self.io_registers.write_32(address, value),
-            OAM_BASE => self.io_registers.write_32(address, value),
-            ROM_WS0_LO | ROM_WS0_HI => self.cartridge.write_32(address, value),
-            ROM_WS1_LO | ROM_WS1_HI => self.cartridge.write_32(address, value),
-            ROM_WS2_LO | ROM_WS2_HI => self.cartridge.write_32(address, value),
-            SRAM_LO | SRAM_HI => self.cartridge.write_32(address, value),
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => self.memory.write_32(address, value),
+            IO_REGISTERS_BASE | PALETTE_RAM_BASE | VRAM_BASE | OAM_BASE => self.io_registers.write_32(address, value),
+            ROM_WS0_LO | ROM_WS0_HI | ROM_WS1_LO | ROM_WS1_HI | ROM_WS2_LO | ROM_WS2_HI | SRAM_LO | SRAM_HI => {
+                self.cartridge.write_32(address, value)
+            }
             _ => debug!("Unused Write {} to {:08X}", value, address),
         }
     }

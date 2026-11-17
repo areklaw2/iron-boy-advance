@@ -9,7 +9,7 @@ impl Dissasemble for AddSubtract {
             true => format!("#{}", self.offset()),
             false => format!("{}", self.rn()),
         };
-        let opcode = match self.opcode() != 0 {
+        let opcode = match self.opcode() {
             true => "SUB",
             false => "ADD",
         };

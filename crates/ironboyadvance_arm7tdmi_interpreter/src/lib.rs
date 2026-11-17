@@ -51,15 +51,15 @@ impl ExecutionStrategy for Interpreter {
         match cpu_state {
             CpuState::Arm => {
                 let pipeline = *cpu.pipeline();
-                let instruction = pipeline[0];
+                let encoding = pipeline[0];
                 let next_memory_access = *cpu.next_memory_access();
                 let next = cpu.load_32(pc, next_memory_access);
                 cpu.set_pipeline([pipeline[1], next]);
                 let pipeline = *cpu.pipeline();
                 cpu.cpu_context_mut().pipeline = pipeline;
 
-                let lut_index = ((instruction >> 16) & 0x0FF0) | ((instruction >> 4) & 0x000F);
-                let instruction = (self.arm_lut[lut_index as usize])(instruction);
+                let lut_index = ((encoding >> 16) & 0x0FF0) | ((encoding >> 4) & 0x000F);
+                let instruction = (self.arm_lut[lut_index as usize])(encoding);
                 cpu.set_last_instruction(Some(LastInstruction::Arm(instruction)));
 
                 if *cpu.show_logs() {
@@ -82,15 +82,15 @@ impl ExecutionStrategy for Interpreter {
             }
             CpuState::Thumb => {
                 let pipeline = *cpu.pipeline();
-                let instruction = pipeline[0];
+                let encoding = pipeline[0];
                 let next_memory_access = *cpu.next_memory_access();
                 let next = cpu.load_16(pc, next_memory_access);
                 cpu.set_pipeline([pipeline[1], next]);
                 let pipeline = *cpu.pipeline();
                 cpu.cpu_context_mut().pipeline = pipeline;
 
-                let lut_index = instruction as u16 >> 6;
-                let instruction = (self.thumb_lut[lut_index as usize])(instruction as u16);
+                let lut_index = encoding as u16 >> 6;
+                let instruction = (self.thumb_lut[lut_index as usize])(encoding as u16);
                 cpu.set_last_instruction(Some(LastInstruction::Thumb(instruction)));
 
                 if *cpu.show_logs() {

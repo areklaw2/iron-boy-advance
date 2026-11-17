@@ -3,7 +3,7 @@ use ironboyadvance_arm7tdmi::{CpuAction, arm::MultiplyLong, cpu::PC, memory::Mem
 
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, guest};
 
 impl Compile for MultiplyLong {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -12,11 +12,9 @@ impl Compile for MultiplyLong {
         let rm = self.rm() as u32;
         let rs = self.rs() as u32;
 
-        emit_prologue(assembler);
-
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #rm
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -151,7 +149,9 @@ impl Compile for MultiplyLong {
                 CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
             ),
         }
+    }
 
-        emit_epilogue(assembler);
+    fn ends_block(&self) -> bool {
+        self.rd_hi() as usize == PC || self.rd_lo() as usize == PC
     }
 }
