@@ -321,45 +321,12 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
 }
 
 pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
-    let thumb_files_to_run: &[&str] = &[
-        "thumb_b.json.bin",
-        "thumb_bcc.json.bin",
-        "thumb_undefined_bcc.json.bin",
-        "thumb_bl_blx_prefix.json.bin",
-        "thumb_bl_suffix.json.bin",
-        "thumb_bx.json.bin",
-        "thumb_add_cmp_mov_hi.json.bin",
-        "thumb_swi.json.bin",
-        "thumb_ldr_pc_rel.json.bin",
-        "thumb_ldr_str_reg_offset.json.bin",
-        "thumb_ldrsb_strb_reg_offset.json.bin",
-        "thumb_ldr_str_imm_offset.json.bin",
-        "thumb_ldrb_strb_imm_offset.json.bin",
-        "thumb_ldrh_strh_reg_offset.json.bin",
-        "thumb_ldrsh_ldrsb_reg_offset.json.bin",
-        "thumb_ldrh_strh_imm_offset.json.bin",
-        "thumb_ldr_str_sp_rel.json.bin",
-        "thumb_add_sub.json.bin",
-        "thumb_mov_cmp_add_sub.json.bin",
-        "thumb_lsl_lsr_asr.json.bin",
-        "thumb_add_sp_or_pc.json.bin",
-        "thumb_add_sub_sp.json.bin",
-        "thumb_ldm_stm.json.bin",
-        "thumb_push_pop.json.bin",
-        // -- alu_operations
-        // "thumb_data_proc.json.bin",
-    ];
-
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");
     let directory = fs::read_dir(&directory_path).expect("Unable to access directory");
     let file_paths: Vec<PathBuf> = directory
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
         .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("bin"))
-        .filter(|p| {
-            let name = p.file_name().unwrap().to_str().unwrap();
-            name.starts_with("arm_") || thumb_files_to_run.contains(&name)
-        })
         .collect();
 
     file_paths
