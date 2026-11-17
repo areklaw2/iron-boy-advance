@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
-    Condition, CpuAction, CpuState, Dissasemble, ExecutionStrategy,
+    CpuAction, CpuState, Dissasemble, ExecutionStrategy,
     cpu::{Arm7tdmiCpu, LastInstruction},
     memory::MemoryInterface,
 };
-use ironboyadvance_common::memory::MemoryAccess;
 use thiserror::Error;
 use tracing::debug;
 
+use crate::{arm::compile_arm_block, thumb::compile_thumb_block};
 pub use crate::{arm::decode_arm, thumb::decode_thumb};
 
 mod arm;
@@ -23,6 +23,7 @@ pub enum JitError {
 }
 
 const PIPELINE_FLUSH: u32 = 0xFFFF_FFFF;
+const MAX_BLOCK_INSTRUCTIONS: usize = 32;
 
 pub trait Compile {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>);
@@ -41,7 +42,7 @@ impl JitCompiler {
         Ok(Self { assembler, blocks })
     }
 
-    pub fn run<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>, offset: AssemblyOffset) -> CpuAction {
+    fn run<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>, offset: AssemblyOffset) -> CpuAction {
         self.assembler.commit().unwrap();
         let reader = self.assembler.reader();
         let buffer = reader.lock();
@@ -84,19 +85,11 @@ impl ExecutionStrategy for JitCompiler {
                     debug!("{}", instruction.disassemble(cpu));
                 }
 
-                let condition = instruction.cond();
-                if condition != Condition::AL && !cpu.is_condition_met(condition) {
-                    cpu.advance_pc_arm();
-                    cpu.set_next_memory_access(MemoryAccess::Instruction | MemoryAccess::Sequential);
-                    return;
-                }
-
                 let address = pc.wrapping_sub(8);
-                let offset = *self.blocks.entry((address, cpu_state)).or_insert_with(|| {
-                    let offset = self.assembler.offset();
-                    instruction.compile::<I>(&mut self.assembler);
-                    offset
-                });
+                let offset = *self
+                    .blocks
+                    .entry((address, cpu_state))
+                    .or_insert_with(|| compile_arm_block::<I>(&mut self.assembler, cpu, address, instruction));
 
                 match self.run(cpu, offset) {
                     CpuAction::Advance(memory_access) => {
@@ -123,11 +116,10 @@ impl ExecutionStrategy for JitCompiler {
                 }
 
                 let address = pc.wrapping_sub(4);
-                let offset = *self.blocks.entry((address, cpu_state)).or_insert_with(|| {
-                    let offset = self.assembler.offset();
-                    instruction.compile::<I>(&mut self.assembler);
-                    offset
-                });
+                let offset = *self
+                    .blocks
+                    .entry((address, cpu_state))
+                    .or_insert_with(|| compile_thumb_block(&mut self.assembler, cpu, address, instruction));
 
                 match self.run(cpu, offset) {
                     CpuAction::Advance(memory_access) => {
@@ -148,48 +140,15 @@ impl ExecutionStrategy for JitCompiler {
 fn emit_prologue(assembler: &mut Assembler<Aarch64Relocation>) {
     dynasm! { assembler
         ; .arch aarch64
-        ; stp x22, x21, [sp, #-48]!
-        ; stp x20, x19, [sp, #16]
-        ; str x30, [sp, #32]
-    }
-}
-
-fn emit_epilogue(assembler: &mut Assembler<Aarch64Relocation>) {
-    dynasm! { assembler
-        ; .arch aarch64
-        ; ldr x30, [sp, #32]
-        ; ldp x20, x19, [sp, #16]
-        ; ldp x22, x21, [sp], #48
-        ; ret
-    }
-}
-
-fn emit_prologue_link_only(assembler: &mut Assembler<Aarch64Relocation>) {
-    dynasm! { assembler
-        ; .arch aarch64
-        ; str x30, [sp, #-16]!
-    }
-}
-
-fn emit_epilogue_link_only(assembler: &mut Assembler<Aarch64Relocation>) {
-    dynasm! { assembler
-        ; .arch aarch64
-        ; ldr x30, [sp], #16
-        ; ret
-    }
-}
-
-fn emit_prologue_extended(assembler: &mut Assembler<Aarch64Relocation>) {
-    dynasm! { assembler
-        ; .arch aarch64
         ; stp x24, x23, [sp, #-64]!
         ; stp x22, x21, [sp, #16]
         ; stp x20, x19, [sp, #32]
         ; str x30, [sp, #48]
+        ; mov x19, x0
     }
 }
 
-fn emit_epilogue_extended(assembler: &mut Assembler<Aarch64Relocation>) {
+fn emit_epilogue(assembler: &mut Assembler<Aarch64Relocation>) {
     dynasm! { assembler
         ; .arch aarch64
         ; ldr x30, [sp, #48]

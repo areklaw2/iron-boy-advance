@@ -2,7 +2,7 @@ use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{CpuAction, barrel_shifter::ShiftType, memory::MemoryInterface, thumb::MoveShiftedRegister};
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, guest};
 
 impl Compile for MoveShiftedRegister {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -10,10 +10,9 @@ impl Compile for MoveShiftedRegister {
         let rs = self.rs() as u32;
         let offset = self.offset() as u32;
 
-        emit_prologue(assembler);
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #rs
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -78,7 +77,6 @@ impl Compile for MoveShiftedRegister {
             assembler,
             CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
         );
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

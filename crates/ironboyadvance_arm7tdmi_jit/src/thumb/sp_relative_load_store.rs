@@ -2,7 +2,7 @@ use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{CpuAction, cpu::SP, memory::MemoryInterface, thumb::SpRelativeLoadStore};
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, emit_immediate_32, guest};
 
 impl Compile for SpRelativeLoadStore {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -10,11 +10,10 @@ impl Compile for SpRelativeLoadStore {
         let rd = self.rd() as u32;
         let load = self.load();
 
-        emit_prologue(assembler);
         emit_immediate_32(assembler, 20, immediate as u32);
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #SP as u32
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -67,7 +66,6 @@ impl Compile for SpRelativeLoadStore {
             assembler,
             CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
         );
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

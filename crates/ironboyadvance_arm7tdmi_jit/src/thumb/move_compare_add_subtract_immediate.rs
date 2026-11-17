@@ -4,7 +4,7 @@ use ironboyadvance_arm7tdmi::{
 };
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, guest};
 
 impl Compile for MoveCompareAddSubtractImmediate {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -13,10 +13,9 @@ impl Compile for MoveCompareAddSubtractImmediate {
         let offset = self.offset() as u32;
         let opcode: MovCmpAddSubImmediateOpcode = self.opcode().into();
 
-        emit_prologue(assembler);
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #rd
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -87,7 +86,6 @@ impl Compile for MoveCompareAddSubtractImmediate {
             assembler,
             CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
         );
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

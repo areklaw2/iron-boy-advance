@@ -2,7 +2,7 @@ use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{AluOperationsOpcode, CpuAction, memory::MemoryInterface, thumb::AluOperations};
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, guest};
 
 impl Compile for AluOperations {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -12,10 +12,9 @@ impl Compile for AluOperations {
         let opcode: AluOperationsOpcode = self.opcode().into();
         let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
 
-        emit_prologue(assembler);
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #rd
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -184,7 +183,6 @@ impl Compile for AluOperations {
         }
 
         emit_action(assembler, action);
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

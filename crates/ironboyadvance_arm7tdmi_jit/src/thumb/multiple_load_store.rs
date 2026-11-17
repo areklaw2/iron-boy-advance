@@ -2,7 +2,7 @@ use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{CpuAction, memory::MemoryInterface, thumb::MultipleLoadStore};
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, guest};
 
 impl Compile for MultipleLoadStore {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -10,10 +10,9 @@ impl Compile for MultipleLoadStore {
         let register_list_bits = self.register_list_bits();
         let register_list: Vec<u32> = (0..8).filter(|&i| (register_list_bits >> i) & 1 == 1).collect();
 
-        emit_prologue(assembler);
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #rb
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -52,7 +51,6 @@ impl Compile for MultipleLoadStore {
                     }
                     emit_call(assembler, guest::pipeline_flush::<I> as *const ());
                     emit_action(assembler, CpuAction::PipelineFlush);
-                    emit_epilogue(assembler);
                     return;
                 }
 
@@ -119,7 +117,6 @@ impl Compile for MultipleLoadStore {
                         assembler,
                         CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
                     );
-                    emit_epilogue(assembler);
                     return;
                 }
 
@@ -163,7 +160,6 @@ impl Compile for MultipleLoadStore {
             assembler,
             CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
         );
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

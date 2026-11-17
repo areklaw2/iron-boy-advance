@@ -2,18 +2,16 @@ use dynasmrt::{Assembler, DynasmApi, DynasmLabelApi, aarch64::Aarch64Relocation,
 use ironboyadvance_arm7tdmi::{CpuAction, memory::MemoryInterface, thumb::ConditionalBranch};
 use ironboyadvance_common::{bits::SignExtend, memory::MemoryAccess};
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, emit_immediate_32, guest};
 
 impl Compile for ConditionalBranch {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         let condition = self.cond() as u32;
         let offset = (self.offset().sign_extend(8) << 1) as u32;
 
-        emit_prologue(assembler);
-
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #condition
         }
         emit_call(assembler, guest::is_condition_met::<I> as *const ());
@@ -58,7 +56,6 @@ impl Compile for ConditionalBranch {
             ; .arch aarch64
             ; end:
         }
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

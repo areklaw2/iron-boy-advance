@@ -2,7 +2,7 @@ use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{CpuAction, memory::MemoryInterface, thumb::LoadStoreImmediateOffset};
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, emit_immediate_32, guest};
 
 impl Compile for LoadStoreImmediateOffset {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -12,11 +12,10 @@ impl Compile for LoadStoreImmediateOffset {
         let byte = self.byte();
         let load = self.load();
 
-        emit_prologue(assembler);
         emit_immediate_32(assembler, 20, immediate as u32);
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #rb
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -106,7 +105,6 @@ impl Compile for LoadStoreImmediateOffset {
             assembler,
             CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
         );
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

@@ -2,15 +2,13 @@ use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{CpuAction, cpu::LR, memory::MemoryInterface, thumb::LongBranchWithLink};
 use ironboyadvance_common::{bits::SignExtend, memory::MemoryAccess};
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, emit_immediate_32, guest};
 
 impl Compile for LongBranchWithLink {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
-        emit_prologue(assembler);
-
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
         }
         emit_call(assembler, guest::pc::<I> as *const ());
         dynasm! { assembler
@@ -71,8 +69,6 @@ impl Compile for LongBranchWithLink {
                 );
             }
         }
-
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

@@ -3,7 +3,7 @@ use ironboyadvance_arm7tdmi::{CpuAction, arm::PsrTransfer, memory::MemoryInterfa
 
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, emit_immediate_32, guest};
 
 impl Compile for PsrTransfer {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -14,10 +14,9 @@ impl Compile for PsrTransfer {
         let rotate = self.rotate() * 2;
         let immediate = self.immediate();
 
-        emit_prologue(assembler);
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
         }
         match self.is_mrs() {
             true => {
@@ -139,7 +138,6 @@ impl Compile for PsrTransfer {
             assembler,
             CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
         );
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

@@ -1,6 +1,7 @@
-use crate::Compile;
-use dynasmrt::{Assembler, aarch64::Aarch64Relocation};
+use crate::{Compile, MAX_BLOCK_INSTRUCTIONS, emit_call, emit_epilogue, emit_prologue, guest};
+use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
+    cpu::Arm7tdmiCpu,
     memory::MemoryInterface,
     thumb::{
         AddOffsetToSp, AddSubtract, AluOperations, ConditionalBranch, HiRegisterOperationsBranchExchange, LoadAddress,
@@ -81,6 +82,50 @@ impl Compile for ThumbInstruction {
             Self::Undefined(i) => i.ends_block(),
         }
     }
+}
+
+pub(crate) fn compile_thumb_block<I: MemoryInterface>(
+    assembler: &mut Assembler<Aarch64Relocation>,
+    cpu: &mut Arm7tdmiCpu<I>,
+    address: u32,
+    first: ThumbInstruction,
+) -> AssemblyOffset {
+    let start = assembler.offset();
+    emit_prologue(assembler);
+
+    let mut address = address;
+    let mut instruction = first;
+    let mut count = 1;
+    let max_instructions = match *cpu.show_logs() {
+        true => 1,
+        false => MAX_BLOCK_INSTRUCTIONS,
+    };
+
+    loop {
+        instruction.compile::<I>(assembler);
+        if instruction.ends_block() || count == max_instructions {
+            break;
+        }
+
+        let Some(encoding) = cpu.peek_16(address.wrapping_add(2)) else {
+            break;
+        };
+        let next = decode_thumb(encoding as u16);
+
+        dynasm! { assembler
+            ; .arch aarch64
+            ; mov w1, w0
+            ; mov x0, x19
+        }
+        emit_call(assembler, guest::fetch_next_thumb::<I> as *const ());
+
+        address = address.wrapping_add(2);
+        instruction = next;
+        count += 1;
+    }
+
+    emit_epilogue(assembler);
+    start
 }
 
 pub fn decode_thumb(value: u16) -> ThumbInstruction {

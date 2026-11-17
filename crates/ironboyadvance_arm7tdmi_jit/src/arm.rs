@@ -1,14 +1,16 @@
-use crate::Compile;
-use dynasmrt::{Assembler, aarch64::Aarch64Relocation};
+use crate::{Compile, MAX_BLOCK_INSTRUCTIONS, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
+use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, DynasmLabelApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
+    Condition, CpuAction,
     arm::{
         ArmInstruction, BlockDataTransfer, BranchAndBranchWithLink, BranchAndExchange, DataProcessing,
         HalfwordAndSignedDataTransfer, Multiply, MultiplyLong, PsrTransfer, SingleDataSwap, SingleDataTransfer,
         SoftwareInterrupt, Undefined,
     },
+    cpu::Arm7tdmiCpu,
     memory::MemoryInterface,
 };
-use ironboyadvance_common::bits::BitOps;
+use ironboyadvance_common::{bits::BitOps, memory::MemoryAccess};
 
 mod block_data_transfer;
 mod branch_and_branch_with_link;
@@ -25,6 +27,22 @@ mod undefined;
 
 impl Compile for ArmInstruction {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
+        let condition = self.cond();
+
+        if condition != Condition::AL {
+            let condition = condition as u32;
+            dynasm! { assembler
+                ; .arch aarch64
+                ; mov x0, x19
+                ; mov w1, #condition
+            }
+            emit_call(assembler, guest::is_condition_met::<I> as *const ());
+            dynasm! { assembler
+                ; .arch aarch64
+                ; tbz w0, #0, >condition_skipped
+            }
+        }
+
         match self {
             Self::DataProcessing(i) => i.compile::<I>(assembler),
             Self::PsrTransfer(i) => i.compile::<I>(assembler),
@@ -41,6 +59,22 @@ impl Compile for ArmInstruction {
             Self::CoprocessorDataOperation(i) => i.compile::<I>(assembler),
             Self::CoprocessorDataTransfer(i) => i.compile::<I>(assembler),
             Self::CoprocessorRegisterTransfer(i) => i.compile::<I>(assembler),
+        }
+
+        if condition != Condition::AL {
+            dynasm! { assembler
+                ; .arch aarch64
+                ; b >condition_done
+                ; condition_skipped:
+            }
+            emit_action(
+                assembler,
+                CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential),
+            );
+            dynasm! { assembler
+                ; .arch aarch64
+                ; condition_done:
+            }
         }
     }
 
@@ -63,6 +97,50 @@ impl Compile for ArmInstruction {
             Self::CoprocessorRegisterTransfer(i) => i.ends_block(),
         }
     }
+}
+
+pub(crate) fn compile_arm_block<I: MemoryInterface>(
+    assembler: &mut Assembler<Aarch64Relocation>,
+    cpu: &mut Arm7tdmiCpu<I>,
+    address: u32,
+    first: ArmInstruction,
+) -> AssemblyOffset {
+    let start = assembler.offset();
+    emit_prologue(assembler);
+
+    let mut address = address;
+    let mut instruction = first;
+    let mut count = 1;
+    let max_instructions = match *cpu.show_logs() {
+        true => 1,
+        false => MAX_BLOCK_INSTRUCTIONS,
+    };
+
+    loop {
+        instruction.compile::<I>(assembler);
+        if instruction.ends_block() || count == max_instructions {
+            break;
+        }
+
+        let Some(encoding) = cpu.peek_32(address.wrapping_add(4)) else {
+            break;
+        };
+        let next = decode_arm(encoding);
+
+        dynasm! { assembler
+            ; .arch aarch64
+            ; mov w1, w0
+            ; mov x0, x19
+        }
+        emit_call(assembler, guest::fetch_next_arm::<I> as *const ());
+
+        address = address.wrapping_add(4);
+        instruction = next;
+        count += 1;
+    }
+
+    emit_epilogue(assembler);
+    start
 }
 
 pub fn decode_arm(value: u32) -> ArmInstruction {

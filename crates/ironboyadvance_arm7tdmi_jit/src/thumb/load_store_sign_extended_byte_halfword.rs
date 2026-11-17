@@ -2,7 +2,7 @@ use dynasmrt::{Assembler, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{CpuAction, memory::MemoryInterface, thumb::LoadStoreSignExtendedByteHalfword};
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, guest};
 
 impl Compile for LoadStoreSignExtendedByteHalfword {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
@@ -12,10 +12,9 @@ impl Compile for LoadStoreSignExtendedByteHalfword {
         let signed = self.signed();
         let halfword = self.halfword();
 
-        emit_prologue(assembler);
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #ro
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -117,7 +116,6 @@ impl Compile for LoadStoreSignExtendedByteHalfword {
             assembler,
             CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::NonSequential),
         );
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {

@@ -4,14 +4,12 @@ use ironboyadvance_arm7tdmi::{
 };
 use ironboyadvance_common::memory::MemoryAccess;
 
-use crate::{Compile, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{Compile, emit_action, emit_call, guest};
 
 impl Compile for HiRegisterOperationsBranchExchange {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         use HiRegOpsBxOpcode::*;
         let mut action = CpuAction::Advance(MemoryAccess::Instruction | MemoryAccess::Sequential);
-
-        emit_prologue(assembler);
 
         let destination = match self.h1() {
             true => self.hd() as u32 + 8,
@@ -19,7 +17,7 @@ impl Compile for HiRegisterOperationsBranchExchange {
         };
         dynasm! { assembler
             ; .arch aarch64
-            ; mov x19, x0
+            ; mov x0, x19
             ; mov w1, #destination
         }
         emit_call(assembler, guest::register::<I> as *const ());
@@ -162,7 +160,6 @@ impl Compile for HiRegisterOperationsBranchExchange {
         };
 
         emit_action(assembler, action);
-        emit_epilogue(assembler);
     }
 
     fn ends_block(&self) -> bool {
