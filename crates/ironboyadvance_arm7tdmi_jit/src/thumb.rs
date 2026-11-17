@@ -1,4 +1,4 @@
-use crate::{Compile, MAX_BLOCK_INSTRUCTIONS, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{Compile, MAX_BLOCK_INSTRUCTIONS, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
 use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
     cpu::Arm7tdmiCpu,
@@ -88,29 +88,36 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
     assembler: &mut Assembler<Aarch64Relocation>,
     cpu: &mut Arm7tdmiCpu<I>,
     address: u32,
-    first: ThumbInstruction,
+    first_encoding: u32,
 ) -> AssemblyOffset {
     let start = assembler.offset();
     emit_prologue(assembler);
 
     let mut address = address;
-    let mut instruction = first;
+    let mut encoding = first_encoding;
+    let mut instruction = decode_thumb(encoding as u16);
     let mut count = 1;
-    let max_instructions = match *cpu.show_logs() {
-        true => 1,
-        false => MAX_BLOCK_INSTRUCTIONS,
-    };
+    let show_logs = *cpu.show_logs();
 
     loop {
+        if show_logs {
+            dynasm! { assembler
+                ; .arch aarch64
+                ; mov x0, x19
+                ; mov w2, #0
+            }
+            emit_immediate_32(assembler, 1, encoding);
+            emit_call(assembler, guest::log_instruction::<I> as *const ());
+        }
+
         instruction.compile::<I>(assembler);
-        if instruction.ends_block() || count == max_instructions {
+        if instruction.ends_block() || count == MAX_BLOCK_INSTRUCTIONS {
             break;
         }
 
-        let Some(encoding) = cpu.peek_16(address.wrapping_add(2)) else {
+        let Some(next_encoding) = cpu.peek_16(address.wrapping_add(2)) else {
             break;
         };
-        let next = decode_thumb(encoding as u16);
 
         dynasm! { assembler
             ; .arch aarch64
@@ -120,7 +127,8 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
         emit_call(assembler, guest::fetch_next_thumb::<I> as *const ());
 
         address = address.wrapping_add(2);
-        instruction = next;
+        encoding = next_encoding;
+        instruction = decode_thumb(next_encoding as u16);
         count += 1;
     }
 
@@ -128,46 +136,46 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
     start
 }
 
-pub fn decode_thumb(value: u16) -> ThumbInstruction {
-    if value & 0xF800 < 0x1800 {
-        ThumbInstruction::MoveShiftedRegister(MoveShiftedRegister::new(value))
-    } else if value & 0xF800 == 0x1800 {
-        ThumbInstruction::AddSubtract(AddSubtract::new(value))
-    } else if value & 0xE000 == 0x2000 {
-        ThumbInstruction::MoveCompareAddSubtractImmediate(MoveCompareAddSubtractImmediate::new(value))
-    } else if value & 0xFC00 == 0x4000 {
-        ThumbInstruction::AluOperations(AluOperations::new(value))
-    } else if value & 0xFC00 == 0x4400 {
-        ThumbInstruction::HiRegisterOperationsBranchExchange(HiRegisterOperationsBranchExchange::new(value))
-    } else if value & 0xF800 == 0x4800 {
-        ThumbInstruction::PcRelativeLoad(PcRelativeLoad::new(value))
-    } else if value & 0xF200 == 0x5000 {
-        ThumbInstruction::LoadStoreRegisterOffset(LoadStoreRegisterOffset::new(value))
-    } else if value & 0xF200 == 0x5200 {
-        ThumbInstruction::LoadStoreSignExtendedByteHalfword(LoadStoreSignExtendedByteHalfword::new(value))
-    } else if value & 0xE000 == 0x6000 {
-        ThumbInstruction::LoadStoreImmediateOffset(LoadStoreImmediateOffset::new(value))
-    } else if value & 0xF000 == 0x8000 {
-        ThumbInstruction::LoadStoreHalfword(LoadStoreHalfword::new(value))
-    } else if value & 0xF000 == 0x9000 {
-        ThumbInstruction::SpRelativeLoadStore(SpRelativeLoadStore::new(value))
-    } else if value & 0xF000 == 0xA000 {
-        ThumbInstruction::LoadAddress(LoadAddress::new(value))
-    } else if value & 0xFF00 == 0xB000 {
-        ThumbInstruction::AddOffsetToSp(AddOffsetToSp::new(value))
-    } else if value & 0xF600 == 0xB400 {
-        ThumbInstruction::PushPopRegisters(PushPopRegisters::new(value))
-    } else if value & 0xF000 == 0xC000 {
-        ThumbInstruction::MultipleLoadStore(MultipleLoadStore::new(value))
-    } else if value & 0xFF00 < 0xDF00 {
-        ThumbInstruction::ConditionalBranch(ConditionalBranch::new(value))
-    } else if value & 0xFF00 == 0xDF00 {
-        ThumbInstruction::SoftwareInterrupt(SoftwareInterrupt::new(value))
-    } else if value & 0xF800 == 0xE000 {
-        ThumbInstruction::UnconditionalBranch(UnconditionalBranch::new(value))
-    } else if value & 0xF000 == 0xF000 {
-        ThumbInstruction::LongBranchWithLink(LongBranchWithLink::new(value))
+pub fn decode_thumb(encoding: u16) -> ThumbInstruction {
+    if encoding & 0xF800 < 0x1800 {
+        ThumbInstruction::MoveShiftedRegister(MoveShiftedRegister::new(encoding))
+    } else if encoding & 0xF800 == 0x1800 {
+        ThumbInstruction::AddSubtract(AddSubtract::new(encoding))
+    } else if encoding & 0xE000 == 0x2000 {
+        ThumbInstruction::MoveCompareAddSubtractImmediate(MoveCompareAddSubtractImmediate::new(encoding))
+    } else if encoding & 0xFC00 == 0x4000 {
+        ThumbInstruction::AluOperations(AluOperations::new(encoding))
+    } else if encoding & 0xFC00 == 0x4400 {
+        ThumbInstruction::HiRegisterOperationsBranchExchange(HiRegisterOperationsBranchExchange::new(encoding))
+    } else if encoding & 0xF800 == 0x4800 {
+        ThumbInstruction::PcRelativeLoad(PcRelativeLoad::new(encoding))
+    } else if encoding & 0xF200 == 0x5000 {
+        ThumbInstruction::LoadStoreRegisterOffset(LoadStoreRegisterOffset::new(encoding))
+    } else if encoding & 0xF200 == 0x5200 {
+        ThumbInstruction::LoadStoreSignExtendedByteHalfword(LoadStoreSignExtendedByteHalfword::new(encoding))
+    } else if encoding & 0xE000 == 0x6000 {
+        ThumbInstruction::LoadStoreImmediateOffset(LoadStoreImmediateOffset::new(encoding))
+    } else if encoding & 0xF000 == 0x8000 {
+        ThumbInstruction::LoadStoreHalfword(LoadStoreHalfword::new(encoding))
+    } else if encoding & 0xF000 == 0x9000 {
+        ThumbInstruction::SpRelativeLoadStore(SpRelativeLoadStore::new(encoding))
+    } else if encoding & 0xF000 == 0xA000 {
+        ThumbInstruction::LoadAddress(LoadAddress::new(encoding))
+    } else if encoding & 0xFF00 == 0xB000 {
+        ThumbInstruction::AddOffsetToSp(AddOffsetToSp::new(encoding))
+    } else if encoding & 0xF600 == 0xB400 {
+        ThumbInstruction::PushPopRegisters(PushPopRegisters::new(encoding))
+    } else if encoding & 0xF000 == 0xC000 {
+        ThumbInstruction::MultipleLoadStore(MultipleLoadStore::new(encoding))
+    } else if encoding & 0xFF00 < 0xDF00 {
+        ThumbInstruction::ConditionalBranch(ConditionalBranch::new(encoding))
+    } else if encoding & 0xFF00 == 0xDF00 {
+        ThumbInstruction::SoftwareInterrupt(SoftwareInterrupt::new(encoding))
+    } else if encoding & 0xF800 == 0xE000 {
+        ThumbInstruction::UnconditionalBranch(UnconditionalBranch::new(encoding))
+    } else if encoding & 0xF000 == 0xF000 {
+        ThumbInstruction::LongBranchWithLink(LongBranchWithLink::new(encoding))
     } else {
-        ThumbInstruction::Undefined(Undefined::new(value))
+        ThumbInstruction::Undefined(Undefined::new(encoding))
     }
 }

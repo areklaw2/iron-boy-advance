@@ -2,12 +2,11 @@ use std::collections::HashMap;
 
 use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
-    CpuAction, CpuState, Dissasemble, ExecutionStrategy,
+    CpuAction, CpuState, ExecutionStrategy,
     cpu::{Arm7tdmiCpu, LastInstruction},
     memory::MemoryInterface,
 };
 use thiserror::Error;
-use tracing::debug;
 
 use crate::{arm::compile_arm_block, thumb::compile_thumb_block};
 pub use crate::{arm::decode_arm, thumb::decode_thumb};
@@ -71,25 +70,21 @@ impl ExecutionStrategy for JitCompiler {
         match cpu_state {
             CpuState::Arm => {
                 let pipeline = *cpu.pipeline();
-                let instruction = pipeline[0];
+                let encoding = pipeline[0];
                 let next_memory_access = *cpu.next_memory_access();
                 let next = cpu.load_32(pc, next_memory_access);
                 cpu.set_pipeline([pipeline[1], next]);
                 let pipeline = *cpu.pipeline();
                 cpu.cpu_context_mut().pipeline = pipeline;
 
-                let instruction = decode_arm(instruction);
+                let instruction = decode_arm(encoding);
                 cpu.set_last_instruction(Some(LastInstruction::Arm(instruction)));
-
-                if *cpu.show_logs() {
-                    debug!("{}", instruction.disassemble(cpu));
-                }
 
                 let address = pc.wrapping_sub(8);
                 let offset = *self
                     .blocks
                     .entry((address, cpu_state))
-                    .or_insert_with(|| compile_arm_block::<I>(&mut self.assembler, cpu, address, instruction));
+                    .or_insert_with(|| compile_arm_block::<I>(&mut self.assembler, cpu, address, encoding));
 
                 match self.run(cpu, offset) {
                     CpuAction::Advance(memory_access) => {
@@ -101,25 +96,21 @@ impl ExecutionStrategy for JitCompiler {
             }
             CpuState::Thumb => {
                 let pipeline = *cpu.pipeline();
-                let instruction = pipeline[0];
+                let encoding = pipeline[0];
                 let next_memory_access = *cpu.next_memory_access();
                 let next = cpu.load_16(pc, next_memory_access);
                 cpu.set_pipeline([pipeline[1], next]);
                 let pipeline = *cpu.pipeline();
                 cpu.cpu_context_mut().pipeline = pipeline;
 
-                let instruction = decode_thumb(instruction as u16);
+                let instruction = decode_thumb(encoding as u16);
                 cpu.set_last_instruction(Some(LastInstruction::Thumb(instruction)));
-
-                if *cpu.show_logs() {
-                    debug!("{}", instruction.disassemble(cpu));
-                }
 
                 let address = pc.wrapping_sub(4);
                 let offset = *self
                     .blocks
                     .entry((address, cpu_state))
-                    .or_insert_with(|| compile_thumb_block(&mut self.assembler, cpu, address, instruction));
+                    .or_insert_with(|| compile_thumb_block(&mut self.assembler, cpu, address, encoding));
 
                 match self.run(cpu, offset) {
                     CpuAction::Advance(memory_access) => {

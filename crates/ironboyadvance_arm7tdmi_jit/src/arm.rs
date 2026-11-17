@@ -1,4 +1,6 @@
-use crate::{Compile, MAX_BLOCK_INSTRUCTIONS, emit_action, emit_call, emit_epilogue, emit_prologue, guest};
+use crate::{
+    Compile, MAX_BLOCK_INSTRUCTIONS, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest,
+};
 use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, DynasmLabelApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
     Condition, CpuAction,
@@ -103,29 +105,36 @@ pub(crate) fn compile_arm_block<I: MemoryInterface>(
     assembler: &mut Assembler<Aarch64Relocation>,
     cpu: &mut Arm7tdmiCpu<I>,
     address: u32,
-    first: ArmInstruction,
+    first_encoding: u32,
 ) -> AssemblyOffset {
     let start = assembler.offset();
     emit_prologue(assembler);
 
     let mut address = address;
-    let mut instruction = first;
+    let mut encoding = first_encoding;
+    let mut instruction = decode_arm(encoding);
     let mut count = 1;
-    let max_instructions = match *cpu.show_logs() {
-        true => 1,
-        false => MAX_BLOCK_INSTRUCTIONS,
-    };
+    let show_logs = *cpu.show_logs();
 
     loop {
+        if show_logs {
+            dynasm! { assembler
+                ; .arch aarch64
+                ; mov x0, x19
+                ; mov w2, #1
+            }
+            emit_immediate_32(assembler, 1, encoding);
+            emit_call(assembler, guest::log_instruction::<I> as *const ());
+        }
+
         instruction.compile::<I>(assembler);
-        if instruction.ends_block() || count == max_instructions {
+        if instruction.ends_block() || count == MAX_BLOCK_INSTRUCTIONS {
             break;
         }
 
-        let Some(encoding) = cpu.peek_32(address.wrapping_add(4)) else {
+        let Some(next_encoding) = cpu.peek_32(address.wrapping_add(4)) else {
             break;
         };
-        let next = decode_arm(encoding);
 
         dynasm! { assembler
             ; .arch aarch64
@@ -135,7 +144,8 @@ pub(crate) fn compile_arm_block<I: MemoryInterface>(
         emit_call(assembler, guest::fetch_next_arm::<I> as *const ());
 
         address = address.wrapping_add(4);
-        instruction = next;
+        encoding = next_encoding;
+        instruction = decode_arm(next_encoding);
         count += 1;
     }
 
@@ -143,8 +153,8 @@ pub(crate) fn compile_arm_block<I: MemoryInterface>(
     start
 }
 
-pub fn decode_arm(value: u32) -> ArmInstruction {
-    let pattern = value & 0x0FFFFFFF;
+pub fn decode_arm(encoding: u32) -> ArmInstruction {
+    let pattern = encoding & 0x0FFFFFFF;
     let set_flags = pattern.bit(20);
     let opcode = pattern.bits(21..=24);
     let test_opcode = (0b1000..=0b1011).contains(&opcode);
@@ -152,45 +162,45 @@ pub fn decode_arm(value: u32) -> ArmInstruction {
         0b00 => {
             if pattern.bit(25) {
                 match !set_flags && test_opcode {
-                    true => ArmInstruction::PsrTransfer(PsrTransfer::new(value)),
-                    false => ArmInstruction::DataProcessing(DataProcessing::new(value)),
+                    true => ArmInstruction::PsrTransfer(PsrTransfer::new(encoding)),
+                    false => ArmInstruction::DataProcessing(DataProcessing::new(encoding)),
                 }
             } else if pattern & 0x0FF000F0 == 0x01200010 {
-                ArmInstruction::BranchAndExchange(BranchAndExchange::new(value))
+                ArmInstruction::BranchAndExchange(BranchAndExchange::new(encoding))
             } else if pattern & 0x010000F0 == 0x00000090 {
                 match pattern.bit(23) {
-                    true => ArmInstruction::MultiplyLong(MultiplyLong::new(value)),
-                    false => ArmInstruction::Multiply(Multiply::new(value)),
+                    true => ArmInstruction::MultiplyLong(MultiplyLong::new(encoding)),
+                    false => ArmInstruction::Multiply(Multiply::new(encoding)),
                 }
             } else if pattern & 0x010000F0 == 0x01000090 {
-                ArmInstruction::SingleDataSwap(SingleDataSwap::new(value))
+                ArmInstruction::SingleDataSwap(SingleDataSwap::new(encoding))
             } else if pattern & 0x000000F0 == 0x000000B0 || pattern & 0x000000D0 == 0x000000D0 {
-                ArmInstruction::HalfwordAndSignedDataTransfer(HalfwordAndSignedDataTransfer::new(value))
+                ArmInstruction::HalfwordAndSignedDataTransfer(HalfwordAndSignedDataTransfer::new(encoding))
             } else {
                 match !set_flags && test_opcode {
-                    true => ArmInstruction::PsrTransfer(PsrTransfer::new(value)),
-                    false => ArmInstruction::DataProcessing(DataProcessing::new(value)),
+                    true => ArmInstruction::PsrTransfer(PsrTransfer::new(encoding)),
+                    false => ArmInstruction::DataProcessing(DataProcessing::new(encoding)),
                 }
             }
         }
         0b01 => match pattern & 0x02000010 == 0x02000010 {
-            true => ArmInstruction::Undefined(Undefined::new(value)),
-            false => ArmInstruction::SingleDataTransfer(SingleDataTransfer::new(value)),
+            true => ArmInstruction::Undefined(Undefined::new(encoding)),
+            false => ArmInstruction::SingleDataTransfer(SingleDataTransfer::new(encoding)),
         },
         0b10 => match pattern.bit(25) {
-            true => ArmInstruction::BranchAndBranchWithLink(BranchAndBranchWithLink::new(value)),
-            false => ArmInstruction::BlockDataTransfer(BlockDataTransfer::new(value)),
+            true => ArmInstruction::BranchAndBranchWithLink(BranchAndBranchWithLink::new(encoding)),
+            false => ArmInstruction::BlockDataTransfer(BlockDataTransfer::new(encoding)),
         },
         0b11 => match pattern.bit(25) {
             true => match pattern.bit(24) {
-                true => ArmInstruction::SoftwareInterrupt(SoftwareInterrupt::new(value)),
+                true => ArmInstruction::SoftwareInterrupt(SoftwareInterrupt::new(encoding)),
                 false => match pattern.bit(4) {
-                    true => ArmInstruction::CoprocessorRegisterTransfer(Undefined::new(value)),
-                    false => ArmInstruction::CoprocessorDataOperation(Undefined::new(value)),
+                    true => ArmInstruction::CoprocessorRegisterTransfer(Undefined::new(encoding)),
+                    false => ArmInstruction::CoprocessorDataOperation(Undefined::new(encoding)),
                 },
             },
-            false => ArmInstruction::CoprocessorDataTransfer(Undefined::new(value)),
+            false => ArmInstruction::CoprocessorDataTransfer(Undefined::new(encoding)),
         },
-        _ => ArmInstruction::Undefined(Undefined::new(value)),
+        _ => ArmInstruction::Undefined(Undefined::new(encoding)),
     }
 }
