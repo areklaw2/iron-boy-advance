@@ -343,9 +343,7 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "thumb_mov_cmp_add_sub.json.bin",
         "thumb_lsl_lsr_asr.json.bin",
         "thumb_add_sp_or_pc.json.bin",
-        // -- add_offset_to_sp
-        // "thumb_add_sub_sp.json.bin",
-
+        "thumb_add_sub_sp.json.bin",
         // -- multiple_load_store
         // "thumb_ldm_stm.json.bin",
 
