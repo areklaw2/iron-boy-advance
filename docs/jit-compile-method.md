@@ -1,5 +1,7 @@
 # Writing a JIT `compile()` Method
 
+> **Note:** This is a record of how the per-instruction `compile()` methods were learned and written. Every ARM and THUMB instruction now compiles and passes SingleStepTests. The probe workflow it describes (`just probe`, `scripts/probe.sh`) has been removed; `just dump` and `just disasm` remain.
+
 ## 1. The Mental Model
 
 Compiled blocks are native ARM64 code in an mmap'd (memory mapped) buffer. They can't touch the `Arm7tdmiCpu` struct directly, because they know nothing about Rust's types or memory layout.

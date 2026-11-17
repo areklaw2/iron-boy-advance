@@ -18,10 +18,6 @@ profile-dev bios rom:
   cargo build --profile profiling --bin IronBoyAdvance
   samply record ./target/profiling/IronBoyAdvance --bios {{bios}} --rom "{{rom}}"
 
-# Dump the ARM64 rustc generates for a JIT probe, numbered.
-probe name:
-  ./scripts/probe.sh {{name}}
-
 # Disassemble a raw block dump (default /tmp/block.bin); --raw adds the hex encodings.
 disasm *args:
   ./scripts/disasm.sh {{args}}
