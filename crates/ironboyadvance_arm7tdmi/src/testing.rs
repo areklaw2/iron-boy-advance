@@ -345,9 +345,7 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "thumb_add_sp_or_pc.json.bin",
         "thumb_add_sub_sp.json.bin",
         "thumb_ldm_stm.json.bin",
-        // -- push_pop_registers
-        // "thumb_push_pop.json.bin",
-
+        "thumb_push_pop.json.bin",
         // -- alu_operations
         // "thumb_data_proc.json.bin",
     ];
