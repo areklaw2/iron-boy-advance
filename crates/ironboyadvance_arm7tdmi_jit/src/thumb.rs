@@ -18,6 +18,7 @@ mod load_store_immediate_offset;
 mod load_store_register_offset;
 mod load_store_sign_extended_byte_halfword;
 mod long_branch_with_link;
+mod move_compare_add_subtract_immediate;
 mod pc_relative_load;
 mod software_interrupt;
 mod sp_relative_load_store;
@@ -29,7 +30,7 @@ impl Compile for ThumbInstruction {
         match self {
             Self::MoveShiftedRegister(_i) => todo!(),
             Self::AddSubtract(i) => i.compile::<I>(assembler),
-            Self::MoveCompareAddSubtractImmediate(_i) => todo!(),
+            Self::MoveCompareAddSubtractImmediate(i) => i.compile::<I>(assembler),
             Self::AluOperations(_i) => todo!(),
             Self::HiRegisterOperationsBranchExchange(i) => i.compile::<I>(assembler),
             Self::PcRelativeLoad(i) => i.compile::<I>(assembler),
