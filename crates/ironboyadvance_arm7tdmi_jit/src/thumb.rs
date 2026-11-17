@@ -12,9 +12,14 @@ use ironboyadvance_arm7tdmi::{
 
 mod conditional_branch;
 mod hi_register_operations_branch_exchange;
+mod load_store_halfword;
+mod load_store_immediate_offset;
+mod load_store_register_offset;
+mod load_store_sign_extended_byte_halfword;
 mod long_branch_with_link;
 mod pc_relative_load;
 mod software_interrupt;
+mod sp_relative_load_store;
 mod unconditional_branch;
 mod undefined;
 
@@ -27,11 +32,11 @@ impl Compile for ThumbInstruction {
             Self::AluOperations(_i) => todo!(),
             Self::HiRegisterOperationsBranchExchange(i) => i.compile::<I>(assembler),
             Self::PcRelativeLoad(i) => i.compile::<I>(assembler),
-            Self::LoadStoreRegisterOffset(_i) => todo!(),
-            Self::LoadStoreSignExtendedByteHalfword(_i) => todo!(),
-            Self::LoadStoreImmediateOffset(_i) => todo!(),
-            Self::LoadStoreHalfword(_i) => todo!(),
-            Self::SpRelativeLoadStore(_i) => todo!(),
+            Self::LoadStoreRegisterOffset(i) => i.compile::<I>(assembler),
+            Self::LoadStoreSignExtendedByteHalfword(i) => i.compile::<I>(assembler),
+            Self::LoadStoreImmediateOffset(i) => i.compile::<I>(assembler),
+            Self::LoadStoreHalfword(i) => i.compile::<I>(assembler),
+            Self::SpRelativeLoadStore(i) => i.compile::<I>(assembler),
             Self::LoadAddress(_i) => todo!(),
             Self::AddOffsetToSp(_i) => todo!(),
             Self::PushPopRegisters(_i) => todo!(),

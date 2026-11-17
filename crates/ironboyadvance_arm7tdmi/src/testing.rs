@@ -331,24 +331,14 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         "thumb_add_cmp_mov_hi.json.bin",
         "thumb_swi.json.bin",
         "thumb_ldr_pc_rel.json.bin",
-        // -- load_store_register_offset
-        // "thumb_ldr_str_reg_offset.json.bin",
-        // "thumb_ldrsb_strb_reg_offset.json.bin",
-
-        // -- load_store_immediate_offset
-        // "thumb_ldr_str_imm_offset.json.bin",
-        // "thumb_ldrb_strb_imm_offset.json.bin",
-
-        // -- load_store_halfword
-        // "thumb_ldrh_strh_imm_offset.json.bin",
-
-        // -- sp_relative_load_store
-        // "thumb_ldr_str_sp_rel.json.bin",
-
-        // -- load_store_sign_extended_byte_halfword
-        // "thumb_ldrh_strh_reg_offset.json.bin",
-        // "thumb_ldrsh_ldrsb_reg_offset.json.bin",
-
+        "thumb_ldr_str_reg_offset.json.bin",
+        "thumb_ldrsb_strb_reg_offset.json.bin",
+        "thumb_ldr_str_imm_offset.json.bin",
+        "thumb_ldrb_strb_imm_offset.json.bin",
+        "thumb_ldrh_strh_reg_offset.json.bin",
+        "thumb_ldrsh_ldrsb_reg_offset.json.bin",
+        "thumb_ldrh_strh_imm_offset.json.bin",
+        "thumb_ldr_str_sp_rel.json.bin",
         // -- add_subtract
         // "thumb_add_sub.json.bin",
 
