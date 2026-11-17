@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
     Condition, CpuAction, CpuState, Dissasemble, ExecutionStrategy,
@@ -28,12 +30,14 @@ pub trait Compile {
 
 pub struct JitCompiler {
     assembler: Assembler<Aarch64Relocation>,
+    blocks: HashMap<(u32, CpuState), AssemblyOffset>,
 }
 
 impl JitCompiler {
     pub fn new() -> Result<Self, JitError> {
         let assembler = Assembler::<Aarch64Relocation>::new()?;
-        Ok(Self { assembler })
+        let blocks = HashMap::new();
+        Ok(Self { assembler, blocks })
     }
 
     pub fn run<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>, offset: AssemblyOffset) -> CpuAction {
@@ -86,8 +90,13 @@ impl ExecutionStrategy for JitCompiler {
                     return;
                 }
 
-                let offset = self.assembler.offset();
-                instruction.compile::<I>(&mut self.assembler);
+                let address = pc.wrapping_sub(8);
+                let offset = *self.blocks.entry((address, cpu_state)).or_insert_with(|| {
+                    let offset = self.assembler.offset();
+                    instruction.compile::<I>(&mut self.assembler);
+                    offset
+                });
+
                 match self.run(cpu, offset) {
                     CpuAction::Advance(memory_access) => {
                         cpu.advance_pc_arm();
@@ -112,8 +121,13 @@ impl ExecutionStrategy for JitCompiler {
                     debug!("{}", instruction.disassemble(cpu));
                 }
 
-                let offset = self.assembler.offset();
-                instruction.compile::<I>(&mut self.assembler);
+                let address = pc.wrapping_sub(4);
+                let offset = *self.blocks.entry((address, cpu_state)).or_insert_with(|| {
+                    let offset = self.assembler.offset();
+                    instruction.compile::<I>(&mut self.assembler);
+                    offset
+                });
+
                 match self.run(cpu, offset) {
                     CpuAction::Advance(memory_access) => {
                         cpu.advance_pc_thumb();
@@ -123,6 +137,10 @@ impl ExecutionStrategy for JitCompiler {
                 };
             }
         }
+    }
+
+    fn flush_cache(&mut self) {
+        self.blocks.clear();
     }
 }
 

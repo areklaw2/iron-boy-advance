@@ -282,6 +282,7 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
         cpu.set_spsrs(initial_state.spsr.map(ProgramStatusRegister::from_bits_with_defaults));
         cpu.set_pipeline(initial_state.pipeline);
 
+        strategy.flush_cache();
         strategy.cycle(&mut cpu);
 
         assert_eq!(cpu.general_registers(), &final_state.r);
