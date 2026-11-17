@@ -10,6 +10,7 @@ use ironboyadvance_arm7tdmi::{
     },
 };
 
+mod add_subtract;
 mod conditional_branch;
 mod hi_register_operations_branch_exchange;
 mod load_store_halfword;
@@ -27,7 +28,7 @@ impl Compile for ThumbInstruction {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>) {
         match self {
             Self::MoveShiftedRegister(_i) => todo!(),
-            Self::AddSubtract(_i) => todo!(),
+            Self::AddSubtract(i) => i.compile::<I>(assembler),
             Self::MoveCompareAddSubtractImmediate(_i) => todo!(),
             Self::AluOperations(_i) => todo!(),
             Self::HiRegisterOperationsBranchExchange(i) => i.compile::<I>(assembler),

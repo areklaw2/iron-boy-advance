@@ -11,7 +11,7 @@ impl Execute for AddSubtract {
             false => cpu.register(self.rn() as usize),
         };
 
-        let result = match self.opcode() != 0 {
+        let result = match self.opcode() {
             true => sub(cpu, true, operand1, operand2),
             false => add(cpu, true, operand1, operand2),
         };

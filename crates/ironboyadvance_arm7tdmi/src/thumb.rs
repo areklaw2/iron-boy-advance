@@ -55,7 +55,7 @@ pub struct AddSubtract {
     rn: LoRegister,
     offset: u16,
     is_immediate: bool,
-    opcode: u16,
+    opcode: bool,
 }
 
 impl AddSubtract {
@@ -67,7 +67,7 @@ impl AddSubtract {
             rn: value.bits(6..=8).into(),
             offset: value.bits(6..=8),
             is_immediate: value.bit(10),
-            opcode: value.bit(9) as u16,
+            opcode: value.bit(9),
         }
     }
 }
