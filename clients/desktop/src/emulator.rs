@@ -132,6 +132,7 @@ impl Emulator {
         rom_buffer: Vec<u8>,
         config: &Config,
         show_logs: bool,
+        jit_compilation: bool,
         proxy: EventLoopProxy<UserEvent>,
         mut audio_sink: Option<AudioSink>,
     ) -> Result<Emulator, SpawnFailure> {
@@ -179,6 +180,11 @@ impl Emulator {
         let (boot_tx, boot_rx) = mpsc::sync_channel::<Result<(), BootError>>(1);
         let thread = thread::spawn(move || {
             let _panic_notifier = panic_notifier;
+            let execution_mode = match jit_compilation {
+                true => ExecutionMode::Jit,
+                false => ExecutionMode::Interpreter,
+            };
+
             let mut system = match boot(
                 kind,
                 &emu_rom_path,
@@ -186,7 +192,7 @@ impl Emulator {
                 bios_buffer,
                 current_unix_seconds(),
                 show_logs,
-                ExecutionMode::Interpreter,
+                execution_mode,
             ) {
                 Ok(system) => {
                     let _ = boot_tx.send(Ok(()));

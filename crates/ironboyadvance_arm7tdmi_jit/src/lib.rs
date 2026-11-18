@@ -22,7 +22,8 @@ pub enum JitError {
 }
 
 const PIPELINE_FLUSH: u32 = 0xFFFF_FFFF;
-const MAX_BLOCK_INSTRUCTIONS: usize = 32;
+const MAX_BLOCK_INSTRUCTIONS: u32 = 32;
+pub const WATCHED_MEMORY_CHUNK_SIZE: usize = 128;
 
 pub trait Compile {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>);
@@ -46,7 +47,13 @@ impl JitCompiler {
         let reader = self.assembler.reader();
         let buffer = reader.lock();
         let block: extern "C" fn(*mut Arm7tdmiCpu<I>) -> u32 = unsafe { std::mem::transmute(buffer.ptr(offset)) };
-        match block(cpu as *mut _) {
+
+        let action = block(cpu as *mut _);
+        if cpu.take_watched_write() {
+            self.flush_cache();
+        }
+
+        match action {
             PIPELINE_FLUSH => CpuAction::PipelineFlush,
             access => CpuAction::Advance(access as u8),
         }

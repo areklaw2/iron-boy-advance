@@ -110,6 +110,7 @@ pub(crate) fn compile_arm_block<I: MemoryInterface>(
     let start = assembler.offset();
     emit_prologue(assembler);
 
+    let start_address = address;
     let mut address = address;
     let mut encoding = first_encoding;
     let mut instruction = decode_arm(encoding);
@@ -148,6 +149,8 @@ pub(crate) fn compile_arm_block<I: MemoryInterface>(
         instruction = decode_arm(next_encoding);
         count += 1;
     }
+
+    cpu.watch_memory_range(start_address, count * 4);
 
     emit_epilogue(assembler);
     start

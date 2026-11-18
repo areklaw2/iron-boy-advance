@@ -93,6 +93,7 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
     let start = assembler.offset();
     emit_prologue(assembler);
 
+    let start_address = address;
     let mut address = address;
     let mut encoding = first_encoding;
     let mut instruction = decode_thumb(encoding as u16);
@@ -131,6 +132,8 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
         instruction = decode_thumb(next_encoding as u16);
         count += 1;
     }
+
+    cpu.watch_memory_range(start_address, count * 2);
 
     emit_epilogue(assembler);
     start

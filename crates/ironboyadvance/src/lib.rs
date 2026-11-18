@@ -71,10 +71,10 @@ pub fn boot(
     bios: Vec<u8>,
     unix_seconds: u64,
     show_logs: bool,
-    mode: ExecutionMode,
+    execution_mode: ExecutionMode,
 ) -> Result<Box<dyn System>, BootError> {
     match kind {
-        Console::Gba => match mode {
+        Console::Gba => match execution_mode {
             ExecutionMode::Interpreter => Ok(Box::new(GameBoyAdvance::new(
                 PathBuf::from(rom_path),
                 rom,

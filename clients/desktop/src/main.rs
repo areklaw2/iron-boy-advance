@@ -9,10 +9,12 @@ struct DesktopCli {
     bios: Option<String>,
     #[arg(short, long, action = ArgAction::SetTrue, required = false)]
     logs: bool,
+    #[arg(short, long, action = ArgAction::SetTrue, required = false)]
+    jit: bool,
 }
 
 fn main() -> Result<(), desktop::DesktopError> {
     let cli = DesktopCli::parse();
-    desktop::run(cli.rom, cli.bios, cli.logs)?;
+    desktop::run(cli.rom, cli.bios, cli.logs, cli.jit)?;
     Ok(())
 }

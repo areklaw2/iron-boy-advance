@@ -34,7 +34,12 @@ pub enum DesktopError {
     EmulatorThreadExited,
 }
 
-pub fn run(rom_path: Option<String>, bios_path: Option<String>, show_logs: bool) -> Result<(), DesktopError> {
+pub fn run(
+    rom_path: Option<String>,
+    bios_path: Option<String>,
+    show_logs: bool,
+    jit_compilation: bool,
+) -> Result<(), DesktopError> {
     let _log_guard = if show_logs { Some(initialize_logger()) } else { None };
 
     let mut config = Config::load().unwrap_or_default();
@@ -57,7 +62,7 @@ pub fn run(rom_path: Option<String>, bios_path: Option<String>, show_logs: bool)
 
     let event_loop = EventLoop::<UserEvent>::with_user_event().build()?;
     let proxy = event_loop.create_proxy();
-    let mut app = Application::new(rom_path, config, show_logs, proxy);
+    let mut app = Application::new(rom_path, config, show_logs, proxy, jit_compilation);
     event_loop.run_app(&mut app)?;
 
     std::process::exit(0);
