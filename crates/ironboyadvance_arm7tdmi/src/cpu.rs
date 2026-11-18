@@ -82,6 +82,18 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     fn peek_32(&mut self, address: u32) -> Option<u32> {
         self.bus.peek_32(address)
     }
+
+    fn watch_memory_range(&mut self, address: u32, length: u32) {
+        self.bus.watch_memory_range(address, length);
+    }
+
+    fn take_watched_write(&mut self) -> bool {
+        self.bus.take_watched_write()
+    }
+
+    fn interrupt_pending(&mut self) -> bool {
+        self.bus.interrupt_pending()
+    }
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {
@@ -118,9 +130,6 @@ impl<I: MemoryInterface> Arm7tdmiCpu<I> {
                 cpu.cpsr.set_irq_disable(false);
             }
         }
-
-        //TODO: not sure if i need this forever
-        //cpu.refill_pipeline();
         cpu
     }
 

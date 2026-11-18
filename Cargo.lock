@@ -1809,6 +1809,7 @@ name = "ironboyadvance"
 version = "0.1.0"
 dependencies = [
  "ironboyadvance_arm7tdmi_interpreter",
+ "ironboyadvance_arm7tdmi_jit",
  "ironboyadvance_common",
  "ironboyadvance_gba",
  "ironboyadvance_gbc",

@@ -1,5 +1,5 @@
 use crate::{Compile, MAX_BLOCK_INSTRUCTIONS, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
-use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, aarch64::Aarch64Relocation, dynasm};
+use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, DynasmLabelApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
     cpu::Arm7tdmiCpu,
     memory::MemoryInterface,
@@ -93,6 +93,7 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
     let start = assembler.offset();
     emit_prologue(assembler);
 
+    let start_address = address;
     let mut address = address;
     let mut encoding = first_encoding;
     let mut instruction = decode_thumb(encoding as u16);
@@ -111,6 +112,11 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
         }
 
         instruction.compile::<I>(assembler);
+        dynasm! { assembler
+            ; .arch aarch64
+            ; mov w20, w0
+        }
+
         if instruction.ends_block() || count == MAX_BLOCK_INSTRUCTIONS {
             break;
         }
@@ -121,8 +127,14 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
 
         dynasm! { assembler
             ; .arch aarch64
-            ; mov w1, w0
             ; mov x0, x19
+        }
+        emit_call(assembler, guest::should_exit_block::<I> as *const ());
+        dynasm! { assembler
+            ; .arch aarch64
+            ; tbnz w0, #0, >block_exit
+            ; mov x0, x19
+            ; mov w1, w20
         }
         emit_call(assembler, guest::fetch_next_thumb::<I> as *const ());
 
@@ -132,6 +144,13 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
         count += 1;
     }
 
+    cpu.watch_memory_range(start_address, count * 2);
+
+    dynasm! { assembler
+        ; .arch aarch64
+        ; block_exit:
+        ; mov w0, w20
+    }
     emit_epilogue(assembler);
     start
 }

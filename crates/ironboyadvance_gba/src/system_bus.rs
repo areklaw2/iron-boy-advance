@@ -126,6 +126,21 @@ impl MemoryInterface for SystemBus {
             _ => None,
         }
     }
+
+    fn watch_memory_range(&mut self, address: u32, length: u32) {
+        match address & 0xFF000000 {
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => self.memory.watch_memory_range(address, length),
+            _ => {}
+        }
+    }
+
+    fn take_watched_write(&mut self) -> bool {
+        self.memory.take_watched_write()
+    }
+
+    fn interrupt_pending(&mut self) -> bool {
+        self.io_registers.interrupt_controller().interrupt_pending()
+    }
 }
 
 impl SystemMemoryAccess for SystemBus {

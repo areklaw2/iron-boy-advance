@@ -150,6 +150,16 @@ impl MemoryInterface for TestBus {
     fn peek_32(&mut self, _address: u32) -> Option<u32> {
         None
     }
+
+    fn watch_memory_range(&mut self, _address: u32, _length: u32) {}
+
+    fn take_watched_write(&mut self) -> bool {
+        false
+    }
+
+    fn interrupt_pending(&mut self) -> bool {
+        false
+    }
 }
 
 impl SystemMemoryAccess for TestBus {

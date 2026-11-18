@@ -1,8 +1,13 @@
 #![allow(dead_code)]
 
-use std::{env, fs, path::PathBuf};
+use std::{
+    env, fs,
+    path::PathBuf,
+    process,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
-use ironboyadvance::{System, SystemInfo, boot, detect_console, system_info};
+use ironboyadvance::{ExecutionMode, System, SystemInfo, boot, detect_console, system_info};
 
 const FNV_OFFSET_BASIS: u64 = 14695981039346656037;
 const FNV_PRIME: u64 = 1099511628211;
@@ -11,41 +16,51 @@ const LUMINANCE_RAMP: &[u8] = b"@%#*+=-:. ";
 
 const TEST_UNIX_SECONDS: u64 = 1767225600;
 
+static STAGED_COUNT: AtomicUsize = AtomicUsize::new(0);
+
 pub fn repo_path(relative_path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..").join(relative_path)
 }
 
-fn staged_rom_path(relative_path: &str) -> PathBuf {
+fn staged_rom_path(relative_path: &str) -> (PathBuf, PathBuf) {
     let source = repo_path(relative_path);
-    let directory = env::temp_dir().join("ironboyadvance-tests");
+    let count = STAGED_COUNT.fetch_add(1, Ordering::Relaxed);
+    let directory = env::temp_dir()
+        .join("ironboyadvance-tests")
+        .join(format!("{}-{}", process::id(), count));
     fs::create_dir_all(&directory).unwrap_or_else(|error| panic!("failed to create {directory:?}: {error}"));
 
     let staged = directory.join(relative_path.replace(['/', '\\', ' '], "_"));
     fs::copy(&source, &staged).unwrap_or_else(|error| panic!("failed to stage {source:?}: {error}"));
-    let _ = fs::remove_file(staged.with_extension("sav"));
 
-    staged
+    (directory, staged)
 }
 
 pub struct Headless {
     system: Box<dyn System>,
     info: SystemInfo,
     overshoot: usize,
+    staged_directory: PathBuf,
 }
 
 impl Headless {
     pub fn load(relative_path: &str) -> Headless {
-        let path = staged_rom_path(relative_path);
+        Headless::load_with(relative_path, ExecutionMode::Interpreter)
+    }
+
+    pub fn load_with(relative_path: &str, mode: ExecutionMode) -> Headless {
+        let (staged_directory, path) = staged_rom_path(relative_path);
         let rom = fs::read(&path).unwrap_or_else(|error| panic!("failed to read {path:?}: {error}"));
         let kind = detect_console(&rom).unwrap_or_else(|| panic!("unrecognized rom format: {path:?}"));
 
-        let system = boot(kind, &path.to_string_lossy(), rom, Vec::new(), TEST_UNIX_SECONDS, false)
+        let system = boot(kind, &path.to_string_lossy(), rom, Vec::new(), TEST_UNIX_SECONDS, false, mode)
             .unwrap_or_else(|error| panic!("failed to boot {path:?}: {error}"));
 
         Headless {
             system,
             info: system_info(kind),
             overshoot: 0,
+            staged_directory,
         }
     }
 
@@ -103,5 +118,11 @@ impl Headless {
         }
 
         rendered
+    }
+}
+
+impl Drop for Headless {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.staged_directory);
     }
 }

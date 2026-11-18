@@ -18,3 +18,6 @@ ironboyadvance_common = { path = "../ironboyadvance_common" }
 ironboyadvance_gba = { path = "../ironboyadvance_gba" }
 ironboyadvance_gbc = { path = "../ironboyadvance_gbc" }
 thiserror = { workspace = true }
+
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+ironboyadvance_arm7tdmi_jit = { path = "../ironboyadvance_arm7tdmi_jit" }

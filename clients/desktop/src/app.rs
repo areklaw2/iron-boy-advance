@@ -30,8 +30,9 @@ pub(crate) enum UserEvent {
 
 pub(crate) struct Application {
     config: Config,
-    show_logs: bool,
     show_fps: bool,
+    show_logs: bool,
+    jit_compilation: bool,
     fps_target: FpsTarget,
     screenshot: Option<ScreenshotNotice>,
     emulator: Option<Emulator>,
@@ -50,7 +51,13 @@ pub(crate) struct Application {
 }
 
 impl Application {
-    pub(crate) fn new(rom_path: Option<String>, config: Config, show_logs: bool, proxy: EventLoopProxy<UserEvent>) -> Self {
+    pub(crate) fn new(
+        rom_path: Option<String>,
+        config: Config,
+        show_logs: bool,
+        proxy: EventLoopProxy<UserEvent>,
+        jit_compilation: bool,
+    ) -> Self {
         let (_audio_stream, audio_sink) = match audio::start() {
             Some(output) => (Some(output.stream), Some(output.sink)),
             None => (None, None),
@@ -58,8 +65,9 @@ impl Application {
 
         Self {
             config,
-            show_logs,
             show_fps: false,
+            show_logs,
+            jit_compilation,
             fps_target: FpsTarget::Native,
             screenshot: None,
             emulator: None,
@@ -96,6 +104,7 @@ impl Application {
             rom_buffer,
             &self.config,
             self.show_logs,
+            self.jit_compilation,
             self.proxy.clone(),
             self.audio_sink.take(),
         ) {
