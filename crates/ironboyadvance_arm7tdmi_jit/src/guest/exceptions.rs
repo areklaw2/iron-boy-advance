@@ -18,3 +18,8 @@ pub unsafe extern "C" fn software_interrupt<I: MemoryInterface>(cpu: *mut Arm7td
         }
     }
 }
+
+pub unsafe extern "C" fn should_exit_block<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
+    let cpu = unsafe { &mut *cpu };
+    (!cpu.cpsr().irq_disable() && cpu.interrupt_pending()) as u32
+}

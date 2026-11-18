@@ -90,6 +90,10 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     fn take_watched_write(&mut self) -> bool {
         self.bus.take_watched_write()
     }
+
+    fn interrupt_pending(&mut self) -> bool {
+        self.bus.interrupt_pending()
+    }
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {

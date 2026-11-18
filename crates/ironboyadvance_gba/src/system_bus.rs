@@ -137,6 +137,10 @@ impl MemoryInterface for SystemBus {
     fn take_watched_write(&mut self) -> bool {
         self.memory.take_watched_write()
     }
+
+    fn interrupt_pending(&mut self) -> bool {
+        self.io_registers.interrupt_controller().interrupt_pending()
+    }
 }
 
 impl SystemMemoryAccess for SystemBus {

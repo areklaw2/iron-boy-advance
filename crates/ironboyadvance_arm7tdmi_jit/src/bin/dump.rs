@@ -43,6 +43,10 @@ impl MemoryInterface for DummyBus {
     fn take_watched_write(&mut self) -> bool {
         false
     }
+
+    fn interrupt_pending(&mut self) -> bool {
+        false
+    }
 }
 
 fn main() {

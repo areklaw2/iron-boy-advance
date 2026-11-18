@@ -156,6 +156,10 @@ impl MemoryInterface for TestBus {
     fn take_watched_write(&mut self) -> bool {
         false
     }
+
+    fn interrupt_pending(&mut self) -> bool {
+        false
+    }
 }
 
 impl SystemMemoryAccess for TestBus {
