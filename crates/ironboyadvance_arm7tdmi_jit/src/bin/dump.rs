@@ -47,6 +47,10 @@ impl MemoryInterface for DummyBus {
     fn interrupt_pending(&mut self) -> bool {
         false
     }
+
+    fn halted(&mut self) -> bool {
+        false
+    }
 }
 
 fn main() {

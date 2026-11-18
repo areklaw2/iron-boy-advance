@@ -141,6 +141,10 @@ impl MemoryInterface for SystemBus {
     fn interrupt_pending(&mut self) -> bool {
         self.io_registers.interrupt_controller().interrupt_pending()
     }
+
+    fn halted(&mut self) -> bool {
+        self.halt_mode() == HaltMode::Halted
+    }
 }
 
 impl SystemMemoryAccess for SystemBus {

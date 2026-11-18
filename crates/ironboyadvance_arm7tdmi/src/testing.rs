@@ -160,6 +160,10 @@ impl MemoryInterface for TestBus {
     fn interrupt_pending(&mut self) -> bool {
         false
     }
+
+    fn halted(&mut self) -> bool {
+        false
+    }
 }
 
 impl SystemMemoryAccess for TestBus {

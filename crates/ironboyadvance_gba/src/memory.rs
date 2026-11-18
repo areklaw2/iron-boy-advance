@@ -30,17 +30,13 @@ impl Memory {
                 let offset = (address & 0x3FFFF) as usize;
                 let start = offset / WATCHED_MEMORY_CHUNK_SIZE;
                 let end = (offset + length as usize - 1) / WATCHED_MEMORY_CHUNK_SIZE;
-                for chunk in start..=end {
-                    self.written_board_chunks[chunk] = true;
-                }
+                self.written_board_chunks[start..=end].fill(true);
             }
             0x03000000..=0x03FFFFFF => {
                 let offset = (address & 0x7FFF) as usize;
                 let start = offset / WATCHED_MEMORY_CHUNK_SIZE;
                 let end = (offset + length as usize - 1) / WATCHED_MEMORY_CHUNK_SIZE;
-                for chunk in start..=end {
-                    self.written_chip_chunks[chunk] = true;
-                }
+                self.written_chip_chunks[start..=end].fill(true);
             }
             _ => debug!("Cannot watch in this range {:08X}", address),
         }

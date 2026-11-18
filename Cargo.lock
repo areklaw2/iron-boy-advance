@@ -782,8 +782,6 @@ dependencies = [
  "image",
  "ironboyadvance",
  "muda",
- "objc2 0.6.4",
- "objc2-foundation 0.3.2",
  "objc2-game-controller",
  "pollster",
  "ringbuf",
@@ -1824,18 +1822,12 @@ dependencies = [
  "getset",
  "ironboyadvance_common",
  "rayon",
- "serde",
- "serde_json",
- "serde_repr",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
 name = "ironboyadvance_arm7tdmi_interpreter"
 version = "0.1.0"
 dependencies = [
- "getset",
  "ironboyadvance_arm7tdmi",
  "ironboyadvance_common",
  "tracing",
@@ -1846,7 +1838,6 @@ name = "ironboyadvance_arm7tdmi_jit"
 version = "0.1.0"
 dependencies = [
  "dynasmrt",
- "getset",
  "ironboyadvance_arm7tdmi",
  "ironboyadvance_common",
  "thiserror 2.0.21",
@@ -1867,7 +1858,6 @@ dependencies = [
  "bitfields",
  "getset",
  "ironboyadvance_arm7tdmi",
- "ironboyadvance_arm7tdmi_interpreter",
  "ironboyadvance_arm7tdmi_jit",
  "ironboyadvance_common",
  "thiserror 2.0.21",
@@ -1896,9 +1886,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "serde_repr",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3381,17 +3369,6 @@ dependencies = [
  "memchr",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "serde_repr"
-version = "0.1.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "175ee3e80ae9982737ca543e96133087cbd9a485eecc3bc4de9c1a37b47ea59c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
 ]
 
 [[package]]

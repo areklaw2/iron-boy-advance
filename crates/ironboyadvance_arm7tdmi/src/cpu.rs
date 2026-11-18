@@ -94,6 +94,10 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     fn interrupt_pending(&mut self) -> bool {
         self.bus.interrupt_pending()
     }
+
+    fn halted(&mut self) -> bool {
+        self.bus.halted()
+    }
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {

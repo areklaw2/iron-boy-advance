@@ -45,6 +45,8 @@ pub trait MemoryInterface {
     fn take_watched_write(&mut self) -> bool;
 
     fn interrupt_pending(&mut self) -> bool;
+
+    fn halted(&mut self) -> bool;
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {
