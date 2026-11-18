@@ -42,7 +42,7 @@ impl Memory {
         }
     }
 
-    pub fn take_watched_write(&mut self) -> bool {
+    pub fn consume_watched_write(&mut self) -> bool {
         if !self.dirty {
             return false;
         }
@@ -51,6 +51,10 @@ impl Memory {
         self.written_board_chunks.fill(false);
         self.written_chip_chunks.fill(false);
         true
+    }
+
+    pub fn watched_write_pending(&self) -> bool {
+        self.dirty
     }
 }
 

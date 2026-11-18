@@ -87,8 +87,12 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
         self.bus.watch_memory_range(address, length);
     }
 
-    fn take_watched_write(&mut self) -> bool {
-        self.bus.take_watched_write()
+    fn consume_watched_write(&mut self) -> bool {
+        self.bus.consume_watched_write()
+    }
+
+    fn watched_write_pending(&mut self) -> bool {
+        self.bus.watched_write_pending()
     }
 
     fn interrupt_pending(&mut self) -> bool {

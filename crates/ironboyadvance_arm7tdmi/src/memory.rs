@@ -42,7 +42,9 @@ pub trait MemoryInterface {
 
     fn watch_memory_range(&mut self, address: u32, length: u32);
 
-    fn take_watched_write(&mut self) -> bool;
+    fn consume_watched_write(&mut self) -> bool;
+
+    fn watched_write_pending(&mut self) -> bool;
 
     fn interrupt_pending(&mut self) -> bool;
 

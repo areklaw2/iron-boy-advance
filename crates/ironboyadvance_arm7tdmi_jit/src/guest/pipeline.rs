@@ -49,3 +49,9 @@ pub unsafe extern "C" fn fetch_next_thumb<I: MemoryInterface>(cpu: *mut Arm7tdmi
     let pipeline = *cpu.pipeline();
     cpu.cpu_context_mut().pipeline = pipeline;
 }
+
+pub unsafe extern "C" fn should_exit_block<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
+    let cpu = unsafe { &mut *cpu };
+    let exit_block = cpu.watched_write_pending() || cpu.halted() || (!cpu.cpsr().irq_disable() && cpu.interrupt_pending());
+    exit_block as u32
+}

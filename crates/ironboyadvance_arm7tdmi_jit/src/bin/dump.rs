@@ -40,7 +40,11 @@ impl MemoryInterface for DummyBus {
 
     fn watch_memory_range(&mut self, _address: u32, _length: u32) {}
 
-    fn take_watched_write(&mut self) -> bool {
+    fn consume_watched_write(&mut self) -> bool {
+        false
+    }
+
+    fn watched_write_pending(&mut self) -> bool {
         false
     }
 

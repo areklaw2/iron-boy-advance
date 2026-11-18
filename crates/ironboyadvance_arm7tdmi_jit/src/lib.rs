@@ -49,7 +49,7 @@ impl JitCompiler {
         let block: extern "C" fn(*mut Arm7tdmiCpu<I>) -> u32 = unsafe { std::mem::transmute(buffer.ptr(offset)) };
 
         let action = block(cpu as *mut _);
-        if cpu.take_watched_write() {
+        if cpu.consume_watched_write() {
             self.flush_cache();
         }
 
