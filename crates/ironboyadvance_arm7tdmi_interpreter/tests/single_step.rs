@@ -3,5 +3,5 @@ use ironboyadvance_arm7tdmi_interpreter::Interpreter;
 
 #[test]
 fn single_step_tests() {
-    run_single_step_tests::<Interpreter>();
+    run_single_step_tests::<Interpreter>(|_| {});
 }

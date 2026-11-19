@@ -5,6 +5,7 @@ use ironboyadvance_arm7tdmi::{
     CpuState,
     memory::{CpuContext, MemoryInterface},
 };
+use ironboyadvance_arm7tdmi_jit::JitInterface;
 use ironboyadvance_common::{
     memory::{MemoryAccess, MemoryAccessWidth, SystemMemoryAccess},
     scheduler::Scheduler,
@@ -102,7 +103,9 @@ impl MemoryInterface for SystemBus {
     fn cpu_context_mut(&mut self) -> &mut CpuContext {
         &mut self.cpu_context
     }
+}
 
+impl JitInterface for SystemBus {
     fn peek_16(&mut self, address: u32) -> Option<u32> {
         let address = self.align(address, MemoryAccessWidth::HalfWord);
         match address & 0xFF000000 {
@@ -138,16 +141,10 @@ impl MemoryInterface for SystemBus {
         self.memory.consume_watched_write()
     }
 
-    fn watched_write_pending(&mut self) -> bool {
+    fn block_exit_pending(&mut self, irq_enabled: bool) -> bool {
         self.memory.watched_write_pending()
-    }
-
-    fn interrupt_pending(&mut self) -> bool {
-        self.io_registers.interrupt_controller().interrupt_pending()
-    }
-
-    fn halted(&mut self) -> bool {
-        self.halt_mode() == HaltMode::Halted
+            || self.halt_mode() == HaltMode::Halted
+            || (irq_enabled && self.io_registers.interrupt_controller().interrupt_pending())
     }
 }
 

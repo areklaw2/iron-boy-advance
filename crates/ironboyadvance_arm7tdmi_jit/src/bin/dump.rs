@@ -1,6 +1,6 @@
 use dynasmrt::{DynasmApi, aarch64::Assembler};
 use ironboyadvance_arm7tdmi::memory::{CpuContext, MemoryInterface};
-use ironboyadvance_arm7tdmi_jit::{Compile, decode_arm, decode_thumb};
+use ironboyadvance_arm7tdmi_jit::{Compile, JitInterface, decode_arm, decode_thumb};
 
 struct DummyBus;
 
@@ -29,7 +29,9 @@ impl MemoryInterface for DummyBus {
     fn cpu_context_mut(&mut self) -> &mut CpuContext {
         unimplemented!()
     }
+}
 
+impl JitInterface for DummyBus {
     fn peek_16(&mut self, _address: u32) -> Option<u32> {
         None
     }
@@ -44,15 +46,7 @@ impl MemoryInterface for DummyBus {
         false
     }
 
-    fn watched_write_pending(&mut self) -> bool {
-        false
-    }
-
-    fn interrupt_pending(&mut self) -> bool {
-        false
-    }
-
-    fn halted(&mut self) -> bool {
+    fn block_exit_pending(&mut self, _irq_enabled: bool) -> bool {
         false
     }
 }

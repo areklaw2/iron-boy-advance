@@ -13,6 +13,7 @@ pub use crate::{arm::decode_arm, thumb::decode_thumb};
 
 mod arm;
 mod guest;
+mod testing;
 mod thumb;
 
 #[derive(Error, Debug)]
@@ -27,7 +28,20 @@ pub const WATCHED_MEMORY_CHUNK_SIZE: usize = 128;
 
 pub trait Compile {
     fn compile<I: MemoryInterface>(&self, assembler: &mut Assembler<Aarch64Relocation>);
+
     fn ends_block(&self) -> bool;
+}
+
+pub trait JitInterface {
+    fn peek_16(&mut self, address: u32) -> Option<u32>;
+
+    fn peek_32(&mut self, address: u32) -> Option<u32>;
+
+    fn watch_memory_range(&mut self, address: u32, length: u32);
+
+    fn consume_watched_write(&mut self) -> bool;
+
+    fn block_exit_pending(&mut self, irq_enabled: bool) -> bool;
 }
 
 pub struct JitCompiler {
@@ -42,14 +56,14 @@ impl JitCompiler {
         Ok(Self { assembler, blocks })
     }
 
-    fn run<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>, offset: AssemblyOffset) -> CpuAction {
+    fn run<I: MemoryInterface + JitInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>, offset: AssemblyOffset) -> CpuAction {
         self.assembler.commit().unwrap();
         let reader = self.assembler.reader();
         let buffer = reader.lock();
         let block: extern "C" fn(*mut Arm7tdmiCpu<I>) -> u32 = unsafe { std::mem::transmute(buffer.ptr(offset)) };
 
         let action = block(cpu as *mut _);
-        if cpu.consume_watched_write() {
+        if cpu.bus_mut().consume_watched_write() {
             self.flush_cache();
         }
 
@@ -57,6 +71,10 @@ impl JitCompiler {
             PIPELINE_FLUSH => CpuAction::PipelineFlush,
             access => CpuAction::Advance(access as u8),
         }
+    }
+
+    pub fn flush_cache(&mut self) {
+        self.blocks.clear();
     }
 }
 
@@ -66,8 +84,8 @@ impl Default for JitCompiler {
     }
 }
 
-impl ExecutionStrategy for JitCompiler {
-    fn cycle<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>) {
+impl<I: MemoryInterface + JitInterface> ExecutionStrategy<I> for JitCompiler {
+    fn cycle(&mut self, cpu: &mut Arm7tdmiCpu<I>) {
         let pc = cpu.pc() & !0x1;
         let cpu_state = cpu.cpsr().state();
         let context = cpu.cpu_context_mut();
@@ -128,10 +146,6 @@ impl ExecutionStrategy for JitCompiler {
                 };
             }
         }
-    }
-
-    fn flush_cache(&mut self) {
-        self.blocks.clear();
     }
 }
 

@@ -35,20 +35,6 @@ pub trait MemoryInterface {
     fn idle_cycle(&mut self);
 
     fn cpu_context_mut(&mut self) -> &mut CpuContext;
-
-    fn peek_16(&mut self, address: u32) -> Option<u32>;
-
-    fn peek_32(&mut self, address: u32) -> Option<u32>;
-
-    fn watch_memory_range(&mut self, address: u32, length: u32);
-
-    fn consume_watched_write(&mut self) -> bool;
-
-    fn watched_write_pending(&mut self) -> bool;
-
-    fn interrupt_pending(&mut self) -> bool;
-
-    fn halted(&mut self) -> bool;
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {

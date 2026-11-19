@@ -1,4 +1,6 @@
-use crate::{Compile, MAX_BLOCK_INSTRUCTIONS, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest};
+use crate::{
+    Compile, JitInterface, MAX_BLOCK_INSTRUCTIONS, emit_call, emit_epilogue, emit_immediate_32, emit_prologue, guest,
+};
 use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, DynasmLabelApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{
     cpu::Arm7tdmiCpu,
@@ -84,7 +86,7 @@ impl Compile for ThumbInstruction {
     }
 }
 
-pub(crate) fn compile_thumb_block<I: MemoryInterface>(
+pub(crate) fn compile_thumb_block<I: MemoryInterface + JitInterface>(
     assembler: &mut Assembler<Aarch64Relocation>,
     cpu: &mut Arm7tdmiCpu<I>,
     address: u32,
@@ -121,7 +123,7 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
             break;
         }
 
-        let Some(next_encoding) = cpu.peek_16(address.wrapping_add(2)) else {
+        let Some(next_encoding) = cpu.bus_mut().peek_16(address.wrapping_add(2)) else {
             break;
         };
 
@@ -144,7 +146,7 @@ pub(crate) fn compile_thumb_block<I: MemoryInterface>(
         count += 1;
     }
 
-    cpu.watch_memory_range(start_address, count * 2);
+    cpu.bus_mut().watch_memory_range(start_address, count * 2);
 
     dynasm! { assembler
         ; .arch aarch64

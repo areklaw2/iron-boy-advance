@@ -40,8 +40,8 @@ impl Default for Interpreter {
     }
 }
 
-impl ExecutionStrategy for Interpreter {
-    fn cycle<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>) {
+impl<I: MemoryInterface> ExecutionStrategy<I> for Interpreter {
+    fn cycle(&mut self, cpu: &mut Arm7tdmiCpu<I>) {
         let pc = cpu.pc() & !0x1;
         let cpu_state = cpu.cpsr().state();
         let context = cpu.cpu_context_mut();

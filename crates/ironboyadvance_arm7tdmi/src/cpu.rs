@@ -74,34 +74,6 @@ impl<I: MemoryInterface> MemoryInterface for Arm7tdmiCpu<I> {
     fn cpu_context_mut(&mut self) -> &mut CpuContext {
         self.bus.cpu_context_mut()
     }
-
-    fn peek_16(&mut self, address: u32) -> Option<u32> {
-        self.bus.peek_16(address)
-    }
-
-    fn peek_32(&mut self, address: u32) -> Option<u32> {
-        self.bus.peek_32(address)
-    }
-
-    fn watch_memory_range(&mut self, address: u32, length: u32) {
-        self.bus.watch_memory_range(address, length);
-    }
-
-    fn consume_watched_write(&mut self) -> bool {
-        self.bus.consume_watched_write()
-    }
-
-    fn watched_write_pending(&mut self) -> bool {
-        self.bus.watched_write_pending()
-    }
-
-    fn interrupt_pending(&mut self) -> bool {
-        self.bus.interrupt_pending()
-    }
-
-    fn halted(&mut self) -> bool {
-        self.bus.halted()
-    }
 }
 
 impl<I: MemoryInterface> Arm7tdmiCpu<I> {

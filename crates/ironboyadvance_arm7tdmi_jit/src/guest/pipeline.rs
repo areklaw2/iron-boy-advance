@@ -1,5 +1,7 @@
 use ironboyadvance_arm7tdmi::{alu, cpu::Arm7tdmiCpu, memory::MemoryInterface};
 
+use crate::JitInterface;
+
 pub unsafe extern "C" fn pipeline_flush<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) {
     let cpu = unsafe { &mut *cpu };
     cpu.pipeline_flush();
@@ -50,8 +52,8 @@ pub unsafe extern "C" fn fetch_next_thumb<I: MemoryInterface>(cpu: *mut Arm7tdmi
     cpu.cpu_context_mut().pipeline = pipeline;
 }
 
-pub unsafe extern "C" fn should_exit_block<I: MemoryInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
+pub unsafe extern "C" fn should_exit_block<I: MemoryInterface + JitInterface>(cpu: *mut Arm7tdmiCpu<I>) -> u32 {
     let cpu = unsafe { &mut *cpu };
-    let exit_block = cpu.watched_write_pending() || cpu.halted() || (!cpu.cpsr().irq_disable() && cpu.interrupt_pending());
-    exit_block as u32
+    let irq_enabled = !cpu.cpsr().irq_disable();
+    cpu.bus_mut().block_exit_pending(irq_enabled) as u32
 }

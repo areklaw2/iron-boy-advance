@@ -76,7 +76,7 @@ struct Test {
 
 #[allow(unused)]
 #[derive(Default)]
-struct TestBus {
+pub struct TestBus {
     data: HashMap<u32, u8>,
     base_address: u32,
     opcode: u32,
@@ -141,32 +141,6 @@ impl MemoryInterface for TestBus {
 
     fn cpu_context_mut(&mut self) -> &mut CpuContext {
         &mut self.cpu_context
-    }
-
-    fn peek_16(&mut self, _address: u32) -> Option<u32> {
-        None
-    }
-
-    fn peek_32(&mut self, _address: u32) -> Option<u32> {
-        None
-    }
-
-    fn watch_memory_range(&mut self, _address: u32, _length: u32) {}
-
-    fn consume_watched_write(&mut self) -> bool {
-        false
-    }
-
-    fn watched_write_pending(&mut self) -> bool {
-        false
-    }
-
-    fn interrupt_pending(&mut self) -> bool {
-        false
-    }
-
-    fn halted(&mut self) -> bool {
-        false
     }
 }
 
@@ -286,7 +260,11 @@ fn parse_bin_file(path: &PathBuf) -> Result<Vec<Test>, String> {
     Ok(tests)
 }
 
-fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> Result<(), String> {
+fn run_test_file<S: ExecutionStrategy<TestBus>>(
+    strategy: &mut S,
+    file_path: PathBuf,
+    block_cache_flush: &impl Fn(&mut S),
+) -> Result<(), String> {
     let tests = parse_bin_file(&file_path)?;
 
     let mut cpu = Arm7tdmiCpu::new(TestBus::default(), false, true);
@@ -308,7 +286,7 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
         cpu.set_spsrs(initial_state.spsr.map(ProgramStatusRegister::from_bits_with_defaults));
         cpu.set_pipeline(initial_state.pipeline);
 
-        strategy.flush_cache();
+        block_cache_flush(strategy);
         strategy.cycle(&mut cpu);
 
         assert_eq!(cpu.general_registers(), &final_state.r);
@@ -347,7 +325,7 @@ fn run_test_file<S: ExecutionStrategy>(strategy: &mut S, file_path: PathBuf) -> 
     Ok(())
 }
 
-pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
+pub fn run_single_step_tests<S: ExecutionStrategy<TestBus> + Default + Sync>(block_cache_flush: impl Fn(&mut S) + Sync) {
     let directory_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../external/arm7tdmi/v1");
     let directory = fs::read_dir(&directory_path).expect("Unable to access directory");
     let file_paths: Vec<PathBuf> = directory
@@ -360,7 +338,7 @@ pub fn run_single_step_tests<S: ExecutionStrategy + Default + Sync>() {
         .par_iter()
         .try_for_each(|path| {
             let mut strategy = S::default();
-            run_test_file(&mut strategy, path.clone()).map_err(|e| {
+            run_test_file(&mut strategy, path.clone(), &block_cache_flush).map_err(|e| {
                 eprintln!("Test failed in file {:?}: {}", path, e);
                 e
             })

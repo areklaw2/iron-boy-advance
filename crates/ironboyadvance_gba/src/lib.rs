@@ -43,13 +43,13 @@ pub enum GbaError {
     CartridgeError(#[from] CartridgeError),
 }
 
-pub struct GameBoyAdvance<E: ExecutionStrategy> {
+pub struct GameBoyAdvance<E: ExecutionStrategy<SystemBus>> {
     arm7tdmi: Arm7tdmiCpu<SystemBus>,
     strategy: E,
     scheduler: Rc<RefCell<Scheduler<GbaEvent>>>,
 }
 
-impl<E: ExecutionStrategy> GameBoyAdvance<E> {
+impl<E: ExecutionStrategy<SystemBus>> GameBoyAdvance<E> {
     pub fn new(
         rom_path: PathBuf,
         rom_buffer: Vec<u8>,
@@ -95,7 +95,7 @@ impl<E: ExecutionStrategy> GameBoyAdvance<E> {
     }
 }
 
-impl<E: ExecutionStrategy> System for GameBoyAdvance<E> {
+impl<E: ExecutionStrategy<SystemBus>> System for GameBoyAdvance<E> {
     fn run(&mut self, cycles: usize, overshoot: usize) -> usize {
         let start_time = self.scheduler.borrow().timestamp();
         let target = cycles.saturating_sub(overshoot);
@@ -130,4 +130,4 @@ impl<E: ExecutionStrategy> System for GameBoyAdvance<E> {
     }
 }
 
-impl<E: ExecutionStrategy> SystemInspection for GameBoyAdvance<E> {}
+impl<E: ExecutionStrategy<SystemBus>> SystemInspection for GameBoyAdvance<E> {}

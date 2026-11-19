@@ -3,5 +3,5 @@ use ironboyadvance_arm7tdmi_jit::JitCompiler;
 
 #[test]
 fn single_step_tests() {
-    run_single_step_tests::<JitCompiler>();
+    run_single_step_tests::<JitCompiler>(|jit| jit.flush_cache());
 }

@@ -19,10 +19,8 @@ pub trait Dissasemble {
     fn disassemble<I: MemoryInterface>(&self, cpu: &mut Arm7tdmiCpu<I>) -> String;
 }
 
-pub trait ExecutionStrategy {
-    fn cycle<I: MemoryInterface>(&mut self, cpu: &mut Arm7tdmiCpu<I>);
-
-    fn flush_cache(&mut self) {}
+pub trait ExecutionStrategy<I: MemoryInterface> {
+    fn cycle(&mut self, cpu: &mut Arm7tdmiCpu<I>);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
