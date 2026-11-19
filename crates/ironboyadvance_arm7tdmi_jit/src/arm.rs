@@ -1,6 +1,6 @@
 use crate::{
-    Compile, JitInterface, MAX_BLOCK_INSTRUCTIONS, emit_action, emit_call, emit_epilogue, emit_immediate_32,
-    emit_prologue, guest,
+    Compile, JitInterface, MAX_BLOCK_INSTRUCTIONS, emit_action, emit_call, emit_epilogue, emit_immediate_32, emit_prologue,
+    guest,
 };
 use dynasmrt::{Assembler, AssemblyOffset, DynasmApi, DynasmLabelApi, aarch64::Aarch64Relocation, dynasm};
 use ironboyadvance_arm7tdmi::{

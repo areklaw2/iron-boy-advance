@@ -404,4 +404,11 @@ impl SystemBus {
     pub fn dma_active(&self) -> bool {
         self.io_registers.dma_controller().is_active()
     }
+
+    pub fn read_memory(&self, address: u32) -> u8 {
+        match address & 0xFF000000 {
+            WRAM_BOARD_BASE | WRAM_CHIP_BASE => self.memory.read_8(address),
+            _ => 0xFF,
+        }
+    }
 }

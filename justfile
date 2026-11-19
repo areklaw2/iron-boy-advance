@@ -22,6 +22,9 @@ profile-dev bios rom:
 disasm *args:
   ./scripts/disasm.sh {{args}}
 
+assemble-self-modifying-test:
+  ./scripts/assemble_arm.sh crates/ironboyadvance/tests/self_modifying.s crates/ironboyadvance/tests/self_modifying.bin
+
 # Compile one instruction and disassemble it: just dump arm 0xE0234291 [--raw]
 dump mode encoding *flags:
   cargo run -q -p ironboyadvance_arm7tdmi_jit --bin dump -- {{mode}} {{encoding}}

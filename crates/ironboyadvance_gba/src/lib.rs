@@ -130,4 +130,8 @@ impl<E: ExecutionStrategy<SystemBus>> System for GameBoyAdvance<E> {
     }
 }
 
-impl<E: ExecutionStrategy<SystemBus>> SystemInspection for GameBoyAdvance<E> {}
+impl<E: ExecutionStrategy<SystemBus>> SystemInspection for GameBoyAdvance<E> {
+    fn read_memory(&self, address: u32) -> u8 {
+        self.arm7tdmi.bus().read_memory(address)
+    }
+}
